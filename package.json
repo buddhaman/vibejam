@@ -1,0 +1,20 @@
+{
+  "name": "3d-multiplayer-game",
+  "version": "1.0.0",
+  "description": "A simple 3D multiplayer game using Three.js and WebRTC",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "three": "^0.162.0",
+    "peerjs": "^1.5.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.162.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
+  }
+} 
