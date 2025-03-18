@@ -276,15 +276,15 @@ export class Player {
             
             // Apply movement forces
             // Force to lowest particle in movement direction
-            const moveImpulse = movementDir.clone().multiplyScalar(this.moveSpeed).negate();
-            lowestParticle.applyImpulse(moveImpulse);
+            const moveImpulse = movementDir.clone().multiplyScalar(this.moveSpeed);
+            lowestParticle.applyImpulse(moveImpulse.clone().negate());
             
             // Reverse force to highest particle
             highestParticle.applyImpulse(moveImpulse.clone());
             
             // Vertical forces to create rotation
-            mostForwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
-            mostBackwardParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
+            mostForwardParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
+            mostBackwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
         }
     }
 
