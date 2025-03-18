@@ -6,7 +6,7 @@ export class Player {
     private verletBody: VerletBody;
     private meshes: THREE.Mesh[];
     private lines: THREE.Line[];
-    private moveSpeed: number = 0.5;
+    private moveSpeed: number = 0.1;
 
     constructor(id: string) {
         this.id = id;
@@ -15,9 +15,9 @@ export class Player {
         this.lines = [];
 
         // Create three particles in a triangular formation
-        const particle1 = this.verletBody.addParticle(new THREE.Vector3(0, 0, 0));
-        const particle2 = this.verletBody.addParticle(new THREE.Vector3(1, 0, 0));
-        const particle3 = this.verletBody.addParticle(new THREE.Vector3(0.5, 0.866, 0));
+        const particle1 = this.verletBody.addParticle(new THREE.Vector3(0, 1, 0));
+        const particle2 = this.verletBody.addParticle(new THREE.Vector3(0.5, 1, 0));
+        const particle3 = this.verletBody.addParticle(new THREE.Vector3(0.25, 1.433, 0));
 
         // Connect particles with springs
         this.verletBody.addConstraint(particle1, particle2);
@@ -25,7 +25,7 @@ export class Player {
         this.verletBody.addConstraint(particle3, particle1);
 
         // Create visual meshes for particles
-        const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const geometry = new THREE.SphereGeometry(0.1, 16, 16);
         const material = new THREE.MeshStandardMaterial({ 
             color: id === 'local' ? 0x00ff00 : 0xff0000 
         });
@@ -59,8 +59,8 @@ export class Player {
         particles.forEach(particle => {
             const impulse = new THREE.Vector3();
             
-            if (input.w) impulse.y += this.moveSpeed;
-            if (input.s) impulse.y -= this.moveSpeed;
+            if (input.w) impulse.z -= this.moveSpeed;
+            if (input.s) impulse.z += this.moveSpeed;
             if (input.a) impulse.x -= this.moveSpeed;
             if (input.d) impulse.x += this.moveSpeed;
             

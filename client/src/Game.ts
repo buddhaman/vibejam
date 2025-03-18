@@ -24,7 +24,8 @@ export class Game {
         document.body.appendChild(this.renderer.domElement);
 
         // Setup camera
-        this.camera.position.z = 5;
+        this.camera.position.set(0, 8, 8);
+        this.camera.lookAt(0, 0, 0);
 
         // Add some basic lighting
         const light = new THREE.AmbientLight(0xffffff, 0.5);
@@ -34,10 +35,14 @@ export class Game {
         this.scene.add(directionalLight);
 
         // Add a ground plane
-        const groundGeometry = new THREE.PlaneGeometry(10, 10);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+        const groundGeometry = new THREE.PlaneGeometry(20, 20);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x808080,
+            side: THREE.DoubleSide
+        });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
         this.scene.add(ground);
 
         // Handle window resize
