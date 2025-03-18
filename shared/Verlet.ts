@@ -11,7 +11,7 @@ export class Verlet {
         this.radius = radius;
     }
 
-    public update(deltaTime: number): void {
+    public update(): void {
         const temp = this.position.clone();
         this.position.multiplyScalar(2).sub(this.previousPosition);
         this.previousPosition.copy(temp);
@@ -27,8 +27,8 @@ export class VerletBody {
     private constraints: { a: Verlet; b: Verlet; restLength: number }[];
     private bounds: { min: THREE.Vector3; max: THREE.Vector3 };
     private airFriction: number = 0.98; // Air resistance (0-1)
-    private groundFriction: number = 0.95; // Ground friction (0-1)
-    private gravity: number = 0.15; // Increased gravity
+    private groundFriction: number = 0.6; // Ground friction (0-1)
+    private gravity: number = 0.05; // Increased gravity
 
     constructor() {
         this.particles = [];
@@ -50,11 +50,11 @@ export class VerletBody {
         this.constraints.push({ a, b, restLength });
     }
 
-    public update(deltaTime: number): void {
+    public update(): void {
         // Apply gravity and air friction
         this.particles.forEach(particle => {
             // Apply gravity
-            particle.applyImpulse(new THREE.Vector3(0, -this.gravity * deltaTime, 0));
+            particle.applyImpulse(new THREE.Vector3(0, -this.gravity, 0));
             
             // Apply air friction
             const velocity = particle.position.clone().sub(particle.previousPosition);
@@ -79,11 +79,54 @@ export class VerletBody {
             if (particle.position.y - particle.radius < 0.0) {
                 particle.position.y = particle.radius;
                 const velocity = particle.position.clone().sub(particle.previousPosition);
-                velocity.multiplyScalar(this.groundFriction);
+
+                // Project velocity onto the xz-plane
+                const velocityXZ = new THREE.Vector3(velocity.x, 0, velocity.z);
+                velocityXZ.multiplyScalar(this.groundFriction);
+
+                // Update previous position with the projected velocity
                 particle.previousPosition.copy(particle.position);
-                particle.position.add(velocity);
+                particle.position.add(velocityXZ);
             }
         });
+    }
+
+    public handleInternalCollisions(): void {
+        for (let i = 0; i < this.particles.length; i++) {
+            for (let j = i + 1; j < this.particles.length; j++) {
+                const particle1 = this.particles[i];
+                const particle2 = this.particles[j];
+                
+                const diff = particle2.position.clone().sub(particle1.position);
+                const distance = diff.length();
+                const minDistance = particle1.radius + particle2.radius;
+
+                if (distance < minDistance) {
+                    // Calculate collision response
+                    const overlap = minDistance - distance;
+                    const direction = diff.normalize();
+                    const moveAmount = overlap * 0.5;
+
+                    // Move particles apart
+                    particle1.position.sub(direction.clone().multiplyScalar(moveAmount));
+                    particle2.position.add(direction.clone().multiplyScalar(moveAmount));
+
+                    // Reflect velocities
+                    const relativeVelocity = particle2.position.clone()
+                        .sub(particle2.previousPosition)
+                        .sub(particle1.position.clone().sub(particle1.previousPosition));
+                    
+                    const velocityAlongNormal = relativeVelocity.dot(direction);
+                    if (velocityAlongNormal < 0) continue;
+
+                    const restitution = 0.5; // Bounciness factor
+                    const impulse = direction.multiplyScalar(velocityAlongNormal * restitution);
+                    
+                    particle1.previousPosition.sub(impulse.clone().multiplyScalar(0.5));
+                    particle2.previousPosition.add(impulse.clone().multiplyScalar(0.5));
+                }
+            }
+        }
     }
 
     private solveConstraints(): void {

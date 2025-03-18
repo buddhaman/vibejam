@@ -7,14 +7,19 @@ export class Game {
     private renderer: THREE.WebGLRenderer;
     private players: Map<string, Player>;
     private localPlayer: Player | null;
+    private cameraDistance: number = 8;
+    private cameraTheta: number = 0; // Horizontal angle
+    private cameraPhi: number = Math.PI / 3; // Vertical angle (0 to PI)
+    private cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
+    private isDragging: boolean = false;
+    private previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
 
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.players = new Map();
         this.localPlayer = null;
-
         this.init();
     }
 
@@ -45,8 +50,81 @@ export class Game {
         ground.position.y = 0;
         this.scene.add(ground);
 
-        // Handle window resize
-        window.addEventListener('resize', () => this.onWindowResize(), false);
+        // Set up event listeners
+        this.setupControls();
+        window.addEventListener('resize', this.onWindowResize.bind(this));
+    }
+
+    private setupControls(): void {
+        // Mouse controls for camera rotation
+        this.renderer.domElement.addEventListener('mousedown', (event) => {
+            this.isDragging = true;
+            this.previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        });
+
+        this.renderer.domElement.addEventListener('mousemove', (event) => {
+            if (!this.isDragging) return;
+
+            const deltaMove = {
+                x: event.clientX - this.previousMousePosition.x,
+                y: event.clientY - this.previousMousePosition.y
+            };
+
+            this.cameraTheta += deltaMove.x * 0.01;
+            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.01));
+
+            this.previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        });
+
+        this.renderer.domElement.addEventListener('mouseup', () => {
+            this.isDragging = false;
+        });
+
+        // Wheel for zoom
+        this.renderer.domElement.addEventListener('wheel', (event) => {
+            this.cameraDistance = Math.max(4, Math.min(20, this.cameraDistance + event.deltaY * 0.01));
+        });
+
+        // Keyboard controls for player movement
+        const keys: { [key: string]: boolean } = {};
+        window.addEventListener('keydown', (event) => {
+            keys[event.key.toLowerCase()] = true;
+        });
+        window.addEventListener('keyup', (event) => {
+            keys[event.key.toLowerCase()] = false;
+        });
+
+        // Update player input
+        const updatePlayerInput = () => {
+            this.localPlayer?.handleInput({
+                w: keys['w'] || false,
+                a: keys['a'] || false,
+                s: keys['s'] || false,
+                d: keys['d'] || false
+            });
+            requestAnimationFrame(updatePlayerInput);
+        };
+        updatePlayerInput();
+    }
+
+    private updateCamera(): void {
+        // Calculate camera position based on spherical coordinates
+        const x = this.cameraDistance * Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
+        const y = this.cameraDistance * Math.cos(this.cameraPhi);
+        const z = this.cameraDistance * Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
+
+        this.camera.position.set(
+            this.cameraTarget.x + x,
+            this.cameraTarget.y + y,
+            this.cameraTarget.z + z
+        );
+        this.camera.lookAt(this.cameraTarget);
     }
 
     public addPlayer(id: string, isLocal: boolean = false): Player {
@@ -86,9 +164,18 @@ export class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    public update(deltaTime: number): void {
+    public update(): void {
+        // Update the player's forward direction to match the camera's facing direction
+        const cameraDirection = new THREE.Vector3();
+        this.camera.getWorldDirection(cameraDirection);
+        cameraDirection.negate();
+        this.localPlayer?.forward.copy(cameraDirection);
+
         // Update all players with delta time
-        this.players.forEach(player => player.update(deltaTime));
+        this.players.forEach(player => player.update());
+
+        // Update camera
+        this.updateCamera();
 
         // Render the scene
         this.renderer.render(this.scene, this.camera);
