@@ -6,7 +6,13 @@ class GameClient {
     private game: Game;
     private network: Network;
     private localPlayerId: string;
-    private moveSpeed: number = 0.1;
+    private input: { w: boolean; a: boolean; s: boolean; d: boolean } = {
+        w: false,
+        a: false,
+        s: false,
+        d: false
+    };
+    private lastTime: number = 0;
 
     constructor() {
         this.game = new Game();
@@ -18,38 +24,44 @@ class GameClient {
     }
 
     private setupLocalPlayer(): void {
-        const player = this.game.addPlayer(this.localPlayerId, true);
-        player.mesh.position.set(0, 0.5, 0);
+        this.game.addPlayer(this.localPlayerId, true);
     }
 
     private setupControls(): void {
         document.addEventListener('keydown', (event) => {
-            const player = this.game.addPlayer(this.localPlayerId);
-            const position = player.mesh.position.clone();
-
-            switch (event.key) {
-                case 'w':
-                    position.z -= this.moveSpeed;
-                    break;
-                case 's':
-                    position.z += this.moveSpeed;
-                    break;
-                case 'a':
-                    position.x -= this.moveSpeed;
-                    break;
-                case 'd':
-                    position.x += this.moveSpeed;
-                    break;
+            switch (event.key.toLowerCase()) {
+                case 'w': this.input.w = true; break;
+                case 's': this.input.s = true; break;
+                case 'a': this.input.a = true; break;
+                case 'd': this.input.d = true; break;
             }
+        });
 
-            player.updatePosition(position);
-            this.network.sendPosition(position);
+        document.addEventListener('keyup', (event) => {
+            switch (event.key.toLowerCase()) {
+                case 'w': this.input.w = false; break;
+                case 's': this.input.s = false; break;
+                case 'a': this.input.a = false; break;
+                case 'd': this.input.d = false; break;
+            }
         });
     }
 
     private animate(): void {
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
+        this.lastTime = currentTime;
+
+        // Update game with delta time
+        this.game.update(deltaTime);
+
+        // Handle input for local player
+        const player = this.game.getPlayer(this.localPlayerId);
+        if (player) {
+            player.handleInput(this.input);
+        }
+
         requestAnimationFrame(() => this.animate());
-        this.game.update();
     }
 }
 

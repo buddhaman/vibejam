@@ -1,32 +1,93 @@
 import * as THREE from 'three';
+import { VerletBody } from '../../shared/Verlet';
 
 export class Player {
-    public mesh: THREE.Mesh;
     private id: string;
-    private position: THREE.Vector3;
-    private targetPosition: THREE.Vector3;
+    private verletBody: VerletBody;
+    private meshes: THREE.Mesh[];
+    private lines: THREE.Line[];
+    private moveSpeed: number = 0.5;
 
     constructor(id: string) {
         this.id = id;
-        this.position = new THREE.Vector3();
-        this.targetPosition = new THREE.Vector3();
+        this.verletBody = new VerletBody();
+        this.meshes = [];
+        this.lines = [];
 
-        // Create a simple cube for the player
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        // Create three particles in a triangular formation
+        const particle1 = this.verletBody.addParticle(new THREE.Vector3(0, 0, 0));
+        const particle2 = this.verletBody.addParticle(new THREE.Vector3(1, 0, 0));
+        const particle3 = this.verletBody.addParticle(new THREE.Vector3(0.5, 0.866, 0));
+
+        // Connect particles with springs
+        this.verletBody.addConstraint(particle1, particle2);
+        this.verletBody.addConstraint(particle2, particle3);
+        this.verletBody.addConstraint(particle3, particle1);
+
+        // Create visual meshes for particles
+        const geometry = new THREE.SphereGeometry(0.2, 16, 16);
         const material = new THREE.MeshStandardMaterial({ 
             color: id === 'local' ? 0x00ff00 : 0xff0000 
         });
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.copy(this.position);
+
+        // Create meshes for each particle
+        this.verletBody.getParticles().forEach((particle, index) => {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(particle.position);
+            this.meshes.push(mesh);
+        });
+
+        // Create lines to visualize springs
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+        this.verletBody.getConstraints().forEach(({ a, b }) => {
+            const points = [
+                a.position.clone(),
+                b.position.clone()
+            ];
+            const line = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints(points),
+                lineMaterial
+            );
+            this.lines.push(line);
+        });
     }
 
-    public updatePosition(position: THREE.Vector3): void {
-        this.targetPosition.copy(position);
+    public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean }): void {
+        const particles = this.verletBody.getParticles();
+        
+        // Apply forces to all particles based on input
+        particles.forEach(particle => {
+            const impulse = new THREE.Vector3();
+            
+            if (input.w) impulse.y += this.moveSpeed;
+            if (input.s) impulse.y -= this.moveSpeed;
+            if (input.a) impulse.x -= this.moveSpeed;
+            if (input.d) impulse.x += this.moveSpeed;
+            
+            particle.applyImpulse(impulse);
+        });
     }
 
-    public update(): void {
-        // Smoothly interpolate to target position
-        this.position.lerp(this.targetPosition, 0.1);
-        this.mesh.position.copy(this.position);
+    public update(deltaTime: number): void {
+        // Update physics
+        this.verletBody.update(deltaTime);
+
+        // Update particle meshes
+        this.verletBody.getParticles().forEach((particle, index) => {
+            this.meshes[index].position.copy(particle.position);
+        });
+
+        // Update spring lines
+        this.verletBody.getConstraints().forEach(({ a, b }, index) => {
+            const points = [
+                a.position.clone(),
+                b.position.clone()
+            ];
+            this.lines[index].geometry.setFromPoints(points);
+        });
+    }
+
+    public getMeshes(): THREE.Object3D[] {
+        return [...this.meshes, ...this.lines];
     }
 } 

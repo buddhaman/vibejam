@@ -47,7 +47,11 @@ export class Game {
     public addPlayer(id: string, isLocal: boolean = false): Player {
         const player = new Player(id);
         this.players.set(id, player);
-        this.scene.add(player.mesh);
+        
+        // Add all player meshes and lines to the scene
+        player.getMeshes().forEach(mesh => {
+            this.scene.add(mesh);
+        });
 
         if (isLocal) {
             this.localPlayer = player;
@@ -59,16 +63,16 @@ export class Game {
     public removePlayer(id: string): void {
         const player = this.players.get(id);
         if (player) {
-            this.scene.remove(player.mesh);
+            // Remove all player meshes and lines from the scene
+            player.getMeshes().forEach(mesh => {
+                this.scene.remove(mesh);
+            });
             this.players.delete(id);
         }
     }
 
-    public updatePlayerPosition(id: string, position: THREE.Vector3): void {
-        const player = this.players.get(id);
-        if (player) {
-            player.updatePosition(position);
-        }
+    public getPlayer(id: string): Player | undefined {
+        return this.players.get(id);
     }
 
     private onWindowResize(): void {
@@ -77,9 +81,9 @@ export class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    public update(): void {
-        // Update all players
-        this.players.forEach(player => player.update());
+    public update(deltaTime: number): void {
+        // Update all players with delta time
+        this.players.forEach(player => player.update(deltaTime));
 
         // Render the scene
         this.renderer.render(this.scene, this.camera);
