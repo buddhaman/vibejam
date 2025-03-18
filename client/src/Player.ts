@@ -124,8 +124,8 @@ export class Player {
         });
 
         // Create eyes
-        const eyeRadius = 0.4;
-        const pupilRadius = 0.05;
+        const eyeRadius = 0.3;
+        const pupilRadius = 0.1;
 
         // Left eye
         const leftEyeGeometry = new THREE.SphereGeometry(eyeRadius, 8, 8);
@@ -371,13 +371,21 @@ export class Player {
         this.leftEye.position.copy(headParticle.position).add(leftEyeOffset);
         this.rightEye.position.copy(headParticle.position).add(rightEyeOffset);
         
-        // Calculate pupil offset - pupils always look in the direction of movement
-        const maxPupilOffset = 0.05;
-        const pupilOffset = this.lastMovementDir.clone().multiplyScalar(maxPupilOffset);
+        // Calculate pupil positions on the eye surfaces
+        const eyeRadius = (this.leftEye.geometry as THREE.SphereGeometry).parameters.radius;
         
-        // Position pupils relative to their corresponding eye
-        this.leftPupil.position.copy(this.leftEye.position).add(pupilOffset);
-        this.rightPupil.position.copy(this.rightEye.position).add(pupilOffset);
+        // Calculate direction from head to each eye
+        const leftEyeDir = this.leftEye.position.clone().sub(headParticle.position).normalize();
+        const rightEyeDir = this.rightEye.position.clone().sub(headParticle.position).normalize();
+        
+        // Position pupils on the forward-most part of each eye
+        this.leftPupil.position.copy(this.leftEye.position).add(
+            leftEyeDir.clone().multiplyScalar(eyeRadius * 0.9)
+        );
+        
+        this.rightPupil.position.copy(this.rightEye.position).add(
+            rightEyeDir.clone().multiplyScalar(eyeRadius * 0.9)
+        );
         
         // Update debug arrows if debug mode is enabled
         if (this.debugMode) {
