@@ -237,8 +237,8 @@ export class Game {
 
     public update(): void {
         // Calculate the forward vector using cameraPhi and cameraTheta
-        const forwardX = Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
-        const forwardZ = Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
+        const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
+        const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
 
         // Set the local player's forward vector
         if (this.localPlayer) {
@@ -247,6 +247,7 @@ export class Game {
 
         // Update all players
         this.players.forEach(player => player.update());
+        this.players.forEach(player => player.setDebugMode(true));
 
         // Update camera
         this.updateCamera();
