@@ -14,7 +14,7 @@ export class Player {
     private isMoving: boolean = false;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
 
-    constructor(id: string) {
+    constructor(id: string, toonTexture?: THREE.Texture) {
         this.id = id;
         this.verletBody = new VerletBody();
         this.meshes = [];
@@ -69,13 +69,10 @@ export class Player {
         this.verletBody.addConstraint(neck, rightElbow);
         this.verletBody.addConstraint(rightElbow, rightHand);
 
-        // Create visual meshes for particles
-        const particleMaterial = new THREE.MeshStandardMaterial({ 
+        // Create visual meshes for particles with toon material
+        const particleMaterial = new THREE.MeshToonMaterial({ 
             color: id === 'local' ? 0x77dd77 : 0x6495ed,  // Soft green for local, pastel blue for others
-            roughness: 0.3,
-            metalness: 0.3,
-            emissive: 0x221133,
-            emissiveIntensity: 0.1
+            gradientMap: toonTexture
         });
 
         // Create meshes for each particle
@@ -86,13 +83,10 @@ export class Player {
             this.meshes.push(mesh);
         });
 
-        // Create cylinders to visualize constraints
-        const constraintMaterial = new THREE.MeshStandardMaterial({ 
-            color: id === 'local' ? 0x99eebb : 0x88aaff,  // Lighter version of player color
-            roughness: 0.5,
-            metalness: 0.2,
-            transparent: true,
-            opacity: 0.9
+        // For the cylinder constraints with toon material
+        const constraintMaterial = new THREE.MeshToonMaterial({ 
+            color: id === 'local' ? 0x99eebb : 0x88aaff,
+            gradientMap: toonTexture
         });
         
         this.verletBody.getConstraints().forEach(({ a, b }) => {

@@ -4,6 +4,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
+// Import toon shader
+import { ToonShader1, ToonShader2, ToonShaderHatching, ToonShaderDotted } from 'three/examples/jsm/shaders/ToonShader.js';
+
 export class Game {
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
@@ -39,6 +42,9 @@ export class Game {
         
         // Initialize composer at the end
         this.initComposer();
+        
+        // Add cell shader setup
+        this.setupSimpleCellShading();
     }
 
     private init(): void {
@@ -106,6 +112,12 @@ export class Game {
             0.9    // Higher threshold
         );
         this.composer.addPass(bloomPass);
+    }
+
+    private setupSimpleCellShading(): void {
+        // Just set up a simple composer with render pass
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(new RenderPass(this.scene, this.camera));
     }
 
     private setupControls(): void {
