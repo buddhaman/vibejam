@@ -1,12 +1,16 @@
 import * as THREE from 'three';
-import { VerletBody } from '../../shared/Verlet';
+import { Verlet, VerletBody } from '../../shared/Verlet';
 
 export class Player {
     public id: string;
     public verletBody: VerletBody;
     public meshes: THREE.Mesh[];
-    public lines: THREE.Line[];
-    public moveSpeed: number = 0.1;
+    public lines: {
+        mesh: THREE.Mesh;
+        particleA: Verlet;  // Replace with your particle type
+        particleB: Verlet;  // Replace with your particle type
+    }[];
+    public moveSpeed: number = 0.08;
     private isMoving: boolean = false;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
 
@@ -18,7 +22,7 @@ export class Player {
 
         const scale = 1.0;
         const baseRadius = scale * 0.4;
-        const headRadius = scale * baseRadius * 1.5;
+        const headRadius = scale * 0.6;
 
         // Create particles for the simplified figure
         // Head
@@ -66,31 +70,80 @@ export class Player {
         this.verletBody.addConstraint(rightElbow, rightHand);
 
         // Create visual meshes for particles
-        const material = new THREE.MeshStandardMaterial({ 
-            color: id === 'local' ? 0x00ff00 : 0xff0000 
+        const particleMaterial = new THREE.MeshStandardMaterial({ 
+            color: id === 'local' ? 0x55ff55 : 0xff0000 
         });
 
         // Create meshes for each particle
         this.verletBody.getParticles().forEach((particle, index) => {
             const geometry = new THREE.SphereGeometry(particle.radius, 16, 16);
-            const mesh = new THREE.Mesh(geometry, material);
+            const mesh = new THREE.Mesh(geometry, particleMaterial);
             mesh.position.copy(particle.position);
             this.meshes.push(mesh);
         });
 
-        // Create lines to visualize springs
-        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-        this.verletBody.getConstraints().forEach(({ a, b }) => {
-            const points = [
-                a.position.clone(),
-                b.position.clone()
-            ];
-            const line = new THREE.Line(
-                new THREE.BufferGeometry().setFromPoints(points),
-                lineMaterial
-            );
-            this.lines.push(line);
+        // Create cylinders to visualize constraints
+        const constraintMaterial = new THREE.MeshStandardMaterial({ 
+            color: id === 'local' ? 0x00ff00 : 0xff0000 
         });
+        
+        this.verletBody.getConstraints().forEach(({ a, b }) => {
+            // Calculate distance and direction
+            const start = a.position;
+            const end = b.position;
+            
+            // Create cylinder geometry
+            // The cylinder's height is along the Y-axis by default
+            const radius = 0.2;
+            const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, 1.0, 8);
+            const cylinder = new THREE.Mesh(cylinderGeometry, constraintMaterial);
+            
+            // Position and orient the cylinder
+            this.positionCylinder(cylinder, start, end);
+            
+            this.meshes.push(cylinder);
+            
+            // Store references for updates
+            this.lines.push({
+                mesh: cylinder,
+                particleA: a,
+                particleB: b
+            });
+        });
+    }
+
+    // Helper method to position and orient a cylinder between two points
+    private positionCylinder(cylinder: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
+        // Position at midpoint
+        const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+        cylinder.position.copy(midpoint);
+        
+        // Orient cylinder
+        // 1. Create a direction vector from start to end
+        const direction = new THREE.Vector3().subVectors(end, start);
+        
+        // 2. Create a quaternion rotation from the Y axis to this direction
+        // The default cylinder orientation is along the Y axis
+        const quaternion = new THREE.Quaternion();
+        // Get the axis perpendicular to Y and our direction
+        const yAxis = new THREE.Vector3(0, 1, 0);
+        const rotationAxis = new THREE.Vector3().crossVectors(yAxis, direction).normalize();
+        
+        // If direction is parallel to Y, we need a different approach
+        if (rotationAxis.length() === 0) {
+            // Check if pointing up or down
+            if (direction.y < 0) {
+                // Pointing down, rotate 180 degrees around X
+                quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+            }
+            // If pointing up, no rotation needed
+        } else {
+            // Calculate angle between Y and direction
+            const angle = Math.acos(yAxis.dot(direction.clone().normalize()));
+            quaternion.setFromAxisAngle(rotationAxis, angle);
+        }
+        
+        cylinder.quaternion.copy(quaternion);
     }
 
     public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean }): void {
@@ -184,7 +237,7 @@ export class Player {
         
         let standingForce : number = 0.1;
         if (!this.isMoving) {
-            standingForce = 0.35;
+            standingForce = 0.45;
         }
         head.applyImpulse(new THREE.Vector3(0, standingForce, 0));
 
@@ -212,17 +265,17 @@ export class Player {
             this.meshes[index].position.copy(particle.position);
         });
 
-        // Update spring lines
-        this.verletBody.getConstraints().forEach(({ a, b }, index) => {
-            const points = [
-                a.position.clone(),
-                b.position.clone()
-            ];
-            this.lines[index].geometry.setFromPoints(points);
+        // Update cylinder positions and orientations
+        this.lines.forEach(({ mesh, particleA, particleB }) => {
+            this.positionCylinder(mesh, particleA.position, particleB.position);
+            
+            // Update cylinder length
+            const distance = particleA.position.distanceTo(particleB.position);
+            mesh.scale.y = distance;
         });
     }
 
     public getMeshes(): THREE.Object3D[] {
-        return [...this.meshes, ...this.lines];
+        return this.meshes;
     }
 } 
