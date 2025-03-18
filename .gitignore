@@ -1,7 +1,12 @@
 # Dependencies
 node_modules/
+*/node_modules/
+
+# Build outputs
 dist/
 build/
+*/dist/
+*/build/
 
 # TypeScript
 *.tsbuildinfo
@@ -10,6 +15,7 @@ build/
 .env
 .env.local
 .env.*.local
+server/.env
 
 # IDE and editor files
 .vscode/
@@ -28,10 +34,6 @@ yarn-error.log*
 # Testing
 coverage/
 
-# Production build
-dist/
-build/
-
 # Temporary files
 tmp/
-temp/ 
+temp/
