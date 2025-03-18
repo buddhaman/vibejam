@@ -227,15 +227,22 @@ export class Player {
 
         // Calculate the perpendicular vector for left/right movement
         const upVector = new THREE.Vector3(0, 1, 0);
-        const rightVector = new THREE.Vector3().crossVectors(this.forward, upVector).normalize().negate();
+        // Fix inverted movement by removing the .negate()
+        const rightVector = new THREE.Vector3().crossVectors(this.forward, upVector).normalize();
 
-        // Update last movement direction
-        this.lastMovementDir.set(0, 0, 0);
-        if (input.w) this.lastMovementDir.add(this.forward);
-        if (input.s) this.lastMovementDir.add(this.forward.clone().negate());
-        if (input.a) this.lastMovementDir.add(rightVector.clone().negate());
-        if (input.d) this.lastMovementDir.add(rightVector.clone());
-        this.lastMovementDir.normalize();
+        // Create a single movement direction vector based on input
+        const movementDir = new THREE.Vector3(0, 0, 0);
+        if (input.w) movementDir.add(this.forward);
+        if (input.s) movementDir.sub(this.forward);
+        if (input.a) movementDir.sub(rightVector);
+        if (input.d) movementDir.add(rightVector);
+        
+        // Only normalize if there's movement
+        if (movementDir.lengthSq() > 0) {
+            movementDir.normalize();
+            // Update last movement direction
+            this.lastMovementDir.copy(movementDir);
+        }
 
         const particles = this.verletBody.getParticles();
         
@@ -252,62 +259,32 @@ export class Player {
             }
         });
 
-        // Find most forward and backward particles based on the forward vector
+        // Find most forward and backward particles in the movement direction
         let mostForwardParticle = particles[0];
         let mostBackwardParticle = particles[0];
-
-        particles.forEach(particle => {
-            const forwardDistance = particle.position.dot(this.forward);
-            if (forwardDistance > mostForwardParticle.position.dot(this.forward)) {
-                mostForwardParticle = particle;
-            }
-            if (forwardDistance < mostBackwardParticle.position.dot(this.forward)) {
-                mostBackwardParticle = particle;
-            }
-        });
-
-        // Find most left and right particles based on the right vector
-        let mostLeftParticle = particles[0];
-        let mostRightParticle = particles[0];
-
-        particles.forEach(particle => {
-            const rightDistance = particle.position.dot(rightVector);
-            if (rightDistance > mostRightParticle.position.dot(rightVector)) {
-                mostRightParticle = particle;
-            }
-            if (rightDistance < mostLeftParticle.position.dot(rightVector)) {
-                mostLeftParticle = particle;
-            }
-        });
-
-        // Apply forces to highest/lowest and forward/backward particles
-        if (input.w) {
-            const forwardImpulse = this.forward.clone().multiplyScalar(this.moveSpeed);
-            highestParticle.applyImpulse(forwardImpulse.clone().negate());
-            lowestParticle.applyImpulse(forwardImpulse);
+        
+        if (movementDir.lengthSq() > 0) {
+            particles.forEach(particle => {
+                const dirDistance = particle.position.dot(movementDir);
+                if (dirDistance > mostForwardParticle.position.dot(movementDir)) {
+                    mostForwardParticle = particle;
+                }
+                if (dirDistance < mostBackwardParticle.position.dot(movementDir)) {
+                    mostBackwardParticle = particle;
+                }
+            });
+            
+            // Apply movement forces
+            // Force to lowest particle in movement direction
+            const moveImpulse = movementDir.clone().multiplyScalar(this.moveSpeed).negate();
+            lowestParticle.applyImpulse(moveImpulse);
+            
+            // Reverse force to highest particle
+            highestParticle.applyImpulse(moveImpulse.clone());
+            
+            // Vertical forces to create rotation
             mostForwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
             mostBackwardParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
-        }
-        if (input.s) {
-            const backwardImpulse = this.forward.clone().multiplyScalar(-this.moveSpeed);
-            highestParticle.applyImpulse(backwardImpulse.clone().negate());
-            lowestParticle.applyImpulse(backwardImpulse);
-            mostForwardParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
-            mostBackwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
-        }
-        if (input.a) {
-            const leftImpulse = rightVector.clone().multiplyScalar(-this.moveSpeed);
-            highestParticle.applyImpulse(leftImpulse);
-            lowestParticle.applyImpulse(leftImpulse.clone().negate());
-            mostLeftParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
-            mostRightParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
-        }
-        if (input.d) {
-            const rightImpulse = rightVector.clone().multiplyScalar(this.moveSpeed);
-            highestParticle.applyImpulse(rightImpulse);
-            lowestParticle.applyImpulse(rightImpulse.clone().negate());
-            mostRightParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
-            mostLeftParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
         }
     }
 
