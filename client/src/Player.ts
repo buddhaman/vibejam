@@ -17,7 +17,7 @@ export class Player {
         this.lines = [];
 
         const scale = 1.0;
-        const baseRadius = scale * 0.3;
+        const baseRadius = scale * 0.4;
         const headRadius = scale * baseRadius * 1.5;
 
         // Create particles for the simplified figure

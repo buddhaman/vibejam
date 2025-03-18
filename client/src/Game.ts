@@ -165,11 +165,14 @@ export class Game {
     }
 
     public update(): void {
-        // Update the player's forward direction to match the camera's facing direction
-        const cameraDirection = new THREE.Vector3();
-        this.camera.getWorldDirection(cameraDirection);
-        cameraDirection.negate();
-        this.localPlayer?.forward.copy(cameraDirection);
+        // Calculate the forward vector using cameraPhi and cameraTheta
+        const forwardX = Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
+        const forwardZ = Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
+
+        // Set the local player's forward vector
+        if (this.localPlayer) {
+            this.localPlayer.forward.set(forwardX, 0, forwardZ).normalize();
+        }
 
         // Update all players with delta time
         this.players.forEach(player => player.update());
