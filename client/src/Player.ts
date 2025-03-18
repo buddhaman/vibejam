@@ -86,8 +86,12 @@ export class Player {
         // Create visual meshes for particles with toon material
         const particleMaterial = new THREE.MeshToonMaterial({ 
             color: id === 'local' ? 0x77dd77 : 0x6495ed,  // Soft green for local, pastel blue for others
-            gradientMap: toonTexture
         });
+        
+        // Only set gradient map if texture is provided
+        if (toonTexture) {
+            particleMaterial.gradientMap = toonTexture;
+        }
 
         // Create meshes for each particle
         this.verletBody.getParticles().forEach((particle, index) => {
@@ -100,8 +104,12 @@ export class Player {
         // For the cylinder constraints with toon material
         const constraintMaterial = new THREE.MeshToonMaterial({ 
             color: id === 'local' ? 0x99eebb : 0x88aaff,
-            gradientMap: toonTexture
         });
+        
+        // Only set gradient map if texture is provided
+        if (toonTexture) {
+            constraintMaterial.gradientMap = toonTexture;
+        }
         
         this.verletBody.getConstraints().forEach(({ a, b }) => {
             // Calculate distance and direction
@@ -451,5 +459,20 @@ export class Player {
     public setTargetFPS(fps: number): void {
         this.targetFPS = fps;
         this.timestep = 1000 / fps;
+    }
+
+    public updateToonTexture(toonTexture?: THREE.Texture): void {
+        // Update materials on existing meshes
+        this.meshes.forEach(mesh => {
+            if (mesh instanceof THREE.Mesh && 
+                mesh.material instanceof THREE.MeshToonMaterial) {
+                mesh.material.gradientMap = toonTexture || null;
+                
+                // Enable shadows
+                mesh.material.needsUpdate = true;
+                mesh.castShadow = toonTexture !== undefined;
+                mesh.receiveShadow = toonTexture !== undefined;
+            }
+        });
     }
 } 

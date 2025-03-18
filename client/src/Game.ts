@@ -20,6 +20,8 @@ export class Game {
     private cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
     private isDragging: boolean = false;
     private previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
+    private toonShadowsEnabled: boolean = false;
+    private toonTextureGradient: THREE.Texture | null = null;
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -83,6 +85,7 @@ export class Game {
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = 0;
+        ground.receiveShadow = true;
         this.scene.add(ground);
 
         // Set up event listeners
@@ -115,9 +118,12 @@ export class Game {
     }
 
     private setupSimpleCellShading(): void {
-        // Just set up a simple composer with render pass
+        // Set up the composer
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
+        
+        // Setup initial toon shadows with toggle (disabled by default for performance)
+        this.setupToonShadows(false);
     }
 
     private setupControls(): void {
@@ -165,6 +171,14 @@ export class Game {
             keys[event.key.toLowerCase()] = false;
         });
 
+        // Add shadow toggle
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 't' || event.key === 'T') {
+                this.toggleToonShadows(!this.toonShadowsEnabled);
+                console.log(`Toon shadows ${this.toonShadowsEnabled ? 'enabled' : 'disabled'}`);
+            }
+        });
+
         // Update player input
         const updatePlayerInput = () => {
             this.localPlayer?.handleInput({
@@ -193,11 +207,15 @@ export class Game {
     }
 
     public addPlayer(id: string, isLocal: boolean = false): Player {
-        const player = new Player(id);
+        const player = new Player(id, this.toonTextureGradient || undefined, isLocal && this.toonShadowsEnabled);
         this.players.set(id, player);
         
         // Add all player meshes and lines to the scene
         player.getMeshes().forEach(mesh => {
+            if (mesh instanceof THREE.Mesh) {
+                mesh.castShadow = this.toonShadowsEnabled;
+                mesh.receiveShadow = this.toonShadowsEnabled;
+            }
             this.scene.add(mesh);
         });
 
@@ -259,5 +277,160 @@ export class Game {
             // Fallback to direct rendering
             this.renderer.render(this.scene, this.camera);
         }
+    }
+
+    private setupToonShadows(enabled: boolean = true): void {
+        this.toonShadowsEnabled = enabled;
+        
+        if (!enabled) {
+            // Disable shadows on all lights
+            this.scene.traverse(object => {
+                if (object instanceof THREE.Light) {
+                    object.castShadow = false;
+                }
+            });
+            
+            // Disable shadow maps on renderer
+            this.renderer.shadowMap.enabled = false;
+            
+            // Hide any shadow-only elements
+            if (this.scene.userData.shadowGround) {
+                (this.scene.userData.shadowGround as THREE.Mesh).visible = false;
+            }
+            return;
+        }
+        
+        // Enable shadow maps with an appropriate shadow type
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap; // Good balance for toon style
+        
+        // Create a gradient texture for toon shading (if it doesn't exist yet)
+        if (!this.toonTextureGradient) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 1;
+            const context = canvas.getContext('2d');
+            if (context) {
+                // Simple 3-step gradient for clear toon shading
+                const gradient = context.createLinearGradient(0, 0, 64, 0);
+                gradient.addColorStop(0, "#444444");    // Dark tone (not pure black for softer look)
+                gradient.addColorStop(0.5, "#AAAAAA");  // Mid tone
+                gradient.addColorStop(1, "#FFFFFF");    // Highlight
+                
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 64, 1);
+                
+                this.toonTextureGradient = new THREE.CanvasTexture(canvas);
+                this.toonTextureGradient.colorSpace = THREE.SRGBColorSpace;
+            }
+        }
+        
+        // Configure only the main directional light for shadows
+        let mainLight: THREE.DirectionalLight | null = null;
+        
+        this.scene.traverse(object => {
+            // Only set up the main directional light for shadows
+            if (object instanceof THREE.DirectionalLight && !mainLight) {
+                mainLight = object;
+                object.castShadow = true;
+                
+                // Reasonable shadow resolution
+                object.shadow.mapSize.width = 1024;
+                object.shadow.mapSize.height = 1024;
+                
+                // Adjust shadow camera for scene size
+                object.shadow.camera.near = 0.5;
+                object.shadow.camera.far = 50;
+                object.shadow.camera.left = -10;
+                object.shadow.camera.right = 10;
+                object.shadow.camera.top = 10;
+                object.shadow.camera.bottom = -10;
+                
+                // Fix shadow acne with moderate bias
+                object.shadow.bias = -0.0005;
+                
+                // No blurring from normalBias (removing the blue tint source)
+                object.shadow.normalBias = 0;
+                
+                // No helper to avoid visual clutter
+                // const helper = new THREE.CameraHelper(object.shadow.camera);
+                // this.scene.add(helper);
+            } else if (object instanceof THREE.PointLight) {
+                // Disable shadows on point lights to simplify
+                object.castShadow = false;
+            }
+        });
+        
+        // Apply toon materials to non-player meshes
+        this.scene.traverse(object => {
+            if (object instanceof THREE.Mesh && 
+                !(object.material instanceof THREE.MeshToonMaterial) && 
+                !(object.material instanceof THREE.LineBasicMaterial) &&
+                !this.isPlayerMesh(object)) {
+                
+                // Enable shadow casting/receiving
+                object.castShadow = true;
+                object.receiveShadow = true;
+                
+                // Convert material to toon material
+                let color = new THREE.Color(0xffffff);
+                
+                // Safely extract color from original material
+                if (object.material.hasOwnProperty('color')) {
+                    color = (object.material as any).color;
+                }
+                
+                // Create simple toon material
+                const toonMaterial = new THREE.MeshToonMaterial({
+                    color: color,
+                    gradientMap: this.toonTextureGradient
+                });
+                
+                // Enable shadows
+                toonMaterial.receiveShadow = true;
+                
+                // Replace material
+                object.material = toonMaterial;
+            }
+        });
+        
+        // Remove any extra shadow-only objects that might be causing issues
+        if (this.scene.userData.shadowLight) {
+            this.scene.remove(this.scene.userData.shadowLight);
+            this.scene.userData.shadowLight = null;
+        }
+        
+        if (this.scene.userData.shadowGround) {
+            this.scene.remove(this.scene.userData.shadowGround);
+            this.scene.userData.shadowGround = null;
+        }
+    }
+
+    // Helper method to check if a mesh belongs to a player
+    private isPlayerMesh(mesh: THREE.Object3D): boolean {
+        let isPlayerMesh = false;
+        this.players.forEach(player => {
+            if (player.getMeshes().includes(mesh)) {
+                isPlayerMesh = true;
+            }
+        });
+        return isPlayerMesh;
+    }
+
+    public toggleToonShadows(enabled: boolean): void {
+        this.setupToonShadows(enabled);
+        
+        // Update existing player meshes
+        this.players.forEach(player => {
+            player.getMeshes().forEach(mesh => {
+                if (mesh instanceof THREE.Mesh) {
+                    mesh.castShadow = this.toonShadowsEnabled;
+                    mesh.receiveShadow = this.toonShadowsEnabled;
+                }
+            });
+            
+            // Update player materials
+            player.updateToonTexture(this.toonShadowsEnabled ? this.toonTextureGradient || undefined : undefined);
+        });
     }
 } 

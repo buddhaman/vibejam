@@ -4,4 +4,5 @@ globs:
 alwaysApply: true
 ---
 - Keep it simple.
-- Dont use private variables and getters/setters. Just keep it simple and access fields directly.
+- Do NOT use getters or setters. Just keep it simple and access fields directly.
+- Do NOT use complicated design patterns like factories.
