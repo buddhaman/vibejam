@@ -14,24 +14,67 @@ export class Player {
         this.meshes = [];
         this.lines = [];
 
-        // Create three particles in a triangular formation
-        const particle1 = this.verletBody.addParticle(new THREE.Vector3(0, 1, 0));
-        const particle2 = this.verletBody.addParticle(new THREE.Vector3(0.5, 1, 0));
-        const particle3 = this.verletBody.addParticle(new THREE.Vector3(0.25, 1.433, 0));
+        // Create particles for the humanoid figure
+        // Head
+        const head = this.verletBody.addParticle(new THREE.Vector3(0, 2, 0), 0.15);
+        
+        // Neck
+        const neck = this.verletBody.addParticle(new THREE.Vector3(0, 1.8, 0), 0.1);
+        
+        // Torso
+        const torso = this.verletBody.addParticle(new THREE.Vector3(0, 1.4, 0), 0.12);
+        
+        // Left arm
+        const leftShoulder = this.verletBody.addParticle(new THREE.Vector3(-0.3, 1.6, 0), 0.1);
+        const leftElbow = this.verletBody.addParticle(new THREE.Vector3(-0.5, 1.4, 0), 0.08);
+        const leftHand = this.verletBody.addParticle(new THREE.Vector3(-0.7, 1.2, 0), 0.08);
+        
+        // Right arm
+        const rightShoulder = this.verletBody.addParticle(new THREE.Vector3(0.3, 1.6, 0), 0.1);
+        const rightElbow = this.verletBody.addParticle(new THREE.Vector3(0.5, 1.4, 0), 0.08);
+        const rightHand = this.verletBody.addParticle(new THREE.Vector3(0.7, 1.2, 0), 0.08);
+        
+        // Left leg
+        const leftHip = this.verletBody.addParticle(new THREE.Vector3(-0.2, 1.2, 0), 0.1);
+        const leftKnee = this.verletBody.addParticle(new THREE.Vector3(-0.3, 0.8, 0), 0.08);
+        const leftFoot = this.verletBody.addParticle(new THREE.Vector3(-0.4, 0.4, 0), 0.08);
+        
+        // Right leg
+        const rightHip = this.verletBody.addParticle(new THREE.Vector3(0.2, 1.2, 0), 0.1);
+        const rightKnee = this.verletBody.addParticle(new THREE.Vector3(0.3, 0.8, 0), 0.08);
+        const rightFoot = this.verletBody.addParticle(new THREE.Vector3(0.4, 0.4, 0), 0.08);
 
-        // Connect particles with springs
-        this.verletBody.addConstraint(particle1, particle2);
-        this.verletBody.addConstraint(particle2, particle3);
-        this.verletBody.addConstraint(particle3, particle1);
+        // Connect the particles with constraints
+        // Head and neck
+        this.verletBody.addConstraint(head, neck);
+        
+        // Neck and torso
+        this.verletBody.addConstraint(neck, torso);
+        
+        // Arms
+        this.verletBody.addConstraint(neck, leftShoulder);
+        this.verletBody.addConstraint(neck, rightShoulder);
+        this.verletBody.addConstraint(leftShoulder, leftElbow);
+        this.verletBody.addConstraint(leftElbow, leftHand);
+        this.verletBody.addConstraint(rightShoulder, rightElbow);
+        this.verletBody.addConstraint(rightElbow, rightHand);
+        
+        // Legs
+        this.verletBody.addConstraint(torso, leftHip);
+        this.verletBody.addConstraint(torso, rightHip);
+        this.verletBody.addConstraint(leftHip, leftKnee);
+        this.verletBody.addConstraint(leftKnee, leftFoot);
+        this.verletBody.addConstraint(rightHip, rightKnee);
+        this.verletBody.addConstraint(rightKnee, rightFoot);
 
         // Create visual meshes for particles
-        const geometry = new THREE.SphereGeometry(0.1, 16, 16);
         const material = new THREE.MeshStandardMaterial({ 
             color: id === 'local' ? 0x00ff00 : 0xff0000 
         });
 
         // Create meshes for each particle
         this.verletBody.getParticles().forEach((particle, index) => {
+            const geometry = new THREE.SphereGeometry(particle.radius, 16, 16);
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.copy(particle.position);
             this.meshes.push(mesh);
@@ -55,17 +98,36 @@ export class Player {
     public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean }): void {
         const particles = this.verletBody.getParticles();
         
-        // Apply forces to all particles based on input
+        // Find highest and lowest particles based on current positions
+        let highestParticle = particles[0];
+        let lowestParticle = particles[0];
+        
         particles.forEach(particle => {
-            const impulse = new THREE.Vector3();
-            
-            if (input.w) impulse.z -= this.moveSpeed;
-            if (input.s) impulse.z += this.moveSpeed;
-            if (input.a) impulse.x -= this.moveSpeed;
-            if (input.d) impulse.x += this.moveSpeed;
-            
-            particle.applyImpulse(impulse);
+            if (particle.position.y > highestParticle.position.y) {
+                highestParticle = particle;
+            }
+            if (particle.position.y < lowestParticle.position.y) {
+                lowestParticle = particle;
+            }
         });
+        
+        // Apply forces to highest and lowest particles in opposite directions
+        if (input.w) {
+            highestParticle.applyImpulse(new THREE.Vector3(0, 0, -this.moveSpeed));
+            lowestParticle.applyImpulse(new THREE.Vector3(0, 0, this.moveSpeed));
+        }
+        if (input.s) {
+            highestParticle.applyImpulse(new THREE.Vector3(0, 0, this.moveSpeed));
+            lowestParticle.applyImpulse(new THREE.Vector3(0, 0, -this.moveSpeed));
+        }
+        if (input.a) {
+            highestParticle.applyImpulse(new THREE.Vector3(-this.moveSpeed, 0, 0));
+            lowestParticle.applyImpulse(new THREE.Vector3(this.moveSpeed, 0, 0));
+        }
+        if (input.d) {
+            highestParticle.applyImpulse(new THREE.Vector3(this.moveSpeed, 0, 0));
+            lowestParticle.applyImpulse(new THREE.Vector3(-this.moveSpeed, 0, 0));
+        }
     }
 
     public update(deltaTime: number): void {

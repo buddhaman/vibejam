@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Keep it simple.
+- Dont use private variables and getters/setters. Just keep it simple and access fields directly.

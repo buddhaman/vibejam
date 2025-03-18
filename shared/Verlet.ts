@@ -3,10 +3,12 @@ import * as THREE from 'three';
 export class Verlet {
     public position: THREE.Vector3;
     public previousPosition: THREE.Vector3;
+    public radius: number;
 
-    constructor(position: THREE.Vector3) {
+    constructor(position: THREE.Vector3, radius: number = 0.1) {
         this.position = position.clone();
         this.previousPosition = position.clone();
+        this.radius = radius;
     }
 
     public update(deltaTime: number): void {
@@ -22,21 +24,23 @@ export class Verlet {
 
 export class VerletBody {
     private particles: Verlet[];
-    private constraints: Array<{ a: Verlet; b: Verlet; restLength: number }>;
+    private constraints: { a: Verlet; b: Verlet; restLength: number }[];
     private bounds: { min: THREE.Vector3; max: THREE.Vector3 };
+    private airFriction: number = 0.98; // Air resistance (0-1)
+    private groundFriction: number = 0.95; // Ground friction (0-1)
+    private gravity: number = 0.15; // Increased gravity
 
     constructor() {
         this.particles = [];
         this.constraints = [];
-        // Define world bounds (10x10x10 box)
         this.bounds = {
-            min: new THREE.Vector3(-5, 0, -5),
-            max: new THREE.Vector3(5, 10, 5)
+            min: new THREE.Vector3(-5, -5, -5),
+            max: new THREE.Vector3(5, 5, 5)
         };
     }
 
-    public addParticle(position: THREE.Vector3): Verlet {
-        const particle = new Verlet(position);
+    public addParticle(position: THREE.Vector3, radius: number = 0.1): Verlet {
+        const particle = new Verlet(position, radius);
         this.particles.push(particle);
         return particle;
     }
@@ -47,46 +51,49 @@ export class VerletBody {
     }
 
     public update(deltaTime: number): void {
-        // Update particles
-        this.particles.forEach(p => p.update(deltaTime));
+        // Apply gravity and air friction
+        this.particles.forEach(particle => {
+            // Apply gravity
+            particle.applyImpulse(new THREE.Vector3(0, -this.gravity * deltaTime, 0));
+            
+            // Apply air friction
+            const velocity = particle.position.clone().sub(particle.previousPosition);
+            velocity.multiplyScalar(this.airFriction);
+            particle.previousPosition.copy(particle.position);
+            particle.position.add(velocity);
+        });
 
         // Solve constraints
-        this.solveConstraints();
+        for (let i = 0; i < 5; i++) {
+            this.solveConstraints();
+        }
 
-        // Apply world bounds
-        this.applyBounds();
+        // Apply bounds and ground friction
+        this.particles.forEach(particle => {
+            // Apply bounds
+            particle.position.x = Math.max(this.bounds.min.x + particle.radius, Math.min(this.bounds.max.x - particle.radius, particle.position.x));
+            particle.position.y = Math.max(this.bounds.min.y + particle.radius, Math.min(this.bounds.max.y - particle.radius, particle.position.y));
+            particle.position.z = Math.max(this.bounds.min.z + particle.radius, Math.min(this.bounds.max.z - particle.radius, particle.position.z));
+
+            // Apply ground friction when particle is near the ground
+            if (particle.position.y - particle.radius < 0.0) {
+                particle.position.y = particle.radius;
+                const velocity = particle.position.clone().sub(particle.previousPosition);
+                velocity.multiplyScalar(this.groundFriction);
+                particle.previousPosition.copy(particle.position);
+                particle.position.add(velocity);
+            }
+        });
     }
 
     private solveConstraints(): void {
         this.constraints.forEach(({ a, b, restLength }) => {
-            const diff = a.position.clone().sub(b.position);
-            const currentLength = diff.length();
+            const currentLength = a.position.distanceTo(b.position);
+            const correction = (currentLength - restLength) / currentLength;
             
-            if (currentLength === 0) return;
-
-            const correction = diff.multiplyScalar((currentLength - restLength) / currentLength);
-            a.position.sub(correction.clone().multiplyScalar(0.5));
-            b.position.add(correction.clone().multiplyScalar(0.5));
-        });
-    }
-
-    private applyBounds(): void {
-        this.particles.forEach(particle => {
-            // Clamp position to bounds
-            particle.position.x = Math.max(this.bounds.min.x, Math.min(this.bounds.max.x, particle.position.x));
-            particle.position.y = Math.max(this.bounds.min.y, Math.min(this.bounds.max.y, particle.position.y));
-            particle.position.z = Math.max(this.bounds.min.z, Math.min(this.bounds.max.z, particle.position.z));
-
-            // If particle hits bounds, reflect velocity
-            if (particle.position.x <= this.bounds.min.x || particle.position.x >= this.bounds.max.x) {
-                particle.previousPosition.x = particle.position.x + (particle.position.x - particle.previousPosition.x);
-            }
-            if (particle.position.y <= this.bounds.min.y || particle.position.y >= this.bounds.max.y) {
-                particle.previousPosition.y = particle.position.y + (particle.position.y - particle.previousPosition.y);
-            }
-            if (particle.position.z <= this.bounds.min.z || particle.position.z >= this.bounds.max.z) {
-                particle.previousPosition.z = particle.position.z + (particle.position.z - particle.previousPosition.z);
-            }
+            const correctionVector = b.position.clone().sub(a.position).multiplyScalar(correction * 0.5);
+            a.position.add(correctionVector);
+            b.position.sub(correctionVector);
         });
     }
 
@@ -94,7 +101,7 @@ export class VerletBody {
         return this.particles;
     }
 
-    public getConstraints(): Array<{ a: Verlet; b: Verlet; restLength: number }> {
+    public getConstraints(): { a: Verlet; b: Verlet; restLength: number }[] {
         return this.constraints;
     }
 } 
