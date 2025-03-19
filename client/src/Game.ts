@@ -216,12 +216,12 @@ export class Game {
         // ==================
         
         // Platform at the top of the tower
-        this.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-7, towerHeight, -34),
-            new THREE.Vector3(7, towerHeight + 1, -20),
-            platformMaterial,
-            "tower-top"
-        ));
+        // this.addStaticBody(StaticBody.createBox(
+        //     new THREE.Vector3(-7, towerHeight, -34),
+        //     new THREE.Vector3(7, towerHeight + 1, -20),
+        //     platformMaterial,
+        //     "tower-top"
+        // ));
         
         // Bridge to elevated challenge area
         this.addStaticBody(StaticBody.createBox(
