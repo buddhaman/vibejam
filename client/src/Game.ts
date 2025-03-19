@@ -115,12 +115,11 @@ export class Game {
         
         // Use a darker reddish color for platforms that's still bright
         const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0xac3b61, // Darker reddish-raspberry color
-            roughness: 0.6,
+            color: 0xff4b81, // Brighter, more saturated pink
+            roughness: 0.3,
             metalness: 0.4,
-            // Add slight emissive glow to make platforms "pop" visually
-            emissive: 0x5c0a2c,
-            emissiveIntensity: 0.2
+            emissive: 0xff4b81, // Same as color for a natural glow
+            emissiveIntensity: 0.3 // Adjust as needed
         });
         
         const obstacleMaterial = new THREE.MeshStandardMaterial({
@@ -297,7 +296,7 @@ export class Game {
         this.camera.lookAt(0, 0, 0);
 
         // Add some basic lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
         this.scene.add(ambientLight);
         
         // Use a warm-tinted directional light with broader range
