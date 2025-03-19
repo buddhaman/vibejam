@@ -68,50 +68,76 @@ export class ConvexShape {
             return null; // No collision possible
         }
         
-        // Find closest point on convex shape to sphere center
-        const closestPoint = this.findClosestPoint(sphereCenter);
+        // Special handling for when faces are defined
+        if (this.faces.length > 0) {
+            // Check if sphere is inside the shape by testing all faces
+            let isInside = true;
+            let minPenetration = Number.MAX_VALUE;
+            let minNormal = new THREE.Vector3();
+            
+            // Test each face
+            for (const face of this.faces) {
+                const facePoints = face.indices.map(idx => this.points[idx]);
+                const normal = this.calculateFaceNormal(facePoints);
+                const point = this.points[face.indices[0]];
+                
+                // Calculate distance from sphere center to face plane
+                const distToPlane = normal.dot(new THREE.Vector3().subVectors(sphereCenter, point));
+                
+                // If sphere is in front of any face, it's not fully inside
+                if (distToPlane > -sphereRadius) {
+                    isInside = false;
+                }
+                
+                // Calculate penetration
+                const penetration = sphereRadius + distToPlane;
+                
+                // If sphere overlaps with this face plane, track minimum penetration
+                if (penetration > 0 && penetration < minPenetration) {
+                    minPenetration = penetration;
+                    minNormal.copy(normal);
+                }
+            }
+            
+            // If sphere is fully inside, push it out via the face with minimum penetration
+            if (isInside) {
+                return minNormal.multiplyScalar(-minPenetration);
+            }
+            
+            // If sphere is outside but penetrating through a face, handle that case
+            if (minPenetration < Number.MAX_VALUE) {
+                // Verify that this is actually a collision by checking closest point
+                const closestPoint = this.findClosestPoint(sphereCenter);
+                const distanceToClosest = sphereCenter.distanceTo(closestPoint);
+                
+                if (distanceToClosest <= sphereRadius) {
+                    // Return minimum penetration vector along face normal
+                    return minNormal.multiplyScalar(-minPenetration);
+                }
+            }
+        }
         
-        // Check if closest point is within sphere radius
+        // Standard closest point approach for cases without faces
+        // or when the sphere is not fully inside or clearly penetrating a face
+        const closestPoint = this.findClosestPoint(sphereCenter);
         const distanceToClosest = sphereCenter.distanceTo(closestPoint);
+        
         if (distanceToClosest > sphereRadius) {
             return null; // No collision
         }
         
         // Calculate penetration vector
         const penetrationDepth = sphereRadius - distanceToClosest;
-        
-        // Calculate direction from closest point to sphere center
         const direction = new THREE.Vector3().subVectors(sphereCenter, closestPoint);
         
         // Handle case where closest point is exactly at sphere center
         if (direction.lengthSq() < 0.0001) {
-            // Find the nearest face and use its normal
-            if (this.faces.length > 0) {
-                let nearestFace = this.faces[0];
-                let minDist = Number.MAX_VALUE;
-                
-                for (const face of this.faces) {
-                    const facePoints = face.indices.map(idx => this.points[idx]);
-                    const normal = this.calculateFaceNormal(facePoints);
-                    const point = this.points[face.indices[0]];
-                    const dist = Math.abs(normal.dot(new THREE.Vector3().subVectors(sphereCenter, point)));
-                    
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearestFace = face;
-                    }
-                }
-                
-                const facePoints = nearestFace.indices.map(idx => this.points[idx]);
-                direction.copy(this.calculateFaceNormal(facePoints));
-            } else {
-                // If no faces, use direction from shape's center to sphere center
-                direction.subVectors(sphereCenter, this.boundingSphere.center);
-                
-                // If still too small, use arbitrary direction
-                if (direction.lengthSq() < 0.0001) {
-                    direction.set(0, 1, 0);
-                }
+            // Use direction from shape's center to sphere center
+            direction.subVectors(sphereCenter, this.boundingSphere.center);
+            
+            // If still too small, use arbitrary direction
+            if (direction.lengthSq() < 0.0001) {
+                direction.set(0, 1, 0);
             }
         }
         
