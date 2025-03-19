@@ -22,6 +22,10 @@ export class Player {
     public debugMode: boolean = false;
     public forwardArrow: THREE.ArrowHelper;
     public directionArrow: THREE.ArrowHelper;
+    private blinkTimer: number = 0;
+    private blinkDuration: number = 0;
+    private nextBlinkTime: number = Math.random() * 3000 + 2000; // 2-5 seconds
+    private isBlinking: boolean = false;
 
     constructor(id: string, toonTexture?: THREE.Texture, enableDebug: boolean = false) {
         this.id = id;
@@ -310,7 +314,7 @@ export class Player {
         }
     }
 
-    public fixedUpdate(): void {
+    public fixedUpdate(deltaTime: number = 16.67): void {
         // Update physics
         this.verletBody.update();
 
@@ -419,6 +423,9 @@ export class Player {
             this.forwardArrow.setDirection(this.forward.clone().normalize());
             this.directionArrow.setDirection(this.lastMovementDir.clone().normalize());
         }
+
+        // Update blinking animation with deltaTime
+        this.updateBlinking(deltaTime);
     }
 
     public getMeshes(): THREE.Object3D[] {
@@ -476,5 +483,43 @@ export class Player {
                 mesh.receiveShadow = toonTexture !== undefined;
             }
         });
+    }
+
+    /**
+     * Handles eye blinking and updates the blink timer
+     * @param deltaTime Time since last frame in ms
+     */
+    private updateBlinking(deltaTime: number): void {
+        // Update blink timer
+        this.blinkTimer += deltaTime;
+        
+        // If blinking, check if we should stop
+        if (this.isBlinking) {
+            if (this.blinkTimer >= this.blinkDuration) {
+                // End blink
+                this.isBlinking = false;
+                this.leftEye.visible = true;
+                this.rightEye.visible = true;
+                this.leftPupil.visible = true;
+                this.rightPupil.visible = true;
+                
+                // Reset for next blink
+                this.blinkTimer = 0;
+                this.nextBlinkTime = Math.random() * 1000 + 800; // 2-5 seconds
+            }
+        } 
+        // Not blinking, check if it's time to blink
+        else if (this.blinkTimer >= this.nextBlinkTime) {
+            // Start blinking
+            this.isBlinking = true;
+            this.leftEye.visible = false;
+            this.rightEye.visible = false;
+            this.leftPupil.visible = false;
+            this.rightPupil.visible = false;
+            
+            // Set blink duration
+            this.blinkDuration = Math.random() * 100 + 50; // 50-150ms
+            this.blinkTimer = 0;
+        }
     }
 } 

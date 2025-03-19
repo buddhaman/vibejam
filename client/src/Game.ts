@@ -658,7 +658,7 @@ export class Game {
         });
     }
 
-    public setupToonShadows(enabled: boolean = true): void {
+    private setupToonShadows(enabled: boolean = true): void {
         this.toonShadowsEnabled = enabled;
         
         if (!enabled) {
@@ -681,19 +681,20 @@ export class Game {
         
         // Enable shadow maps with an appropriate shadow type
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap; // Good balance for toon style
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
         
-        // Create a gradient texture for toon shading (if it doesn't exist yet)
+        // Create a more defined gradient texture for toon shading - but not too dark
         if (!this.toonTextureGradient) {
             const canvas = document.createElement('canvas');
             canvas.width = 64;
             canvas.height = 1;
             const context = canvas.getContext('2d');
             if (context) {
-                // Simple 3-step gradient for clear toon shading
+                // Create a 4-step gradient that's not too dark
                 const gradient = context.createLinearGradient(0, 0, 64, 0);
-                gradient.addColorStop(0, "#444444");    // Dark tone (not pure black for softer look)
-                gradient.addColorStop(0.5, "#AAAAAA");  // Mid tone
+                gradient.addColorStop(0, "#555555");    // Dark tone but not pure black
+                gradient.addColorStop(0.3, "#777777");  // Softer shadow tone
+                gradient.addColorStop(0.6, "#BBBBBB");  // Lighter mid tone
                 gradient.addColorStop(1, "#FFFFFF");    // Highlight
                 
                 context.fillStyle = gradient;
@@ -704,10 +705,11 @@ export class Game {
             }
         }
         
-        // Configure all directional lights for shadows (not just the first one)
+        // Configure lighting - keep it bright
         this.scene.traverse(object => {
             if (object instanceof THREE.DirectionalLight) {
                 object.castShadow = true;
+                object.intensity = 1.0; // Brighter light
                 
                 // Higher resolution shadow maps
                 object.shadow.mapSize.width = 2048;
@@ -725,14 +727,27 @@ export class Game {
                 object.shadow.bias = -0.0005;
                 object.shadow.normalBias = 0;
             } else if (object instanceof THREE.PointLight) {
-                // Also enable shadows on point lights, but with limited resolution
                 object.castShadow = true;
-                object.shadow.mapSize.width = 512;
-                object.shadow.mapSize.height = 512;
+                object.intensity *= 1.2; // Increase intensity
             }
         });
         
-        // Apply toon materials to non-player meshes
+        // Make sure ambient light is bright enough
+        let hasAmbient = false;
+        this.scene.traverse(object => {
+            if (object instanceof THREE.AmbientLight) {
+                object.intensity = 1.0; // Ensure bright ambient light
+                hasAmbient = true;
+            }
+        });
+        
+        // Add ambient light if none exists
+        if (!hasAmbient) {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            this.scene.add(ambientLight);
+        }
+        
+        // Apply toon materials without outlines
         this.scene.traverse(object => {
             if (object instanceof THREE.Mesh && 
                 !(object.material instanceof THREE.MeshToonMaterial) && 
@@ -743,12 +758,15 @@ export class Game {
                 object.castShadow = true;
                 object.receiveShadow = true;
                 
-                // Convert material to toon material
+                // Extract color from original material
                 let color = new THREE.Color(0xffffff);
-                
-                // Safely extract color from original material
                 if (object.material.hasOwnProperty('color')) {
                     color = (object.material as any).color;
+                    
+                    // Brighten the color slightly
+                    color.r = Math.min(1.0, color.r * 1.2);
+                    color.g = Math.min(1.0, color.g * 1.2);
+                    color.b = Math.min(1.0, color.b * 1.2);
                 }
                 
                 // Create simple toon material
@@ -761,17 +779,6 @@ export class Game {
                 object.material = toonMaterial;
             }
         });
-        
-        // Remove any extra shadow-only objects that might be causing issues
-        if (this.scene.userData.shadowLight) {
-            this.scene.remove(this.scene.userData.shadowLight);
-            this.scene.userData.shadowLight = null;
-        }
-        
-        if (this.scene.userData.shadowGround) {
-            this.scene.remove(this.scene.userData.shadowGround);
-            this.scene.userData.shadowGround = null;
-        }
     }
 
     // Helper method to check if a mesh belongs to a player
