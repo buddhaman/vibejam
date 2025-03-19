@@ -103,30 +103,180 @@ export class Game {
      * Create a test box for collision detection
      */
     private createTestBox(): void {
-        // Create box material
-        const boxMaterial = new THREE.MeshStandardMaterial({
-            color: 0xd4a5bd, // Same color as the floor
+        // Create various materials for different structures
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd4a5bd, // Base pink color for the floor
             roughness: 0.8,
             metalness: 0.2
         });
+        
+        const platformMaterial = new THREE.MeshStandardMaterial({
+            color: 0xa5d4bd, // Mint green for platforms
+            roughness: 0.7,
+            metalness: 0.3
+        });
+        
+        const obstacleMaterial = new THREE.MeshStandardMaterial({
+            color: 0xa5bdd4, // Light blue for obstacles
+            roughness: 0.6,
+            metalness: 0.4
+        });
 
-        // Create a box at position (4, 0, 4) with size 2x2x2
+        // // Create main ground area (larger than before)
+        // this.addStaticBody(StaticBody.createBox(
+        //     new THREE.Vector3(-50, -1, -50), // Min corner
+        //     new THREE.Vector3(50, 0, 50), // Max corner - 100x1x100 ground
+        //     baseMaterial,
+        //     "main-ground"
+        // ));
+        
+        // STARTING AREA
+        // =============
+        
+        // Starting platform at y=2 with stairs
         this.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(3, 0, 3), // Min corner
-            new THREE.Vector3(32, 2, 32), // Max corner
-            boxMaterial,
-            "test-box"
+            new THREE.Vector3(-15, 0, -15),
+            new THREE.Vector3(15, 2, 15),
+            platformMaterial,
+            "starting-platform"
         ));
         
-        // Create elevated platform at y=100
+        // Staircase down from starting platform (4 steps)
+        for (let i = 0; i < 4; i++) {
+            this.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(15 + i*2, 0, -4),
+                new THREE.Vector3(17 + i*2, 2 - i*0.5, 4),
+                platformMaterial,
+                `stair-${i}`
+            ));
+        }
+        
+        // OBSTACLE COURSE
+        // ==============
+        
+        // Create a series of platforms with increasing gaps
+        const platformCount = 5;
+        let lastX = 25;
+        
+        for (let i = 0; i < platformCount; i++) {
+            const platformSize = 4 - i * 0.5; // Platforms get smaller
+            const gap = 3 + i * 0.7; // Gaps get larger
+            
+            this.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(lastX, 0, -platformSize),
+                new THREE.Vector3(lastX + platformSize, 1, platformSize),
+                platformMaterial,
+                `jump-platform-${i}`
+            ));
+            
+            lastX += platformSize + gap;
+        }
+        
+        // VERTICAL CHALLENGE
+        // =================
+        
+        // Create a tower with spiraling platforms
+        const towerRadius = 10;
+        const towerHeight = 40;
+        const platformsPerRotation = 8;
+        const totalSpirals = 12;
+        
+        // Create central column
         this.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 100, -15), // Min corner
-            new THREE.Vector3(15, 102, 15), // Max corner - 30x2x30 platform
-            boxMaterial,
-            "high-platform"
+            new THREE.Vector3(-3, 0, -30),
+            new THREE.Vector3(3, towerHeight, -24),
+            obstacleMaterial,
+            "tower-column"
         ));
         
-        console.log("Test boxes created including high platform at y=100");
+        // Create spiral platforms
+        for (let i = 0; i < totalSpirals; i++) {
+            const angle = (i / platformsPerRotation) * Math.PI * 2;
+            const height = (i / totalSpirals) * towerHeight;
+            const radius = towerRadius - (i / totalSpirals) * 5; // Spiral gets tighter
+            
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius - 27; // Center at z=-27
+            
+            this.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(x - 2.5, height, z - 2.5),
+                new THREE.Vector3(x + 2.5, height + 0.5, z + 2.5),
+                platformMaterial,
+                `spiral-platform-${i}`
+            ));
+        }
+        
+        // HIGH CHALLENGE AREA
+        // ==================
+        
+        // Platform at the top of the tower
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-7, towerHeight, -34),
+            new THREE.Vector3(7, towerHeight + 1, -20),
+            platformMaterial,
+            "tower-top"
+        ));
+        
+        // Bridge to elevated challenge area
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-2, towerHeight, -40),
+            new THREE.Vector3(2, towerHeight + 1, -34),
+            platformMaterial,
+            "high-bridge"
+        ));
+        
+        // Elevated challenge area with moving platforms (visual only, not actually moving)
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-15, towerHeight, -60),
+            new THREE.Vector3(15, towerHeight + 1, -40),
+            platformMaterial,
+            "challenge-area"
+        ));
+        
+        // Floating obstacle blocks
+        for (let i = 0; i < 8; i++) {
+            const x = Math.random() * 20 - 10;
+            const z = Math.random() * 15 - 55;
+            const size = Math.random() * 2 + 1;
+            
+            this.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(x - size/2, towerHeight + 3, z - size/2),
+                new THREE.Vector3(x + size/2, towerHeight + 3 + size, z + size/2),
+                obstacleMaterial,
+                `floating-obstacle-${i}`
+            ));
+        }
+        
+        // FINAL AREA - HIGH PLATFORM
+        // =========================
+        
+        // Keep the high platform at y=100 as the final challenge/destination
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-15, 100, -15),
+            new THREE.Vector3(15, 102, 15),
+            new THREE.MeshStandardMaterial({
+                color: 0xffd700, // Gold color for the final platform
+                roughness: 0.3,
+                metalness: 0.8
+            }),
+            "final-platform"
+        ));
+        
+        // Add a teleporter visual hint to reach the final platform (not functional, just visual)
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-1, towerHeight + 1, -50),
+            new THREE.Vector3(1, towerHeight + 5, -48),
+            new THREE.MeshStandardMaterial({
+                color: 0xffaa00,
+                roughness: 0.3,
+                metalness: 0.8,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0.5
+            }),
+            "teleporter-visual"
+        ));
+        
+        console.log("Complex level created with multiple platforms and challenges");
     }
 
     private init(): void {
@@ -292,7 +442,7 @@ export class Game {
         
         // Move player to start on high platform if it's the local player
         if (isLocal) {
-            player.move(new THREE.Vector3(0, 105, 0)); // Position above the platform
+            //player.move(new THREE.Vector3(0, 105, 0)); // Position above the platform
         }
         
         // Add all player meshes and lines to the scene
