@@ -103,23 +103,27 @@ export class Game {
      * Create a test box for collision detection
      */
     private createTestBox(): void {
-        // Create various materials for different structures
+        // Create various materials for different structures with more distinct colors
         const baseMaterial = new THREE.MeshStandardMaterial({
             color: 0xd4a5bd, // Base pink color for the floor
             roughness: 0.8,
             metalness: 0.2
         });
         
+        // Use a darker reddish color for platforms that's still bright
         const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0xa5d4bd, // Mint green for platforms
-            roughness: 0.7,
-            metalness: 0.3
+            color: 0xac3b61, // Darker reddish-raspberry color
+            roughness: 0.6,
+            metalness: 0.4,
+            // Add slight emissive glow to make platforms "pop" visually
+            emissive: 0x5c0a2c,
+            emissiveIntensity: 0.2
         });
         
         const obstacleMaterial = new THREE.MeshStandardMaterial({
-            color: 0xa5bdd4, // Light blue for obstacles
-            roughness: 0.6,
-            metalness: 0.4
+            color: 0x8a2be2, // Brighter purple for obstacles
+            roughness: 0.5,
+            metalness: 0.5
         });
 
         // // Create main ground area (larger than before)
@@ -294,15 +298,42 @@ export class Game {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambientLight);
         
-        // Use a warm-tinted directional light
+        // Use a warm-tinted directional light with broader range
         const directionalLight = new THREE.DirectionalLight(0xfff0e6, 0.7);
-        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.position.set(5, 20, 7.5); // Higher position for broader shadows
+        
+        // Increase shadow map size for better detail
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        
+        // Expand shadow camera frustum to cover more of the level
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 150; // Increased far plane
+        directionalLight.shadow.camera.left = -60;
+        directionalLight.shadow.camera.right = 60;
+        directionalLight.shadow.camera.top = 60;
+        directionalLight.shadow.camera.bottom = -60;
+        
         this.scene.add(directionalLight);
         
-        // Add a subtle pink point light for additional atmosphere
-        const pinkLight = new THREE.PointLight(0xff9ee0, 0.5, 20);
-        pinkLight.position.set(0, 5, 0);
-        this.scene.add(pinkLight);
+        // Add multiple point lights throughout the level for better illumination
+        const lightPositions = [
+            { pos: new THREE.Vector3(0, 5, 0), color: 0xff9ee0, intensity: 0.5, distance: 20 },
+            { pos: new THREE.Vector3(30, 5, 0), color: 0xff9ee0, intensity: 0.5, distance: 20 },
+            { pos: new THREE.Vector3(0, 5, -30), color: 0xff9ee0, intensity: 0.5, distance: 20 },
+            { pos: new THREE.Vector3(0, 40, -30), color: 0xff9ee0, intensity: 0.5, distance: 30 }, // Tower light
+            { pos: new THREE.Vector3(0, 100, 0), color: 0xffffaa, intensity: 0.7, distance: 40 } // Final platform light
+        ];
+        
+        for (const lightData of lightPositions) {
+            const pointLight = new THREE.PointLight(
+                lightData.color, 
+                lightData.intensity, 
+                lightData.distance
+            );
+            pointLight.position.copy(lightData.pos);
+            this.scene.add(pointLight);
+        }
 
         // Add a ground plane with a matching color
         const groundGeometry = new THREE.PlaneGeometry(20, 20);
@@ -673,39 +704,31 @@ export class Game {
             }
         }
         
-        // Configure only the main directional light for shadows
-        let mainLight: THREE.DirectionalLight | null = null;
-        
+        // Configure all directional lights for shadows (not just the first one)
         this.scene.traverse(object => {
-            // Only set up the main directional light for shadows
-            if (object instanceof THREE.DirectionalLight && !mainLight) {
-                mainLight = object;
+            if (object instanceof THREE.DirectionalLight) {
                 object.castShadow = true;
                 
-                // Reasonable shadow resolution
-                object.shadow.mapSize.width = 1024;
-                object.shadow.mapSize.height = 1024;
+                // Higher resolution shadow maps
+                object.shadow.mapSize.width = 2048;
+                object.shadow.mapSize.height = 2048;
                 
-                // Adjust shadow camera for scene size
+                // Adjust shadow camera for much larger scene size
                 object.shadow.camera.near = 0.5;
-                object.shadow.camera.far = 50;
-                object.shadow.camera.left = -10;
-                object.shadow.camera.right = 10;
-                object.shadow.camera.top = 10;
-                object.shadow.camera.bottom = -10;
+                object.shadow.camera.far = 150;
+                object.shadow.camera.left = -60;
+                object.shadow.camera.right = 60;
+                object.shadow.camera.top = 60;
+                object.shadow.camera.bottom = -60;
                 
                 // Fix shadow acne with moderate bias
                 object.shadow.bias = -0.0005;
-                
-                // No blurring from normalBias (removing the blue tint source)
                 object.shadow.normalBias = 0;
-                
-                // No helper to avoid visual clutter
-                // const helper = new THREE.CameraHelper(object.shadow.camera);
-                // this.scene.add(helper);
             } else if (object instanceof THREE.PointLight) {
-                // Disable shadows on point lights to simplify
-                object.castShadow = false;
+                // Also enable shadows on point lights, but with limited resolution
+                object.castShadow = true;
+                object.shadow.mapSize.width = 512;
+                object.shadow.mapSize.height = 512;
             }
         });
         
