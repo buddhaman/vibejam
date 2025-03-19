@@ -105,8 +105,8 @@ export class Game {
     private createTestBox(): void {
         // Create box material
         const boxMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3399ff, // Blue color
-            roughness: 0.7,
+            color: 0xd4a5bd, // Same color as the floor
+            roughness: 0.8,
             metalness: 0.2
         });
 
@@ -118,7 +118,15 @@ export class Game {
             "test-box"
         ));
         
-        console.log("Test box created at position (4, 1, 4)");
+        // Create elevated platform at y=100
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-15, 100, -15), // Min corner
+            new THREE.Vector3(15, 102, 15), // Max corner - 30x2x30 platform
+            boxMaterial,
+            "high-platform"
+        ));
+        
+        console.log("Test boxes created including high platform at y=100");
     }
 
     private init(): void {
@@ -282,6 +290,11 @@ export class Game {
         const player = new Player(id, this.toonTextureGradient || undefined, isLocal && this.toonShadowsEnabled);
         this.players.set(id, player);
         
+        // Move player to start on high platform if it's the local player
+        if (isLocal) {
+            player.move(new THREE.Vector3(0, 105, 0)); // Position above the platform
+        }
+        
         // Add all player meshes and lines to the scene
         player.getMeshes().forEach(mesh => {
             if (mesh instanceof THREE.Mesh) {
@@ -293,6 +306,9 @@ export class Game {
 
         if (isLocal) {
             this.localPlayer = player;
+            
+            // Also update camera target to the high platform
+            this.cameraTarget.set(0, 105, 0);
         }
 
         return player;
