@@ -66,7 +66,7 @@ export class Network {
 
         conn.on('data', (data: any) => {
             if (data.type === 'position') {
-                this.game.updatePlayerPosition(conn.peer, data.position);
+                //this.game.updatePlayerPosition(conn.peer, data.position);
             }
         });
 

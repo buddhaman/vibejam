@@ -6,11 +6,13 @@ class GameClient {
     public game: Game;
     public network: Network;
     public localPlayerId: string;
-    public input: { w: boolean; a: boolean; s: boolean; d: boolean } = {
+    public input: { w: boolean; a: boolean; s: boolean; d: boolean; space: boolean; shift: boolean } = {
         w: false,
         a: false,
         s: false,
-        d: false
+        d: false,
+        space: false,
+        shift: false
     };
     public lastTime: number = 0;
 
@@ -34,6 +36,8 @@ class GameClient {
                 case 's': this.input.s = true; break;
                 case 'a': this.input.a = true; break;
                 case 'd': this.input.d = true; break;
+                case ' ': this.input.space = true; break;
+                case 'shift': this.input.shift = true; break;
             }
         });
 
@@ -43,6 +47,8 @@ class GameClient {
                 case 's': this.input.s = false; break;
                 case 'a': this.input.a = false; break;
                 case 'd': this.input.d = false; break;
+                case ' ': this.input.space = false; break;
+                case 'shift': this.input.shift = false; break;
             }
         });
     }
@@ -53,7 +59,7 @@ class GameClient {
         this.lastTime = currentTime;
 
         // Update game with delta time
-        this.game.update(deltaTime);
+        this.game.update();
 
         // Handle input for local player
         const player = this.game.getPlayer(this.localPlayerId);
