@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { Player } from './Player';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { StaticBody } from './StaticBody';
 
 export class Game {
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
     private renderer: THREE.WebGLRenderer;
-    private composer: EffectComposer;
+    private composer!: EffectComposer;
     private players: Map<string, Player>;
     private localPlayer: Player | null;
     private cameraDistance: number = 8;
@@ -18,6 +19,9 @@ export class Game {
     private previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
     private toonShadowsEnabled: boolean = false;
     private toonTextureGradient: THREE.Texture | null = null;
+    
+    // Static bodies collection for collision detection
+    private staticBodies: StaticBody[] = [];
 
     // Add fixed framerate properties
     private targetFPS: number = 60;
@@ -49,6 +53,72 @@ export class Game {
         
         // Add cell shader setup
         this.setupSimpleCellShading();
+        
+        // Add a single test box for collision
+        this.createTestBox();
+    }
+
+    /**
+     * Add a static body to the game
+     * @param body The static body to add
+     * @returns The added static body
+     */
+    public addStaticBody(body: StaticBody): StaticBody {
+        this.staticBodies.push(body);
+        this.scene.add(body.mesh);
+
+        // If toon shadows are enabled, ensure the body has proper material
+        if (this.toonShadowsEnabled && this.toonTextureGradient) {
+            this.applyToonMaterial(body.mesh);
+        }
+
+        return body;
+    }
+    
+    /**
+     * Apply toon material to a mesh
+     */
+    private applyToonMaterial(mesh: THREE.Mesh): void {
+        if (!(mesh.material instanceof THREE.MeshToonMaterial) && 
+            !(mesh.material instanceof THREE.LineBasicMaterial)) {
+            
+            // Extract color from original material
+            let color = new THREE.Color(0xffffff);
+            if (mesh.material.hasOwnProperty('color')) {
+                color = (mesh.material as any).color;
+            }
+            
+            // Create toon material
+            const toonMaterial = new THREE.MeshToonMaterial({
+                color: color,
+                gradientMap: this.toonTextureGradient || undefined
+            });
+            
+            // Replace material
+            mesh.material = toonMaterial;
+        }
+    }
+
+    /**
+     * Create a test box for collision detection
+     */
+    private createTestBox(): void {
+        // Create box material
+        const boxMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3399ff, // Blue color
+            roughness: 0.7,
+            metalness: 0.2
+        });
+
+        // Create a box at position (4, 0, 4) with size 2x2x2
+        this.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(3, 0, 3), // Min corner
+            new THREE.Vector3(8, 4, 8), // Max corner
+            boxMaterial,
+            "test-box"
+        ));
+        
+        console.log("Test box created at position (4, 1, 4)");
     }
 
     private init(): void {
@@ -186,6 +256,15 @@ export class Game {
     }
 
     private updateCamera(): void {
+        // Update camera target to follow the local player if available
+        if (this.localPlayer) {
+            // Get player position
+            const playerPos = this.localPlayer.getPosition();
+            
+            // Smoothly move camera target towards player position
+            this.cameraTarget.lerp(playerPos, 0.1);
+        }
+        
         // Calculate camera position based on spherical coordinates
         const x = this.cameraDistance * Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
         const y = this.cameraDistance * Math.cos(this.cameraPhi);
@@ -306,9 +385,65 @@ export class Game {
         // Update all players
         this.players.forEach(player => {
             player.fixedUpdate(); // Replace player.update() with player.fixedUpdate()
+            
+            // Check collisions with static bodies after player movement
+            this.checkPlayerCollisions(player);
         });
         
         this.players.forEach(player => player.setDebugMode(true));
+    }
+
+    /**
+     * Check and resolve player collisions with static bodies
+     * @param player The player to check collisions for
+     */
+    private checkPlayerCollisions(player: Player): void {
+        // Get all particles from the player's verlet body
+        const particles = player.verletBody.getParticles();
+        
+        // Check collision for each particle against each static body
+        for (const particle of particles) {
+            // Use the particle's position and radius for collision detection
+            const particlePosition = particle.position;
+            const particleRadius = particle.radius;
+            
+            // Check collision with each static body
+            for (const body of this.staticBodies) {
+                const translation = body.collideWithSphere(particlePosition, particleRadius);
+                
+                // If collision detected, resolve it
+                if (translation) {
+                    // Move the particle out of collision using the MTV
+                    particlePosition.add(translation);
+                    
+                    // Compute velocity vector
+                    const velocity = new THREE.Vector3().subVectors(
+                        particlePosition,
+                        particle.previousPosition
+                    );
+                    
+                    // Get the normal from the translation vector
+                    const normal = translation.clone().normalize();
+                    
+                    // Calculate the velocity component along the normal
+                    const velAlongNormal = velocity.dot(normal);
+                    
+                    // Only reflect if the particle is moving toward the surface
+                    if (velAlongNormal < 0) {
+                        // Restitution (bounciness) coefficient
+                        const restitution = 0.3; 
+                        
+                        // Calculate reflected velocity with proper reflection formula
+                        // v' = v - 2(v·n)n * (1+restitution)
+                        const reflectionTerm = normal.clone().multiplyScalar((1 + restitution) * velAlongNormal);
+                        const reflectedVel = velocity.clone().sub(reflectionTerm);
+                        
+                        // Update the previous position to create this new velocity
+                        particle.previousPosition.copy(particlePosition).sub(reflectedVel);
+                    }
+                }
+            }
+        }
     }
 
     public toggleToonShadows(enabled: boolean): void {
@@ -434,9 +569,6 @@ export class Game {
                     color: color,
                     gradientMap: this.toonTextureGradient
                 });
-                
-                // Enable shadows
-                toonMaterial.receiveShadow = true;
                 
                 // Replace material
                 object.material = toonMaterial;

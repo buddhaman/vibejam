@@ -304,9 +304,9 @@ export class Player {
         const particles = this.verletBody.getParticles();
         const headParticle = particles[0];
         
-        let standingForce: number = 0.15;
+        let standingForce: number = 0.30;
         if (!this.isMoving) {
-            standingForce = 0.55;
+            standingForce = 0.45;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
 
@@ -409,6 +409,38 @@ export class Player {
 
     public getMeshes(): THREE.Object3D[] {
         return this.meshes;
+    }
+
+    /**
+     * Get the player's position (based on head particle)
+     * @returns The player's current position as a Vector3
+     */
+    public getPosition(): THREE.Vector3 {
+        const particles = this.verletBody.getParticles();
+        if (particles.length > 0) {
+            // Calculate average position of all particles
+            const avgPosition = new THREE.Vector3();
+            particles.forEach(particle => {
+                avgPosition.add(particle.position);
+            });
+            avgPosition.divideScalar(particles.length);
+            return avgPosition;
+        }
+        return new THREE.Vector3(0, 0, 0);
+    }
+
+    /**
+     * Move the player by adding a translation vector to all particles
+     * @param translation The vector to translate by
+     */
+    public move(translation: THREE.Vector3): void {
+        const particles = this.verletBody.getParticles();
+        
+        // Apply translation to all particles
+        particles.forEach(particle => {
+            particle.position.add(translation);
+            particle.previousPosition.add(translation);
+        });
     }
 
     public setDebugMode(debugMode: boolean): void {
