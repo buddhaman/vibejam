@@ -136,7 +136,6 @@ export class Game {
         
         // STARTING AREA
         // =============
-        
         // Starting platform at y=2 with stairs
         this.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, 0, -15),
@@ -182,7 +181,7 @@ export class Game {
         // Create a tower with spiraling platforms
         const towerRadius = 10;
         const towerHeight = 40;
-        const platformsPerRotation = 8;
+        const platformsPerRotation = 10;
         const totalSpirals = 12;
         
         // Create central column
