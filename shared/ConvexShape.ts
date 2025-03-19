@@ -57,7 +57,6 @@ export class ConvexShape {
     
     /**
      * Check collision with a sphere and return the minimum translation vector
-     * This implements the GJK algorithm for convex shapes
      * @param sphereCenter The center of the sphere
      * @param sphereRadius The radius of the sphere
      * @returns Minimum translation vector to resolve collision, or null if no collision
@@ -80,21 +79,39 @@ export class ConvexShape {
         
         // Calculate penetration vector
         const penetrationDepth = sphereRadius - distanceToClosest;
-        if (penetrationDepth <= 0) {
-            return null; // No penetration
-        }
         
         // Calculate direction from closest point to sphere center
         const direction = new THREE.Vector3().subVectors(sphereCenter, closestPoint);
         
         // Handle case where closest point is exactly at sphere center
         if (direction.lengthSq() < 0.0001) {
-            // Use direction from shape's center to sphere center
-            direction.subVectors(sphereCenter, this.boundingSphere.center);
-            
-            // If still too small, use arbitrary direction
-            if (direction.lengthSq() < 0.0001) {
-                direction.set(0, 1, 0);
+            // Find the nearest face and use its normal
+            if (this.faces.length > 0) {
+                let nearestFace = this.faces[0];
+                let minDist = Number.MAX_VALUE;
+                
+                for (const face of this.faces) {
+                    const facePoints = face.indices.map(idx => this.points[idx]);
+                    const normal = this.calculateFaceNormal(facePoints);
+                    const point = this.points[face.indices[0]];
+                    const dist = Math.abs(normal.dot(new THREE.Vector3().subVectors(sphereCenter, point)));
+                    
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestFace = face;
+                    }
+                }
+                
+                const facePoints = nearestFace.indices.map(idx => this.points[idx]);
+                direction.copy(this.calculateFaceNormal(facePoints));
+            } else {
+                // If no faces, use direction from shape's center to sphere center
+                direction.subVectors(sphereCenter, this.boundingSphere.center);
+                
+                // If still too small, use arbitrary direction
+                if (direction.lengthSq() < 0.0001) {
+                    direction.set(0, 1, 0);
+                }
             }
         }
         
