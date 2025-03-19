@@ -29,6 +29,9 @@ export class Game {
     private lastUpdateTime: number = 0;
     private accumulatedTime: number = 0;
 
+    // Add this property to the Game class
+    private inputKeys: { [key: string]: boolean } = {};
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -413,13 +416,15 @@ export class Game {
             this.cameraDistance = Math.max(4, Math.min(20, this.cameraDistance + event.deltaY * 0.01));
         });
 
-        // Keyboard controls for player movement
-        const keys: { [key: string]: boolean } = {};
+        // Set up keyboard input tracking (only track state, don't update player here)
+        this.inputKeys = {};
+        
         window.addEventListener('keydown', (event) => {
-            keys[event.key.toLowerCase()] = true;
+            this.inputKeys[event.key.toLowerCase()] = true;
         });
+        
         window.addEventListener('keyup', (event) => {
-            keys[event.key.toLowerCase()] = false;
+            this.inputKeys[event.key.toLowerCase()] = false;
         });
 
         // Add shadow toggle
@@ -429,18 +434,6 @@ export class Game {
                 console.log(`Toon shadows ${this.toonShadowsEnabled ? 'enabled' : 'disabled'}`);
             }
         });
-
-        // Update player input
-        const updatePlayerInput = () => {
-            this.localPlayer?.handleInput({
-                w: keys['w'] || false,
-                a: keys['a'] || false,
-                s: keys['s'] || false,
-                d: keys['d'] || false
-            });
-            requestAnimationFrame(updatePlayerInput);
-        };
-        updatePlayerInput();
     }
 
     private updateCamera(): void {
@@ -573,14 +566,23 @@ export class Game {
         const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
         const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
 
-        // Set the local player's forward vector
+        // Update the local player's forward vector
         if (this.localPlayer) {
             this.localPlayer.forward.set(forwardX, 0, forwardZ).normalize();
+            
+            this.localPlayer.handleInput({
+                w: this.inputKeys['w'] || false,
+                a: this.inputKeys['a'] || false,
+                s: this.inputKeys['s'] || false,
+                d: this.inputKeys['d'] || false,
+                space: this.inputKeys[' '] || false,
+                shift: this.inputKeys['shift'] || false
+            });
         }
 
         // Update all players
         this.players.forEach(player => {
-            player.fixedUpdate(); // Replace player.update() with player.fixedUpdate()
+            player.fixedUpdate();
             
             // Check collisions with static bodies after player movement
             this.checkPlayerCollisions(player);

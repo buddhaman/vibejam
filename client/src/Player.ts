@@ -230,12 +230,11 @@ export class Player {
         cylinder.quaternion.copy(quaternion);
     }
 
-    public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean }): void {
-        this.isMoving = input.w || input.a || input.s || input.d;
+    public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean; space: boolean; shift?: boolean }): void {
+        this.isMoving = input.w || input.a || input.s || input.d || input.space || !!input.shift;
 
         // Calculate the perpendicular vector for left/right movement
         const upVector = new THREE.Vector3(0, 1, 0);
-        // Fix inverted movement by removing the .negate()
         const rightVector = new THREE.Vector3().crossVectors(this.forward, upVector).normalize();
 
         // Create a single movement direction vector based on input
@@ -293,6 +292,21 @@ export class Player {
             // Vertical forces to create rotation
             mostForwardParticle.applyImpulse(new THREE.Vector3(0, -this.moveSpeed, 0));
             mostBackwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
+        }
+        
+        // Handle spacebar action - apply equal and opposite forces
+        if (input.space) {
+            // Apply equal and opposite forces (net force = 0)
+            const stretchForce = 0.8; // Adjust this value for desired stretch amount
+            highestParticle.applyImpulse(new THREE.Vector3(0, stretchForce, 0));
+            lowestParticle.applyImpulse(new THREE.Vector3(0, -stretchForce, 0));
+        }
+        
+        // Handle shift action - squeeze (opposite of stretch)
+        if (input.shift) {
+            const squeezeForce = 0.2;
+            highestParticle.applyImpulse(new THREE.Vector3(0, -squeezeForce, 0));
+            lowestParticle.applyImpulse(new THREE.Vector3(0, squeezeForce, 0));
         }
     }
 
