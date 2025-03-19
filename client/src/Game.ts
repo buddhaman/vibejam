@@ -2,10 +2,6 @@ import * as THREE from 'three';
 import { Player } from './Player';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-
-// Import toon shader
-import { ToonShader1, ToonShader2, ToonShaderHatching, ToonShaderDotted } from 'three/examples/jsm/shaders/ToonShader.js';
 
 export class Game {
     private scene: THREE.Scene;
@@ -22,6 +18,12 @@ export class Game {
     private previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
     private toonShadowsEnabled: boolean = false;
     private toonTextureGradient: THREE.Texture | null = null;
+
+    // Add fixed framerate properties
+    private targetFPS: number = 60;
+    private timestep: number = 1000 / this.targetFPS; // Fixed timestep in milliseconds (60 FPS)
+    private lastUpdateTime: number = 0;
+    private accumulatedTime: number = 0;
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -106,15 +108,6 @@ export class Game {
         // Add render pass
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
-        
-        // Use a very subtle bloom to avoid pixelation
-        const bloomPass = new UnrealBloomPass(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.1,   // Very low strength
-            0.3,   // Lower radius
-            0.9    // Higher threshold
-        );
-        this.composer.addPass(bloomPass);
     }
 
     private setupSimpleCellShading(): void {
@@ -125,7 +118,7 @@ export class Game {
         // Setup initial toon shadows with toggle (disabled by default for performance)
         this.setupToonShadows(false);
     }
-
+    
     private setupControls(): void {
         // Mouse controls for camera rotation
         this.renderer.domElement.addEventListener('mousedown', (event) => {
@@ -254,6 +247,53 @@ export class Game {
     }
 
     public update(): void {
+        const currentTime = performance.now();
+        
+        if (this.lastUpdateTime === 0) {
+            this.lastUpdateTime = currentTime;
+            requestAnimationFrame(this.update.bind(this));
+            return;
+        }
+        
+        // Calculate elapsed time since last update
+        const elapsedTime = currentTime - this.lastUpdateTime;
+        this.accumulatedTime += elapsedTime;
+        this.lastUpdateTime = currentTime;
+        
+        // Process as many fixed updates as needed to catch up
+        let updated = false;
+        while (this.accumulatedTime >= this.timestep) {
+            // Consume one timestep's worth of accumulated time
+            this.accumulatedTime -= this.timestep;
+            
+            // Execute the fixed update
+            this.fixedUpdate();
+            updated = true;
+            
+            // Prevent spiral of death by capping accumulated time
+            if (this.accumulatedTime > this.timestep * 5) {
+                this.accumulatedTime = this.timestep * 5;
+            }
+        }
+        
+        // Only render if we did at least one fixed update
+        if (updated) {
+            // Update camera
+            this.updateCamera();
+            
+            // Render
+            if (this.composer) {
+                this.composer.render();
+            } else {
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Continue the game loop
+        requestAnimationFrame(this.update.bind(this));
+    }
+
+    private fixedUpdate(): void {
         // Calculate the forward vector using cameraPhi and cameraTheta
         const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
         const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
@@ -264,19 +304,28 @@ export class Game {
         }
 
         // Update all players
-        this.players.forEach(player => player.update());
+        this.players.forEach(player => {
+            player.fixedUpdate(); // Replace player.update() with player.fixedUpdate()
+        });
+        
         this.players.forEach(player => player.setDebugMode(true));
+    }
 
-        // Update camera
-        this.updateCamera();
-
-        // Try direct rendering if composer is causing issues
-        if (this.composer) {
-            this.composer.render();
-        } else {
-            // Fallback to direct rendering
-            this.renderer.render(this.scene, this.camera);
-        }
+    public toggleToonShadows(enabled: boolean): void {
+        this.setupToonShadows(enabled);
+        
+        // Update existing player meshes
+        this.players.forEach(player => {
+            player.getMeshes().forEach(mesh => {
+                if (mesh instanceof THREE.Mesh) {
+                    mesh.castShadow = this.toonShadowsEnabled;
+                    mesh.receiveShadow = this.toonShadowsEnabled;
+                }
+            });
+            
+            // Update player materials
+            player.updateToonTexture(this.toonShadowsEnabled ? this.toonTextureGradient || undefined : undefined);
+        });
     }
 
     private setupToonShadows(enabled: boolean = true): void {
@@ -417,20 +466,9 @@ export class Game {
         return isPlayerMesh;
     }
 
-    public toggleToonShadows(enabled: boolean): void {
-        this.setupToonShadows(enabled);
-        
-        // Update existing player meshes
-        this.players.forEach(player => {
-            player.getMeshes().forEach(mesh => {
-                if (mesh instanceof THREE.Mesh) {
-                    mesh.castShadow = this.toonShadowsEnabled;
-                    mesh.receiveShadow = this.toonShadowsEnabled;
-                }
-            });
-            
-            // Update player materials
-            player.updateToonTexture(this.toonShadowsEnabled ? this.toonTextureGradient || undefined : undefined);
-        });
+    // Add method to set target FPS
+    public setTargetFPS(fps: number): void {
+        this.targetFPS = fps;
+        this.timestep = 1000 / fps;
     }
 } 

@@ -12,10 +12,6 @@ export class Player {
     }[];
     public moveSpeed: number = 0.08;
     private isMoving: boolean = false;
-    private targetFPS: number = 60; // Target frames per second
-    private timestep: number = 1000 / 60; // Fixed timestep in milliseconds (60 FPS)
-    private lastUpdateTime: number = 0;
-    private accumulatedTime: number = 0;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
     public lastMovementDir: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default last movement direction
     private leftEye: THREE.Mesh;
@@ -300,41 +296,7 @@ export class Player {
         }
     }
 
-    public update(): boolean {
-        const currentTime = performance.now();
-        
-        if (this.lastUpdateTime === 0) {
-            this.lastUpdateTime = currentTime;
-            return false; // Skip first frame
-        }
-        
-        // Calculate elapsed time since last update
-        const elapsedTime = currentTime - this.lastUpdateTime;
-        this.accumulatedTime += elapsedTime;
-        this.lastUpdateTime = currentTime;
-        
-        // If not enough time has passed for a fixed update, return false
-        if (this.accumulatedTime < this.timestep) {
-            return false; // Skip update, not enough time has passed
-        }
-        
-        // Consume one timestep's worth of accumulated time
-        this.accumulatedTime -= this.timestep;
-        
-        // Prevent spiral of death by capping accumulated time
-        if (this.accumulatedTime > this.timestep * 5) {
-            this.accumulatedTime = this.timestep * 5;
-        }
-        
-        // Perform the fixed update
-        this.fixedUpdate();
-        
-        return true; // Update was performed
-    }
-
-    private fixedUpdate(): void {
-        // Move all the original update logic here, using the fixed timestep
-        
+    public fixedUpdate(): void {
         // Update physics
         this.verletBody.update();
 
@@ -342,9 +304,9 @@ export class Player {
         const particles = this.verletBody.getParticles();
         const headParticle = particles[0];
         
-        let standingForce: number = 0.1;
+        let standingForce: number = 0.15;
         if (!this.isMoving) {
-            standingForce = 0.45;
+            standingForce = 0.55;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
 
@@ -453,12 +415,6 @@ export class Player {
         this.debugMode = debugMode;
         this.forwardArrow.visible = this.debugMode;
         this.directionArrow.visible = this.debugMode;
-    }
-
-    // Method to set target FPS
-    public setTargetFPS(fps: number): void {
-        this.targetFPS = fps;
-        this.timestep = 1000 / fps;
     }
 
     public updateToonTexture(toonTexture?: THREE.Texture): void {
