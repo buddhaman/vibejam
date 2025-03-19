@@ -181,8 +181,8 @@ export class Game {
         // Create a tower with spiraling platforms
         const towerRadius = 10;
         const towerHeight = 40;
-        const platformsPerRotation = 10;
-        const totalSpirals = 12;
+        const platformsPerRotation = 12;
+        const totalSpirals = 24
         
         // Create central column
         this.addStaticBody(StaticBody.createBox(
@@ -203,7 +203,7 @@ export class Game {
             
             this.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(x - 2.5, height, z - 2.5),
-                new THREE.Vector3(x + 2.5, height + 0.5, z + 2.5),
+                new THREE.Vector3(x + 2.5, height + 1.0, z + 2.5),
                 platformMaterial,
                 `spiral-platform-${i}`
             ));
