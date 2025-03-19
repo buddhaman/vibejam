@@ -11,17 +11,17 @@ export class Player {
         particleB: Verlet;  // Replace with your particle type
     }[];
     public moveSpeed: number = 0.08;
-    private isMoving: boolean = false;
+    public isMoving: boolean = false;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
     public lastMovementDir: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default last movement direction
-    private leftEye: THREE.Mesh;
-    private rightEye: THREE.Mesh;
-    private leftPupil: THREE.Mesh;
-    private rightPupil: THREE.Mesh;
-    private eyeBaseOffset: THREE.Vector3 = new THREE.Vector3(0.2, 0.2, 0.5); // Increased z-offset to place eyes on surface of head
-    private debugMode: boolean = false;
-    private forwardArrow: THREE.ArrowHelper;
-    private directionArrow: THREE.ArrowHelper;
+    public leftEye: THREE.Mesh;
+    public rightEye: THREE.Mesh;
+    public leftPupil: THREE.Mesh;
+    public rightPupil: THREE.Mesh;
+    public eyeBaseOffset: THREE.Vector3 = new THREE.Vector3(0.2, 0.2, 0.5); // Increased z-offset to place eyes on surface of head
+    public debugMode: boolean = false;
+    public forwardArrow: THREE.ArrowHelper;
+    public directionArrow: THREE.ArrowHelper;
 
     constructor(id: string, toonTexture?: THREE.Texture, enableDebug: boolean = false) {
         this.id = id;
@@ -197,7 +197,7 @@ export class Player {
     }
 
     // Helper method to position and orient a cylinder between two points
-    private positionCylinder(cylinder: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
+    public positionCylinder(cylinder: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
         // Position at midpoint
         const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
         cylinder.position.copy(midpoint);

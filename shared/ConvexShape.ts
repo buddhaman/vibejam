@@ -33,7 +33,7 @@ export class ConvexShape {
     /**
      * Calculate a bounding sphere for quick rejection tests
      */
-    private calculateBoundingSphere(): { center: THREE.Vector3, radius: number } {
+    public calculateBoundingSphere(): { center: THREE.Vector3, radius: number } {
         // Find centroid
         const center = new THREE.Vector3();
         for (const point of this.points) {
@@ -166,7 +166,7 @@ export class ConvexShape {
     /**
      * Find closest point using face information
      */
-    private findClosestPointUsingFaces(point: THREE.Vector3): THREE.Vector3 {
+    public findClosestPointUsingFaces(point: THREE.Vector3): THREE.Vector3 {
         let closestPoint = new THREE.Vector3();
         let minDistSq = Number.MAX_VALUE;
         
@@ -217,7 +217,7 @@ export class ConvexShape {
      * Find closest point using a simplified approach
      * Good for simple convex shapes without face information
      */
-    private findClosestPointSimplex(point: THREE.Vector3): THREE.Vector3 {
+    public findClosestPointSimplex(point: THREE.Vector3): THREE.Vector3 {
         // For simple cases, just check all points
         if (this.points.length <= 8) {
             let closestPoint = this.points[0];
@@ -278,7 +278,7 @@ export class ConvexShape {
     /**
      * Project a point onto a face (polygon)
      */
-    private projectPointOnFace(point: THREE.Vector3, facePoints: THREE.Vector3[]): THREE.Vector3 {
+    public projectPointOnFace(point: THREE.Vector3, facePoints: THREE.Vector3[]): THREE.Vector3 {
         // Calculate face normal
         const normal = this.calculateFaceNormal(facePoints);
         
@@ -318,7 +318,7 @@ export class ConvexShape {
     /**
      * Calculate normal of a face
      */
-    private calculateFaceNormal(facePoints: THREE.Vector3[]): THREE.Vector3 {
+    public calculateFaceNormal(facePoints: THREE.Vector3[]): THREE.Vector3 {
         // Use first three points to calculate normal
         const v0 = facePoints[0];
         const v1 = facePoints[1];
@@ -333,7 +333,7 @@ export class ConvexShape {
     /**
      * Check if a point is inside a face
      */
-    private isPointInFace(point: THREE.Vector3, facePoints: THREE.Vector3[], normal: THREE.Vector3): boolean {
+    public isPointInFace(point: THREE.Vector3, facePoints: THREE.Vector3[], normal: THREE.Vector3): boolean {
         // Very simple test for convex polygons:
         // Point is inside if all cross products point in same direction as normal
         
@@ -357,7 +357,7 @@ export class ConvexShape {
     /**
      * Find closest point on a line segment
      */
-    private closestPointOnLine(point: THREE.Vector3, lineStart: THREE.Vector3, lineEnd: THREE.Vector3): THREE.Vector3 {
+    public closestPointOnLine(point: THREE.Vector3, lineStart: THREE.Vector3, lineEnd: THREE.Vector3): THREE.Vector3 {
         const line = new THREE.Vector3().subVectors(lineEnd, lineStart);
         const lineLength = line.length();
         
@@ -417,7 +417,7 @@ export class ConvexShape {
     /**
      * Create mesh using predefined faces
      */
-    private createMeshFromFaces(material: THREE.Material): THREE.Mesh {
+    public createMeshFromFaces(material: THREE.Material): THREE.Mesh {
         // When converting to a mesh, we need to flip the winding order for rendering
         // compared to what we use for collision detection
         

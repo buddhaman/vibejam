@@ -3,16 +3,16 @@ import { Network } from './Network';
 import * as THREE from 'three';
 
 class GameClient {
-    private game: Game;
-    private network: Network;
-    private localPlayerId: string;
-    private input: { w: boolean; a: boolean; s: boolean; d: boolean } = {
+    public game: Game;
+    public network: Network;
+    public localPlayerId: string;
+    public input: { w: boolean; a: boolean; s: boolean; d: boolean } = {
         w: false,
         a: false,
         s: false,
         d: false
     };
-    private lastTime: number = 0;
+    public lastTime: number = 0;
 
     constructor() {
         this.game = new Game();
@@ -23,11 +23,11 @@ class GameClient {
         this.animate();
     }
 
-    private setupLocalPlayer(): void {
+    public setupLocalPlayer(): void {
         this.game.addPlayer(this.localPlayerId, true);
     }
 
-    private setupControls(): void {
+    public setupControls(): void {
         document.addEventListener('keydown', (event) => {
             switch (event.key.toLowerCase()) {
                 case 'w': this.input.w = true; break;
@@ -47,7 +47,7 @@ class GameClient {
         });
     }
 
-    private animate(): void {
+    public animate(): void {
         const currentTime = performance.now();
         const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
         this.lastTime = currentTime;

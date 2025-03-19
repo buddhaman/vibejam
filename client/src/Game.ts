@@ -5,32 +5,32 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { StaticBody } from './StaticBody';
 
 export class Game {
-    private scene: THREE.Scene;
-    private camera: THREE.PerspectiveCamera;
-    private renderer: THREE.WebGLRenderer;
-    private composer!: EffectComposer;
-    private players: Map<string, Player>;
-    private localPlayer: Player | null;
-    private cameraDistance: number = 8;
-    private cameraTheta: number = 0; // Horizontal angle
-    private cameraPhi: number = Math.PI / 3; // Vertical angle (0 to PI)
-    private cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
-    private isDragging: boolean = false;
-    private previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
-    private toonShadowsEnabled: boolean = false;
-    private toonTextureGradient: THREE.Texture | null = null;
+    public scene: THREE.Scene;
+    public camera: THREE.PerspectiveCamera;
+    public renderer: THREE.WebGLRenderer;
+    public composer!: EffectComposer;
+    public players: Map<string, Player>;
+    public localPlayer: Player | null;
+    public cameraDistance: number = 8;
+    public cameraTheta: number = 0; // Horizontal angle
+    public cameraPhi: number = Math.PI / 3; // Vertical angle (0 to PI)
+    public cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
+    public isDragging: boolean = false;
+    public previousMousePosition: { x: number; y: number } = { x: 0, y: 0 };
+    public toonShadowsEnabled: boolean = false;
+    public toonTextureGradient: THREE.Texture | null = null;
     
     // Static bodies collection for collision detection
-    private staticBodies: StaticBody[] = [];
+    public staticBodies: StaticBody[] = [];
 
     // Add fixed framerate properties
-    private targetFPS: number = 60;
-    private timestep: number = 1000 / this.targetFPS; // Fixed timestep in milliseconds (60 FPS)
-    private lastUpdateTime: number = 0;
-    private accumulatedTime: number = 0;
+    public targetFPS: number = 60;
+    public timestep: number = 1000 / this.targetFPS; // Fixed timestep in milliseconds (60 FPS)
+    public lastUpdateTime: number = 0;
+    public accumulatedTime: number = 0;
 
     // Add this property to the Game class
-    private inputKeys: { [key: string]: boolean } = {};
+    public inputKeys: { [key: string]: boolean } = {};
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -81,7 +81,7 @@ export class Game {
     /**
      * Apply toon material to a mesh
      */
-    private applyToonMaterial(mesh: THREE.Mesh): void {
+    public applyToonMaterial(mesh: THREE.Mesh): void {
         if (!(mesh.material instanceof THREE.MeshToonMaterial) && 
             !(mesh.material instanceof THREE.LineBasicMaterial)) {
             
@@ -105,7 +105,7 @@ export class Game {
     /**
      * Create a test box for collision detection
      */
-    private createTestBox(): void {
+    public createTestBox(): void {
         // Create various materials for different structures with more distinct colors
         const baseMaterial = new THREE.MeshStandardMaterial({
             color: 0xd4a5bd, // Base pink color for the floor
@@ -285,7 +285,7 @@ export class Game {
         console.log("Complex level created with multiple platforms and challenges");
     }
 
-    private init(): void {
+    public init(): void {
         // Renderer setup
         document.body.appendChild(this.renderer.domElement);
         
@@ -356,7 +356,7 @@ export class Game {
         window.addEventListener('resize', this.onWindowResize.bind(this));
     }
 
-    private initComposer(): void {
+    public initComposer(): void {
         // Create a new render target with the correct pixel ratio
         const renderTarget = new THREE.WebGLRenderTarget(
             window.innerWidth * window.devicePixelRatio,
@@ -371,7 +371,7 @@ export class Game {
         this.composer.addPass(renderPass);
     }
 
-    private setupSimpleCellShading(): void {
+    public setupSimpleCellShading(): void {
         // Set up the composer
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -380,7 +380,7 @@ export class Game {
         this.setupToonShadows(false);
     }
     
-    private setupControls(): void {
+    public setupControls(): void {
         // Mouse controls for camera rotation
         this.renderer.domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
@@ -436,7 +436,7 @@ export class Game {
         });
     }
 
-    private updateCamera(): void {
+    public updateCamera(): void {
         // Update camera target to follow the local player if available
         if (this.localPlayer) {
             // Get player position
@@ -502,7 +502,7 @@ export class Game {
         return this.players.get(id);
     }
 
-    private onWindowResize(): void {
+    public onWindowResize(): void {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         
@@ -561,7 +561,7 @@ export class Game {
         requestAnimationFrame(this.update.bind(this));
     }
 
-    private fixedUpdate(): void {
+    public fixedUpdate(): void {
         // Calculate the forward vector using cameraPhi and cameraTheta
         const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
         const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
@@ -595,7 +595,7 @@ export class Game {
      * Check and resolve player collisions with static bodies
      * @param player The player to check collisions for
      */
-    private checkPlayerCollisions(player: Player): void {
+    public checkPlayerCollisions(player: Player): void {
         // Get all particles from the player's verlet body
         const particles = player.verletBody.getParticles();
         
@@ -659,7 +659,7 @@ export class Game {
         });
     }
 
-    private setupToonShadows(enabled: boolean = true): void {
+    public setupToonShadows(enabled: boolean = true): void {
         this.toonShadowsEnabled = enabled;
         
         if (!enabled) {
@@ -776,7 +776,7 @@ export class Game {
     }
 
     // Helper method to check if a mesh belongs to a player
-    private isPlayerMesh(mesh: THREE.Object3D): boolean {
+    public isPlayerMesh(mesh: THREE.Object3D): boolean {
         let isPlayerMesh = false;
         this.players.forEach(player => {
             if (player.getMeshes().includes(mesh)) {

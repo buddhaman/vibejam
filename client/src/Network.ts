@@ -3,11 +3,11 @@ import { Game } from './Game';
 import * as THREE from 'three';
 
 export class Network {
-    private peer: Peer;
-    private connections: Map<string, DataConnection>;
-    private game: Game;
-    private ws: WebSocket;
-    private peerId: string | null = null;
+    public peer: Peer;
+    public connections: Map<string, DataConnection>;
+    public game: Game;
+    public ws: WebSocket;
+    public peerId: string | null = null;
 
     constructor(game: Game) {
         this.game = game;
@@ -18,14 +18,14 @@ export class Network {
         this.setupPeer();
     }
 
-    private setupWebSocket(): void {
+    public setupWebSocket(): void {
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             this.handleSignalingMessage(data);
         };
     }
 
-    private handleSignalingMessage(data: any): void {
+    public handleSignalingMessage(data: any): void {
         switch (data.type) {
             case 'offer':
                 this.handleOffer(data.offer, data.from);
@@ -39,7 +39,7 @@ export class Network {
         }
     }
 
-    private setupPeer(): void {
+    public setupPeer(): void {
         this.peer.on('open', (id) => {
             this.peerId = id;
             console.log('My peer ID is: ' + id);
@@ -60,7 +60,7 @@ export class Network {
         });
     }
 
-    private setupConnection(conn: DataConnection): void {
+    public setupConnection(conn: DataConnection): void {
         this.connections.set(conn.peer, conn);
         this.game.addPlayer(conn.peer);
 
@@ -77,7 +77,7 @@ export class Network {
         });
     }
 
-    private handleOffer(offer: any, from: string): void {
+    public handleOffer(offer: any, from: string): void {
         this.peer.on('call', (call) => {
             call.answer(offer);
             call.on('stream', () => {
@@ -86,11 +86,11 @@ export class Network {
         });
     }
 
-    private handleAnswer(answer: any, from: string): void {
+    public handleAnswer(answer: any, from: string): void {
         // Handle answer from peer
     }
 
-    private handleIceCandidate(candidate: any, from: string): void {
+    public handleIceCandidate(candidate: any, from: string): void {
         // Handle ICE candidate from peer
     }
 

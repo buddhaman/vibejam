@@ -23,11 +23,11 @@ export class Verlet {
 }
 
 export class VerletBody {
-    private particles: Verlet[];
-    private constraints: { a: Verlet; b: Verlet; restLength: number }[];
-    private airFriction: number = 0.98; // Air resistance (0-1)
-    private groundFriction: number = 0.6; // Ground friction (0-1)
-    private gravity: number = 0.05; // Increased gravity
+    public particles: Verlet[];
+    public constraints: { a: Verlet; b: Verlet; restLength: number }[];
+    public airFriction: number = 0.98; // Air resistance (0-1)
+    public groundFriction: number = 0.6; // Ground friction (0-1)
+    public gravity: number = 0.05; // Increased gravity
 
     constructor() {
         this.particles = [];
@@ -119,7 +119,7 @@ export class VerletBody {
         }
     }
 
-    private solveConstraints(): void {
+    public solveConstraints(): void {
         this.constraints.forEach(({ a, b, restLength }) => {
             const currentLength = a.position.distanceTo(b.position);
             const correction = (currentLength - restLength) / currentLength;
