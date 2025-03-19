@@ -113,7 +113,7 @@ export class Game {
         // Create a box at position (4, 0, 4) with size 2x2x2
         this.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(3, 0, 3), // Min corner
-            new THREE.Vector3(8, 4, 8), // Max corner
+            new THREE.Vector3(32, 2, 32), // Max corner
             boxMaterial,
             "test-box"
         ));
@@ -425,22 +425,20 @@ export class Game {
                     // Get the normal from the translation vector
                     const normal = translation.clone().normalize();
                     
-                    // Calculate the velocity component along the normal
+                    // Project velocity onto normal and tangent planes
                     const velAlongNormal = velocity.dot(normal);
+                    const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
+                    const tangentComponent = velocity.clone().sub(normalComponent);
                     
-                    // Only reflect if the particle is moving toward the surface
-                    if (velAlongNormal < 0) {
-                        // Restitution (bounciness) coefficient
-                        const restitution = 0.3; 
-                        
-                        // Calculate reflected velocity with proper reflection formula
-                        // v' = v - 2(v·n)n * (1+restitution)
-                        const reflectionTerm = normal.clone().multiplyScalar((1 + restitution) * velAlongNormal);
-                        const reflectedVel = velocity.clone().sub(reflectionTerm);
-                        
-                        // Update the previous position to create this new velocity
-                        particle.previousPosition.copy(particlePosition).sub(reflectedVel);
-                    }
+                    // Apply friction to tangential component
+                    const friction = 0.8; // Friction coefficient (1 = no friction, 0 = full friction)
+                    tangentComponent.multiplyScalar(friction);
+                    
+                    // New velocity is just the tangential component (no bounce)
+                    const newVelocity = tangentComponent;
+                    
+                    // Update the previous position to create this new velocity
+                    particle.previousPosition.copy(particlePosition).sub(newVelocity);
                 }
             }
         }
