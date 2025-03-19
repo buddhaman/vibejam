@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * Represents a 3D convex shape with efficient collision detection
@@ -417,6 +418,9 @@ export class ConvexShape {
      * Create mesh using predefined faces
      */
     private createMeshFromFaces(material: THREE.Material): THREE.Mesh {
+        // When converting to a mesh, we need to flip the winding order for rendering
+        // compared to what we use for collision detection
+        
         const geometry = new THREE.BufferGeometry();
         
         // Add all points
@@ -427,23 +431,35 @@ export class ConvexShape {
         
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         
-        // Add faces as triangles
+        // For rendering with outward normals, we need to reverse the winding order
+        // from what's used in the collision detection
         const indices: number[] = [];
         for (const face of this.faces) {
             // Triangulate face (assumes convex face)
             for (let i = 1; i < face.indices.length - 1; i++) {
+                // The order matters - this creates outward-facing normals for rendering
                 indices.push(
-                    face.indices[0],
-                    face.indices[i],
-                    face.indices[i + 1]
+                    face.indices[0],    // Keep first vertex as pivot
+                    face.indices[i+1],   // order for rendering,
+                    face.indices[i],    // Reverse these two to flip the winding
                 );
             }
         }
         
         geometry.setIndex(indices);
-        geometry.computeVertexNormals();
         
-        return new THREE.Mesh(geometry, material);
+        // For flat shading, convert to non-indexed
+        const flatGeometry = toCreasedNormals(geometry, Math.PI / 2);
+        
+        // Enable flat shading on the material
+        if (material instanceof THREE.MeshStandardMaterial || 
+            material instanceof THREE.MeshPhongMaterial ||
+            material instanceof THREE.MeshLambertMaterial) {
+            material.flatShading = true;
+            material.needsUpdate = true;
+        }
+        
+        return new THREE.Mesh(flatGeometry, material);
     }
     
     /**
