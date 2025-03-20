@@ -278,6 +278,7 @@ export class Player {
         
         const particles = this.verletBody.getParticles();
         const constraints = this.verletBody.getConstraints();
+        const headParticle = particles[0]; // First particle is the head
         
         // Use different colors for local vs remote players
         const particleColor = this.id === 'local' ? 0x77dd77 : 0x6495ed;  // Green for local, blue for others
@@ -299,7 +300,7 @@ export class Player {
             const endPos = constraint.b.position;
             
             // Calculate beam thickness (can be adjusted)
-            const beamWidth = 0.2;
+            const beamWidth = 0.3;
             
             // Render a beam between the two particles
             renderer.renderBeam(
@@ -312,11 +313,59 @@ export class Player {
             );
         });
         
-        // Skip drawing eyes for now as requested
+        // Draw eyes using instanced rendering - now using lastMovementDir instead of forward
+        if (!this.isBlinking) {
+            // Define constants for eye rendering
+            const headRadius = headParticle.radius;
+            const eyeRadius = 0.3;
+            const pupilRadius = 0.05;
+            const upVector = new THREE.Vector3(0, 1, 0);
+            
+            // Use lastMovementDir instead of forward for eye orientation
+            const movementDirNormalized = this.lastMovementDir.clone().normalize();
+            const rightVector = new THREE.Vector3().crossVectors(upVector, movementDirNormalized).normalize();
+            
+            // Eye placement parameters
+            const eyeVerticalOffset = 0.1;  // Slightly above center
+            const eyeHorizontalOffset = 0.45; // Left/right offset
+            const eyeForwardOffset = 0.9;   // Toward front of head
+            
+            // Calculate positions for left and right eyes on the head surface
+            const leftEyeBasePos = new THREE.Vector3()
+                .addScaledVector(rightVector, -eyeHorizontalOffset)
+                .addScaledVector(upVector, eyeVerticalOffset)
+                .addScaledVector(movementDirNormalized, eyeForwardOffset);
+            
+            leftEyeBasePos.normalize().multiplyScalar(headRadius);
+            
+            const rightEyeBasePos = new THREE.Vector3()
+                .addScaledVector(rightVector, eyeHorizontalOffset)
+                .addScaledVector(upVector, eyeVerticalOffset)
+                .addScaledVector(movementDirNormalized, eyeForwardOffset);
+            
+            rightEyeBasePos.normalize().multiplyScalar(headRadius);
+            
+            // Final eye positions (relative to head center)
+            const leftEyePos = headParticle.position.clone().add(leftEyeBasePos);
+            const rightEyePos = headParticle.position.clone().add(rightEyeBasePos);
+            
+            // Render eyes (white spheres)
+            renderer.renderSphere(leftEyePos, eyeRadius, 0xffffff);
+            renderer.renderSphere(rightEyePos, eyeRadius, 0xffffff);
+            
+            // Calculate pupil positions (slightly in front of eyes)
+            const pupilOffset = eyeRadius; // How far the pupil sits in front of eye center
+            const leftPupilPos = leftEyePos.clone().add(movementDirNormalized.clone().multiplyScalar(pupilOffset));
+            const rightPupilPos = rightEyePos.clone().add(movementDirNormalized.clone().multiplyScalar(pupilOffset));
+            
+            // Render pupils (black spheres)
+            renderer.renderSphere(leftPupilPos, pupilRadius, 0x000000);
+            renderer.renderSphere(rightPupilPos, pupilRadius, 0x000000);
+        }
         
         // Draw debug arrows if in debug mode
         if (this.debugMode) {
-            const headPos = particles[0].position;
+            const headPos = headParticle.position;
             
             // Forward direction arrow (red)
             const forwardEnd = new THREE.Vector3().copy(headPos).add(
