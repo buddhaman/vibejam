@@ -143,14 +143,6 @@ export class Game {
             metalness: 0.5
         });
 
-        // // Create main ground area (larger than before)
-        // this.addStaticBody(StaticBody.createBox(
-        //     new THREE.Vector3(-50, -1, -50), // Min corner
-        //     new THREE.Vector3(50, 0, 50), // Max corner - 100x1x100 ground
-        //     baseMaterial,
-        //     "main-ground"
-        // ));
-        
         // STARTING AREA
         // =============
         // Starting platform at y=2 with stairs
@@ -350,20 +342,6 @@ export class Game {
             pointLight.position.copy(lightData.pos);
             this.scene.add(pointLight);
         }
-
-        // Add a ground plane with a matching color
-        const groundGeometry = new THREE.PlaneGeometry(20, 20);
-        const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xd4a5bd,  // Muted pink/purple for ground
-            roughness: 0.8,
-            metalness: 0.1,
-            side: THREE.DoubleSide
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = 0;
-        ground.receiveShadow = true;
-        this.scene.add(ground);
 
         // Set up event listeners
         this.setupControls();
@@ -780,10 +758,6 @@ export class Game {
                     const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
                     const tangentComponent = particleVelocity.clone().sub(normalComponent);
                     
-                    // Apply friction to tangential component
-                    const friction = 0.6; // 0=full friction, 1=no friction
-                    tangentComponent.multiplyScalar(friction);
-                    
                     // Calculate dynamic body velocity at the contact point
                     const bodyVelocity = new THREE.Vector3().copy(body.velocity);
                     
@@ -797,14 +771,23 @@ export class Game {
                     bodyVelocity.add(angularComponent);
                     
                     // Calculate rebound velocity with some bounce
-                    const restitution = 0.2; // 0=no bounce, 1=full bounce
+                    const restitution = 0.0; // 0=no bounce, 1=full bounce
                     const newNormalVelocity = normal.clone().multiplyScalar(-velAlongNormal * restitution);
                     
-                    // Combine for final particle velocity
-                    const newParticleVelocity = tangentComponent.clone().add(newNormalVelocity);
+                    // FIXED: Better blending of velocities with proper friction
+                    // First compute the relative tangential velocity
+                    const bodyTangentialVel = bodyVelocity.clone().projectOnPlane(normal);
+                    const relativeTangentialVel = tangentComponent.clone().sub(bodyTangentialVel);
                     
-                    // Add some of the body's velocity to the particle (carry effect)
-                    newParticleVelocity.add(bodyVelocity.clone().multiplyScalar(0.8));
+                    // Apply friction to the relative tangential velocity
+                    const friction = 0.2; // Lower value = higher friction
+                    relativeTangentialVel.multiplyScalar(friction);
+                    
+                    // Final tangential velocity = platform velocity + dampened relative velocity
+                    const finalTangentialVel = bodyTangentialVel.clone().add(relativeTangentialVel);
+                    
+                    // Combine normal and tangential components
+                    const newParticleVelocity = finalTangentialVel.clone().add(newNormalVelocity);
                     
                     // Update the previous position to create this new velocity
                     particle.previousPosition.copy(particlePosition).sub(newParticleVelocity);

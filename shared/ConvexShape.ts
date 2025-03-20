@@ -621,4 +621,56 @@ export class ConvexShape {
         
         return shape;
     }
+    
+    /**
+     * Create a mesh in local space (at origin)
+     */
+    createMeshLocal(material: THREE.Material): THREE.Mesh {
+        // If we have faces defined, use them to create the mesh
+        if (this.faces.length > 0) {
+            const geometry = new THREE.BufferGeometry();
+            
+            // Use localPoints instead of worldPoints
+            const positions: number[] = [];
+            for (const point of this.localPoints) {
+                positions.push(point.x, point.y, point.z);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            
+            const indices: number[] = [];
+            for (const face of this.faces) {
+                for (let i = 1; i < face.indices.length - 1; i++) {
+                    indices.push(
+                        face.indices[0],
+                        face.indices[i+1],
+                        face.indices[i]
+                    );
+                }
+            }
+            
+            geometry.setIndex(indices);
+            
+            // For flat shading
+            const flatGeometry = toCreasedNormals(geometry, Math.PI / 2);
+            
+            if (material instanceof THREE.MeshStandardMaterial || 
+                material instanceof THREE.MeshPhongMaterial ||
+                material instanceof THREE.MeshLambertMaterial) {
+                material.flatShading = true;
+                material.needsUpdate = true;
+            }
+            
+            return new THREE.Mesh(flatGeometry, material);
+        }
+        
+        // Fallback for simple shapes
+        const geometry = new THREE.BufferGeometry();
+        const positions: number[] = [];
+        for (const point of this.localPoints) {
+            positions.push(point.x, point.y, point.z);
+        }
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        return new THREE.Mesh(geometry, material);
+    }
 } 

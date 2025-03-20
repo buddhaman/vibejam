@@ -44,10 +44,60 @@ export class RigidBody {
             this.inertia.z > 0 ? 1.0 / this.inertia.z : 0
         );
         
-        // Create visual mesh
-        this.mesh = shape.createMesh(material);
+        // Create a standard Three.js mesh based on shape type
+        if (shape instanceof ConvexShape) {
+            // For box shapes, create a BoxGeometry
+            if (this.isBoxShape(shape)) {
+                const size = this.getBoxSize(shape);
+                const boxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+                this.mesh = new THREE.Mesh(boxGeometry, material);
+            }
+            // For more complex shapes, use the shape's mesh creation
+            else {
+                this.mesh = shape.createMesh(material);
+                // Reset the mesh to origin - we'll handle transform in syncMeshToShape
+                this.mesh.position.set(0, 0, 0);
+                this.mesh.quaternion.identity();
+            }
+        }
+        
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
+        
+        // Initial sync from shape to mesh
+        this.syncMeshToShape();
+    }
+    
+    /**
+     * Detect if shape is a box for optimized handling
+     */
+    private isBoxShape(shape: ConvexShape): boolean {
+        return shape.getLocalPoints().length === 8 && shape.faces.length === 6;
+    }
+    
+    /**
+     * Get box dimensions from shape
+     */
+    private getBoxSize(shape: ConvexShape): THREE.Vector3 {
+        const localPoints = shape.getLocalPoints();
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        
+        // Find min/max coords
+        for (const point of localPoints) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            minZ = Math.min(minZ, point.z);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+            maxZ = Math.max(maxZ, point.z);
+        }
+        
+        return new THREE.Vector3(
+            maxX - minX,
+            maxY - minY,
+            maxZ - minZ
+        );
     }
     
     /**
@@ -96,7 +146,15 @@ export class RigidBody {
         // Update the shape's transform
         this.shape.updateTransform();
         
-        // Update the mesh to match the shape
+        // Sync mesh to shape's transform directly
+        this.syncMeshToShape();
+    }
+    
+    /**
+     * Sync mesh transform to match shape transform exactly
+     */
+    private syncMeshToShape(): void {
+        // Copy transform directly from shape
         this.mesh.position.copy(this.shape.position);
         this.mesh.quaternion.copy(this.shape.orientation);
         this.mesh.scale.copy(this.shape.scaling);
@@ -243,15 +301,21 @@ export class RigidBody {
         const shape = new ConvexShape(points, faces);
         shape.setPosition(position);
         
-        // For visual representation, we'll override the mesh in the constructor
+        // Create the rigid body
         const body = new RigidBody(shape, mass, material);
         
-        // Replace the default mesh with a proper sphere geometry
+        // Override mesh with a proper sphere geometry
         const sphereGeometry = new THREE.SphereGeometry(radius, segments, segments);
         body.mesh = new THREE.Mesh(sphereGeometry, material);
-        body.mesh.position.copy(position);
+        
+        // Initialize mesh with identity transform - syncMeshToShape will apply the actual transform
+        body.mesh.position.set(0, 0, 0);
+        body.mesh.quaternion.identity();
         body.mesh.castShadow = true;
         body.mesh.receiveShadow = true;
+        
+        // Apply initial transform
+        body.syncMeshToShape();
         
         return body;
     }
