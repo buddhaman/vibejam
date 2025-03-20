@@ -17,6 +17,11 @@ export class Player {
     private isBlinking: boolean = false;
     private rendererInitialized: boolean = false;
 
+    // New properties to store input state
+    private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+    private isJumping: boolean = false;
+    private isSqueezing: boolean = false;
+
     constructor(id: string, toonTexture?: THREE.Texture, enableDebug: boolean = false) {
         this.id = id;
         this.verletBody = new VerletBody();
@@ -74,30 +79,38 @@ export class Player {
         // No need for creating traditional meshes since we'll use instanced rendering
     }
 
+    /**
+     * Handle user input by storing the input state only - no physics here
+     */
     public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean; space: boolean; shift?: boolean }): void {
-        this.isMoving = input.w || input.a || input.s || input.d || input.space || !!input.shift;
-
+        // Set movement flags based on input
+        this.isMoving = input.w || input.a || input.s || input.d;
+        this.isJumping = input.space || false;
+        this.isSqueezing = input.shift || false;
+        
         // Calculate the perpendicular vector for left/right movement
         const upVector = new THREE.Vector3(0, 1, 0);
         const rightVector = new THREE.Vector3().crossVectors(this.forward, upVector).normalize();
 
-        // Create a single movement direction vector based on input
-        const movementDir = new THREE.Vector3(0, 0, 0);
-        if (input.w) movementDir.add(this.forward);
-        if (input.s) movementDir.sub(this.forward);
-        if (input.a) movementDir.sub(rightVector);
-        if (input.d) movementDir.add(rightVector);
+        // Set movement direction based on input - store it, don't apply forces yet
+        this.inputDirection.set(0, 0, 0);
+        if (input.w) this.inputDirection.add(this.forward);
+        if (input.s) this.inputDirection.sub(this.forward);
+        if (input.a) this.inputDirection.sub(rightVector);
+        if (input.d) this.inputDirection.add(rightVector);
         
-        // Only normalize if there's movement
-        if (movementDir.lengthSq() > 0) {
-            movementDir.normalize();
-            // Update last movement direction
-            this.lastMovementDir.copy(movementDir);
+        // Normalize if there's movement
+        if (this.inputDirection.lengthSq() > 0) {
+            this.inputDirection.normalize();
+            // Update last movement direction for rendering
+            this.lastMovementDir.copy(this.inputDirection);
         }
+    }
 
+    public fixedUpdate(): void {
         const particles = this.verletBody.getParticles();
         
-        // Find highest and lowest particles based on the up vector
+        // Find relevant particles for applying forces
         let highestParticle = particles[0];
         let lowestParticle = particles[0];
         
@@ -109,28 +122,28 @@ export class Player {
                 lowestParticle = particle;
             }
         });
-
-        // Find most forward and backward particles in the movement direction
-        let mostForwardParticle = particles[0];
-        let mostBackwardParticle = particles[0];
         
-        if (movementDir.lengthSq() > 0) {
+        const headParticle = particles[0];
+        
+        // Movement forces - now applied in fixedUpdate based on stored inputDirection
+        if (this.isMoving && this.inputDirection.lengthSq() > 0) {
+            // Find most forward and backward particles in the movement direction
+            let mostForwardParticle = particles[0];
+            let mostBackwardParticle = particles[0];
+            
             particles.forEach(particle => {
-                const dirDistance = particle.position.dot(movementDir);
-                if (dirDistance > mostForwardParticle.position.dot(movementDir)) {
+                const dirDistance = particle.position.dot(this.inputDirection);
+                if (dirDistance > mostForwardParticle.position.dot(this.inputDirection)) {
                     mostForwardParticle = particle;
                 }
-                if (dirDistance < mostBackwardParticle.position.dot(movementDir)) {
+                if (dirDistance < mostBackwardParticle.position.dot(this.inputDirection)) {
                     mostBackwardParticle = particle;
                 }
             });
             
             // Apply movement forces
-            // Force to lowest particle in movement direction
-            const moveImpulse = movementDir.clone().multiplyScalar(this.moveSpeed);
+            const moveImpulse = this.inputDirection.clone().multiplyScalar(this.moveSpeed);
             lowestParticle.applyImpulse(moveImpulse.clone().negate());
-            
-            // Reverse force to highest particle
             highestParticle.applyImpulse(moveImpulse.clone());
             
             // Vertical forces to create rotation
@@ -138,36 +151,27 @@ export class Player {
             mostBackwardParticle.applyImpulse(new THREE.Vector3(0, this.moveSpeed, 0));
         }
         
-        // Handle spacebar action - apply equal and opposite forces
-        if (input.space) {
-            // Apply equal and opposite forces (net force = 0)
-            const stretchForce = 0.8; // Adjust this value for desired stretch amount
+        // Jumping/stretching - apply in fixedUpdate based on isJumping flag
+        if (this.isJumping) {
+            const stretchForce = 0.8;
             highestParticle.applyImpulse(new THREE.Vector3(0, stretchForce, 0));
             lowestParticle.applyImpulse(new THREE.Vector3(0, -stretchForce, 0));
         }
         
-        // Handle shift action - squeeze (opposite of stretch)
-        if (input.shift) {
+        // Squeezing - apply in fixedUpdate based on isSqueezing flag
+        if (this.isSqueezing) {
             const squeezeForce = 0.2;
             highestParticle.applyImpulse(new THREE.Vector3(0, -squeezeForce, 0));
             lowestParticle.applyImpulse(new THREE.Vector3(0, squeezeForce, 0));
         }
-    }
-
-    public fixedUpdate(): void {
-        // Update physics
-        this.verletBody.update();
-
-        // Apply standing force to head only when not moving
-        const particles = this.verletBody.getParticles();
-        const headParticle = particles[0];
         
+        // Standing force - always applied in fixedUpdate
         let standingForce: number = 0.30;
         if (!this.isMoving) {
             standingForce = 0.45;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
-
+        
         // Apply repulsive forces between particles
         particles.forEach((particle1, i) => {
             particles.forEach((particle2, j) => {
@@ -183,11 +187,14 @@ export class Player {
                 }
             });
         });
+        
+        // Update physics - call this after all forces have been applied
+        this.verletBody.update();
 
         // Handle internal collisions
         this.verletBody.handleInternalCollisions();
 
-        // Update blinking animation with deltaTime
+        // Update blinking animation
         this.updateBlinking();
     }
 
