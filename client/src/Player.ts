@@ -13,7 +13,7 @@ export class Player {
     public debugMode: boolean = false;
     private blinkTimer: number = 0;
     private blinkDuration: number = 0;
-    private nextBlinkTime: number = Math.random() * 3000 + 2000; // 2-5 seconds
+    private nextBlinkTime: number = Math.random() * 60 + 20; // 20-80 frames
     private isBlinking: boolean = false;
     private rendererInitialized: boolean = false;
 
@@ -154,7 +154,7 @@ export class Player {
         }
     }
 
-    public fixedUpdate(deltaTime: number = 16.67): void {
+    public fixedUpdate(): void {
         // Update physics
         this.verletBody.update();
 
@@ -188,7 +188,7 @@ export class Player {
         this.verletBody.handleInternalCollisions();
 
         // Update blinking animation with deltaTime
-        this.updateBlinking(deltaTime);
+        this.updateBlinking();
     }
 
     /**
@@ -228,21 +228,11 @@ export class Player {
     }
 
     /**
-     * This method doesn't need to do anything with instanced rendering
-     * But we keep it for compatibility with existing code
-     */
-    public updateToonTexture(toonTexture?: THREE.Texture): void {
-        // No need to do anything since materials are handled by the instanced renderer
-    }
-
-    /**
      * Handles eye blinking and updates the blink timer
      * @param deltaTime Time since last frame in ms
      */
-    private updateBlinking(deltaTime: number): void {
-        // Update blink timer
-        this.blinkTimer += deltaTime;
-        
+    private updateBlinking(): void {
+        this.blinkTimer++;
         // If blinking, check if we should stop
         if (this.isBlinking) {
             if (this.blinkTimer >= this.blinkDuration) {
@@ -251,7 +241,7 @@ export class Player {
                 
                 // Reset for next blink
                 this.blinkTimer = 0;
-                this.nextBlinkTime = Math.random() * 1000 + 800; // 2-5 seconds
+                this.nextBlinkTime = Math.random() * 60 + 20; // 20-80 frames
             }
         } 
         // Not blinking, check if it's time to blink
@@ -259,8 +249,8 @@ export class Player {
             // Start blinking
             this.isBlinking = true;
             
-            // Set blink duration
-            this.blinkDuration = Math.random() * 100 + 50; // 50-150ms
+            // Set blink duration 3 to 5 frames
+            this.blinkDuration = 3 + Math.random() * 5; 
             this.blinkTimer = 0;
         }
     }

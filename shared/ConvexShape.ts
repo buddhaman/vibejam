@@ -2,48 +2,127 @@ import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
- * Represents a 3D convex shape with efficient collision detection
+ * Represents a 3D convex shape with efficient collision detection and transform capabilities
  */
 export class ConvexShape {
-    // Points defining the convex shape
-    points: THREE.Vector3[];
+    // Original local-space points (never change after creation)
+    private localPoints: THREE.Vector3[];
+    
+    // World-space points (updated when transform changes)
+    private worldPoints: THREE.Vector3[];
+    
+    // Transform components
+    public position: THREE.Vector3;
+    public orientation: THREE.Quaternion;
+    public scaling: THREE.Vector3;
+    
+    // Transform matrix
+    private worldMatrix: THREE.Matrix4;
     
     // Faces of the convex shape (each face is a polygon defined by point indices)
     faces: { indices: number[] }[];
     
     // Cached data for performance
-    boundingSphere: { center: THREE.Vector3, radius: number };
+    boundingSphere: { center: THREE.Vector3, radius: number } = { center: new THREE.Vector3(), radius: 0 };
     
     /**
      * Create a convex shape from points and faces
-     * @param points Array of points defining the convex shape
+     * @param points Array of points defining the convex shape in local space
      * @param faces Array of faces, each defined by indices into the points array
      */
     constructor(points: THREE.Vector3[], faces?: { indices: number[] }[]) {
-        this.points = points;
+        // Store local points (clone to avoid external modification)
+        this.localPoints = points.map(p => p.clone());
+        
+        // Initialize transform components
+        this.position = new THREE.Vector3();
+        this.orientation = new THREE.Quaternion();
+        this.scaling = new THREE.Vector3(1, 1, 1);
+        
+        // Initialize transform matrix
+        this.worldMatrix = new THREE.Matrix4();
+        
+        // Initialize world points array with same size as local points
+        this.worldPoints = this.localPoints.map(p => p.clone());
         
         // If faces are not provided, we assume it's a simple shape
-        // and faces will be computed during collision detection
         this.faces = faces || [];
         
-        // Calculate bounding sphere
+        // Update transform to initialize world points
+        this.updateTransform();
+    }
+    
+    /**
+     * Update the transform and recalculate world points
+     */
+    public updateTransform(): void {
+        // Update the transform matrix
+        this.worldMatrix.compose(this.position, this.orientation, this.scaling);
+        
+        // Update all world points by transforming local points
+        for (let i = 0; i < this.localPoints.length; i++) {
+            this.worldPoints[i].copy(this.localPoints[i]).applyMatrix4(this.worldMatrix);
+        }
+        
+        // Recalculate bounding sphere
         this.boundingSphere = this.calculateBoundingSphere();
+    }
+    
+    /**
+     * Set the position of the shape
+     * @param position New position vector
+     */
+    public setPosition(position: THREE.Vector3): void {
+        this.position.copy(position);
+        this.updateTransform();
+    }
+    
+    /**
+     * Set the orientation of the shape
+     * @param orientation New orientation quaternion
+     */
+    public setOrientation(orientation: THREE.Quaternion): void {
+        this.orientation.copy(orientation);
+        this.updateTransform();
+    }
+    
+    /**
+     * Set the scale of the shape
+     * @param scale New scale vector
+     */
+    public setScale(scale: THREE.Vector3): void {
+        this.scaling.copy(scale);
+        this.updateTransform();
+    }
+    
+    /**
+     * Get the world-space points of the shape
+     */
+    public getWorldPoints(): THREE.Vector3[] {
+        return this.worldPoints;
+    }
+    
+    /**
+     * Get the local-space points of the shape
+     */
+    public getLocalPoints(): THREE.Vector3[] {
+        return this.localPoints;
     }
     
     /**
      * Calculate a bounding sphere for quick rejection tests
      */
     public calculateBoundingSphere(): { center: THREE.Vector3, radius: number } {
-        // Find centroid
+        // Find centroid of world points
         const center = new THREE.Vector3();
-        for (const point of this.points) {
+        for (const point of this.worldPoints) {
             center.add(point);
         }
-        center.divideScalar(this.points.length);
+        center.divideScalar(this.worldPoints.length);
         
         // Find radius (maximum distance from centroid to any point)
         let maxDistSq = 0;
-        for (const point of this.points) {
+        for (const point of this.worldPoints) {
             const distSq = center.distanceToSquared(point);
             if (distSq > maxDistSq) {
                 maxDistSq = distSq;
@@ -78,9 +157,9 @@ export class ConvexShape {
             
             // Test each face
             for (const face of this.faces) {
-                const facePoints = face.indices.map(idx => this.points[idx]);
+                const facePoints = face.indices.map(idx => this.worldPoints[idx]);
                 const normal = this.calculateFaceNormal(facePoints);
-                const point = this.points[face.indices[0]];
+                const point = this.worldPoints[face.indices[0]];
                 
                 // Calculate distance from sphere center to face plane
                 const distToPlane = normal.dot(new THREE.Vector3().subVectors(sphereCenter, point));
@@ -118,8 +197,7 @@ export class ConvexShape {
             }
         }
         
-        // Standard closest point approach for cases without faces
-        // or when the sphere is not fully inside or clearly penetrating a face
+        // Standard closest point approach for other cases
         const closestPoint = this.findClosestPoint(sphereCenter);
         const distanceToClosest = sphereCenter.distanceTo(closestPoint);
         
@@ -172,7 +250,7 @@ export class ConvexShape {
         
         // Check each face
         for (const face of this.faces) {
-            const facePoints = face.indices.map(idx => this.points[idx]);
+            const facePoints = face.indices.map(idx => this.worldPoints[idx]);
             
             // Find closest point on this face
             const faceClosest = this.projectPointOnFace(point, facePoints);
@@ -188,8 +266,8 @@ export class ConvexShape {
         for (const face of this.faces) {
             const indices = face.indices;
             for (let i = 0; i < indices.length; i++) {
-                const p1 = this.points[indices[i]];
-                const p2 = this.points[indices[(i + 1) % indices.length]];
+                const p1 = this.worldPoints[indices[i]];
+                const p2 = this.worldPoints[indices[(i + 1) % indices.length]];
                 
                 const edgeClosest = this.closestPointOnLine(point, p1, p2);
                 const distSq = point.distanceToSquared(edgeClosest);
@@ -202,7 +280,7 @@ export class ConvexShape {
         }
         
         // Check each vertex
-        for (const p of this.points) {
+        for (const p of this.worldPoints) {
             const distSq = point.distanceToSquared(p);
             if (distSq < minDistSq) {
                 minDistSq = distSq;
@@ -218,24 +296,24 @@ export class ConvexShape {
      * Good for simple convex shapes without face information
      */
     public findClosestPointSimplex(point: THREE.Vector3): THREE.Vector3 {
-        // For simple cases, just check all points
-        if (this.points.length <= 8) {
-            let closestPoint = this.points[0];
+        // For simple cases, just check all vertices
+        if (this.worldPoints.length <= 8) {
+            let closestPoint = this.worldPoints[0];
             let minDistSq = point.distanceToSquared(closestPoint);
             
-            for (let i = 1; i < this.points.length; i++) {
-                const distSq = point.distanceToSquared(this.points[i]);
+            for (let i = 1; i < this.worldPoints.length; i++) {
+                const distSq = point.distanceToSquared(this.worldPoints[i]);
                 if (distSq < minDistSq) {
                     minDistSq = distSq;
-                    closestPoint = this.points[i];
+                    closestPoint = this.worldPoints[i];
                 }
             }
             
             // Check all edges
-            for (let i = 0; i < this.points.length; i++) {
-                for (let j = i + 1; j < this.points.length; j++) {
+            for (let i = 0; i < this.worldPoints.length; i++) {
+                for (let j = i + 1; j < this.worldPoints.length; j++) {
                     const edgeClosest = this.closestPointOnLine(
-                        point, this.points[i], this.points[j]
+                        point, this.worldPoints[i], this.worldPoints[j]
                     );
                     
                     const distSq = point.distanceToSquared(edgeClosest);
@@ -259,7 +337,7 @@ export class ConvexShape {
             improved = false;
             
             // Try to move toward each point
-            for (const p of this.points) {
+            for (const p of this.worldPoints) {
                 const testPoint = new THREE.Vector3().addVectors(current, p).multiplyScalar(0.5);
                 const testDistSq = point.distanceToSquared(testPoint);
                 
@@ -391,8 +469,8 @@ export class ConvexShape {
         const tempFaces: { indices: number[] }[] = [];
         
         // Simple approach: create triangles from first point to all other point pairs
-        if (this.points.length >= 3) {
-            for (let i = 1; i < this.points.length - 1; i++) {
+        if (this.localPoints.length >= 3) {
+            for (let i = 1; i < this.localPoints.length - 1; i++) {
                 tempFaces.push({ indices: [0, i, i + 1] });
             }
             
@@ -407,7 +485,7 @@ export class ConvexShape {
         // Fallback for too few points
         const geometry = new THREE.BufferGeometry();
         const positions: number[] = [];
-        for (const point of this.points) {
+        for (const point of this.worldPoints) {
             positions.push(point.x, point.y, point.z);
         }
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -418,21 +496,17 @@ export class ConvexShape {
      * Create mesh using predefined faces
      */
     public createMeshFromFaces(material: THREE.Material): THREE.Mesh {
-        // When converting to a mesh, we need to flip the winding order for rendering
-        // compared to what we use for collision detection
-        
         const geometry = new THREE.BufferGeometry();
         
         // Add all points
         const positions: number[] = [];
-        for (const point of this.points) {
+        for (const point of this.worldPoints) {
             positions.push(point.x, point.y, point.z);
         }
         
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         
         // For rendering with outward normals, we need to reverse the winding order
-        // from what's used in the collision detection
         const indices: number[] = [];
         for (const face of this.faces) {
             // Triangulate face (assumes convex face)
@@ -533,6 +607,18 @@ export class ConvexShape {
             { indices: [3, 2, 6, 7] }  // Top face
         ];
         
-        return new ConvexShape(points, faces);
+        // Create the shape with local points at origin
+        const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+        const shape = new ConvexShape(points, faces);
+        
+        // Position it at the midpoint
+        shape.setPosition(midpoint);
+        
+        // Calculate orientation to align with the beam direction
+        const defaultDir = new THREE.Vector3(0, 0, 1);
+        const rotationQuat = new THREE.Quaternion().setFromUnitVectors(defaultDir, direction);
+        shape.setOrientation(rotationQuat);
+        
+        return shape;
     }
 } 
