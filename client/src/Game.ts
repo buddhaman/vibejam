@@ -564,15 +564,47 @@ export class Game {
             }
         }
         
-        // Add test rendering
-        this.testTime += 0.001;
-        this.instancedRenderer.reset();
+        // Continue the game loop
+        requestAnimationFrame(this.update.bind(this));
+    }
+
+    public fixedUpdate(): void {
+        // Calculate the forward vector using cameraPhi and cameraTheta
+        const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
+        const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
+
+        // Update the local player's forward vector
+        if (this.localPlayer) {
+            this.localPlayer.forward.set(forwardX, 0, forwardZ).normalize();
+            
+            this.localPlayer.handleInput({
+                w: this.inputKeys['w'] || false,
+                a: this.inputKeys['a'] || false,
+                s: this.inputKeys['s'] || false,
+                d: this.inputKeys['d'] || false,
+                space: this.inputKeys[' '] || false,
+                shift: this.inputKeys['shift'] || false
+            });
+        }
+
+        // Update all players
+        this.players.forEach(player => {
+            player.fixedUpdate();
+            
+            // Check collisions with static bodies after player movement
+            this.checkPlayerCollisions(player);
+        });
         
+        this.players.forEach(player => player.setDebugMode(true));
+
+        this.testTime += 0.016; // Consistent time increment (roughly 60fps)
+        this.instancedRenderer.reset();
+
         // Draw a simple animated structure
         const center = new THREE.Vector3(0, 5, 0);
         const radius = 2;
         const segments = 12;
-        
+
         // Draw a ring of connected spheres and beams
         for (let i = 0; i < segments; i++) {
             const angle1 = (i / segments) * Math.PI * 2 + this.testTime;
@@ -607,41 +639,8 @@ export class Game {
                 0x88ccaa
             );
         }
-        
+
         this.instancedRenderer.update();
-        
-        // Continue the game loop
-        requestAnimationFrame(this.update.bind(this));
-    }
-
-    public fixedUpdate(): void {
-        // Calculate the forward vector using cameraPhi and cameraTheta
-        const forwardX = -Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
-        const forwardZ = -Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
-
-        // Update the local player's forward vector
-        if (this.localPlayer) {
-            this.localPlayer.forward.set(forwardX, 0, forwardZ).normalize();
-            
-            this.localPlayer.handleInput({
-                w: this.inputKeys['w'] || false,
-                a: this.inputKeys['a'] || false,
-                s: this.inputKeys['s'] || false,
-                d: this.inputKeys['d'] || false,
-                space: this.inputKeys[' '] || false,
-                shift: this.inputKeys['shift'] || false
-            });
-        }
-
-        // Update all players
-        this.players.forEach(player => {
-            player.fixedUpdate();
-            
-            // Check collisions with static bodies after player movement
-            this.checkPlayerCollisions(player);
-        });
-        
-        this.players.forEach(player => player.setDebugMode(true));
     }
 
     /**
