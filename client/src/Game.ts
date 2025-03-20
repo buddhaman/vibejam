@@ -567,6 +567,9 @@ export class Game {
         this.players.forEach(player => {
             player.fixedUpdate();
             
+            // Add rope interaction check
+            this.checkPlayerRopeInteraction(player);
+            
             // Check collisions with static bodies after player movement
             this.checkPlayerCollisions(player);
         });
@@ -1066,5 +1069,24 @@ export class Game {
             return this.ropes[index];
         }
         return undefined;
+    }
+
+    public checkPlayerRopeInteraction(player: Player): void {
+        const playerPos = player.getPosition();
+        const interactionRadius = 3.0; // How close player needs to be to grab rope
+        
+        // If player already has a rope, don't check for new ones
+        if (player.rope) return;
+        
+        // Check each rope's end position against player position
+        for (const rope of this.ropes) {
+            const ropeEndPos = rope.getEndPosition();
+            const distanceToRope = playerPos.distanceTo(ropeEndPos);
+            
+            if (distanceToRope < interactionRadius) {
+                player.rope = rope;
+                break;
+            }
+        }
     }
 } 

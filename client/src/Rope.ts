@@ -79,7 +79,9 @@ export class Rope {
     }
     
     public applyForceToEnd(force: THREE.Vector3): void {
-        this.endParticle.applyImpulse(force);
+        if (this.endParticle) {
+            this.endParticle.applyImpulse(force);
+        }
     }
     
     public setEndPosition(position: THREE.Vector3): void {

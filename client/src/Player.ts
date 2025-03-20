@@ -18,7 +18,7 @@ export class Player {
     private isBlinking: boolean = false;
     private rendererInitialized: boolean = false;
     // Current rope the player is holding
-    public rope: Rope;
+    public rope: Rope | null = null;
 
     // New properties to store input state
     private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -138,6 +138,8 @@ export class Player {
         // Find relevant particles for applying forces
         let highestParticle = particles[0];
         let lowestParticle = particles[0];
+        let leftHand = particles[7];  // Based on the constructor particle order
+        let rightHand = particles[9]; // Based on the constructor particle order
         
         particles.forEach(particle => {
             if (particle.position.y > highestParticle.position.y) {
@@ -149,6 +151,54 @@ export class Player {
         });
         
         const headParticle = particles[0];
+        
+        // Handle rope interaction
+        if (this.rope) {
+            const ropeEndPos = this.rope.getEndPosition();
+            const handMidpoint = new THREE.Vector3().addVectors(leftHand.position, rightHand.position).multiplyScalar(0.5);
+            
+            // If shift is pressed, release the rope
+            if (this.isSqueezing) {
+                this.rope = null;
+            } else {
+                // Calculate the force needed to move hands to rope
+                const toRope = new THREE.Vector3().subVectors(ropeEndPos, handMidpoint);
+                const distance = toRope.length();
+                
+                // Apply spring-like force to hands
+                const springStrength = 0.3;
+                const handForce = toRope.normalize().multiplyScalar(distance * springStrength);
+                
+                // Apply force to hands
+                leftHand.applyImpulse(handForce);
+                rightHand.applyImpulse(handForce);
+                
+                // Apply opposite force to rope end
+                const ropeForce = handForce.clone().multiplyScalar(-1);
+                this.rope.applyForceToEnd(ropeForce);
+                
+                // Add player's movement influence to rope
+                if (this.isMoving && this.inputDirection.lengthSq() > 0) {
+                    const moveForce = this.inputDirection.clone().multiplyScalar(this.moveSpeed * 0.5);
+                    this.rope.applyForceToEnd(moveForce);
+                }
+                
+                // Add gravity influence from player to rope
+                const playerMass = 1.0;
+                const gravityForce = new THREE.Vector3(0, -0.1 * playerMass, 0);
+                this.rope.applyForceToEnd(gravityForce);
+                
+                // Final position correction to ensure hands align with rope
+                // This ensures visual connection while maintaining physical simulation
+                const finalHandPos = this.rope.getEndPosition();
+                const handOffset = new THREE.Vector3(0.2, 0, 0); // Slight offset between hands
+                
+                leftHand.position.copy(finalHandPos).sub(handOffset);
+                rightHand.position.copy(finalHandPos).add(handOffset);
+                leftHand.previousPosition.copy(leftHand.position);
+                rightHand.previousPosition.copy(rightHand.position);
+            }
+        }
         
         // Movement forces - now applied in fixedUpdate based on stored inputDirection
         if (this.isMoving && this.inputDirection.lengthSq() > 0) {
@@ -194,6 +244,9 @@ export class Player {
         let standingForce: number = 0.2;
         if (!this.isMoving) {
             standingForce = 0.3;
+        }
+        if(this.rope){
+            standingForce = 0.0;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
         
