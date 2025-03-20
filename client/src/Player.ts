@@ -138,8 +138,8 @@ export class Player {
         // Find relevant particles for applying forces
         let highestParticle = particles[0];
         let lowestParticle = particles[0];
-        let leftHand = particles[7];  // Based on the constructor particle order
-        let rightHand = particles[9]; // Based on the constructor particle order
+        let leftHand = particles[8];  // Changed from 7 to 8 (left hand)
+        let rightHand = particles[10]; // Changed from 9 to 10 (right hand)
         
         particles.forEach(particle => {
             if (particle.position.y > highestParticle.position.y) {
