@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Verlet, VerletBody } from '../../shared/Verlet';
 import { InstancedRenderer } from './Render';
+import { Rope } from './Rope';
 
 export class Player {
     public id: string;
@@ -16,6 +17,8 @@ export class Player {
     private nextBlinkTime: number = Math.random() * 60 + 20; // 20-80 frames
     private isBlinking: boolean = false;
     private rendererInitialized: boolean = false;
+    // Current rope the player is holding
+    public rope: Rope;
 
     // New properties to store input state
     private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);

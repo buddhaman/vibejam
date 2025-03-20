@@ -9,8 +9,8 @@ export class Rope {
     private totalLength: number;
     
     // Store the first and last particles for easy access
-    private startParticle!: Verlet;
-    private endParticle!: Verlet;
+    public startParticle!: Verlet;
+    public endParticle!: Verlet;
     
     constructor(
         fixedPoint: THREE.Vector3,

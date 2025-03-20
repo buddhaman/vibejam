@@ -630,7 +630,7 @@ export class Game {
         // Update and render all ropes
         this.ropes.forEach(rope => {
             rope.update();
-            rope.render(this.instancedRenderer, 0xff5555); // Default red color
+            rope.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
         });
     }
 
@@ -1034,28 +1034,29 @@ export class Game {
     public createTestRopes(): void {
         // Create a few test ropes at different locations
         this.addRope(
-            new THREE.Vector3(5, 10, 0),  // Fixed point
-            15,                          // Segments
-            7,                           // Length
-            0.1,                         // Radius
-            0xff2222                     // Red color
+            new THREE.Vector3(5, 25, 0),    // Higher fixed point
+            20,                             // More segments
+            20,                             // Longer length
+            0.2,                            // Thicker radius
+            0xff2222                        // Red color
         );
         
-        this.addRope(
-            new THREE.Vector3(-5, 8, 3),  // Fixed point
-            10,                          // Segments
-            4,                           // Length
-            0.08,                        // Radius
-            0x22ff22                     // Green color
+        let rope = this.addRope(
+            new THREE.Vector3(-5, 30, 3),   // Higher fixed point
+            15,                             // More segments
+            20,                             // Longer length
+            0.2,                            // Thicker radius
+            0x22ff22                        // Green color
         );
+        rope.endParticle.applyImpulse(new THREE.Vector3(0, 0, 10));
         
         // Add a rope from the final platform
         this.addRope(
-            new THREE.Vector3(0, 102, 0),  // From top of the gold platform
-            25,                           // More segments for longer rope
-            20,                           // Longer length
-            0.15,                         // Thicker
-            0xffff22                      // Yellow color
+            new THREE.Vector3(0, 102, 0),   // From top of the gold platform
+            30,                             // More segments for longer rope
+            30,                             // Much longer length
+            0.2,                            // Thicker radius
+            0xffff22                        // Yellow color
         );
     }
     
