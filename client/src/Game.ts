@@ -5,6 +5,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { StaticBody } from './StaticBody';
 import { InstancedRenderer } from './Render';
 import { RigidBody } from './RigidBody';
+import { Rope } from './Rope';
 
 export class Game {
     public scene: THREE.Scene;
@@ -41,6 +42,9 @@ export class Game {
     private instancedRenderer: InstancedRenderer;
     private testTime: number = 0;
 
+    // Add rope collection to Game class
+    public ropes: Rope[] = [];
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -74,6 +78,9 @@ export class Game {
         
         // Create dynamic platforms
         this.createDynamicPlatforms();
+        
+        // Create test ropes
+        this.createTestRopes();
     }
 
     /**
@@ -619,6 +626,12 @@ export class Game {
             // Check collisions with dynamic bodies (new code)
             this.checkPlayerDynamicBodyCollisions(player);
         });
+
+        // Update and render all ropes
+        this.ropes.forEach(rope => {
+            rope.update();
+            rope.render(this.instancedRenderer, 0xff5555); // Default red color
+        });
     }
 
     /**
@@ -994,5 +1007,63 @@ export class Game {
         // Set fast rotation on X axis to create the flipping effect
         flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
         this.addDynamicBody(flippingPlatform);
+    }
+
+    /**
+     * Add a rope to the game
+     * @param fixedPoint The point where the rope is attached
+     * @param segments Number of segments in the rope
+     * @param length Total length of the rope
+     * @param radius Radius of each rope particle
+     * @param color Color of the rope
+     * @returns The created rope
+     */
+    public addRope(
+        fixedPoint: THREE.Vector3,
+        segments: number = 10,
+        length: number = 5,
+        radius: number = 0.1,
+        color: number = 0xff0000
+    ): Rope {
+        const rope = new Rope(fixedPoint, segments, length, radius);
+        this.ropes.push(rope);
+        return rope;
+    }
+    
+    // Add this to the init method or constructor
+    public createTestRopes(): void {
+        // Create a few test ropes at different locations
+        this.addRope(
+            new THREE.Vector3(5, 10, 0),  // Fixed point
+            15,                          // Segments
+            7,                           // Length
+            0.1,                         // Radius
+            0xff2222                     // Red color
+        );
+        
+        this.addRope(
+            new THREE.Vector3(-5, 8, 3),  // Fixed point
+            10,                          // Segments
+            4,                           // Length
+            0.08,                        // Radius
+            0x22ff22                     // Green color
+        );
+        
+        // Add a rope from the final platform
+        this.addRope(
+            new THREE.Vector3(0, 102, 0),  // From top of the gold platform
+            25,                           // More segments for longer rope
+            20,                           // Longer length
+            0.15,                         // Thicker
+            0xffff22                      // Yellow color
+        );
+    }
+    
+    // Add method to get rope by index
+    public getRope(index: number): Rope | undefined {
+        if (index >= 0 && index < this.ropes.length) {
+            return this.ropes[index];
+        }
+        return undefined;
     }
 } 
