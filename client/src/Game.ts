@@ -694,6 +694,8 @@ export class Game {
         // Use constant velocities - never scaled by deltaTime
         const HORIZONTAL_VELOCITY = 0.05;
         const VERTICAL_VELOCITY = 0.04;
+        const ROTATION_VELOCITY = 0.02;
+        const FAST_ROTATION_VELOCITY = 0.1;
         
         // For horizontal moving platforms - reverse at x boundaries
         if (Math.abs(body.velocity.x) > 0.01 && Math.abs(body.velocity.y) < 0.01) {
@@ -719,6 +721,19 @@ export class Game {
             body.velocity.set(0, 0, 0);
             body.angularVelocity.set(0, 0, 0);
             body.shape.updateTransform();
+        }
+        
+        // Special handling for the X-axis flipping platform
+        // If this is the flipping platform (identified by rotation on X axis)
+        if (Math.abs(body.angularVelocity.x) > 0.04) {
+            // Keep it in place in Z position and don't change its rotation speed
+            body.velocity.set(0, 0, 0); // Make it stay in one place
+            
+            // Make sure it maintains the fast rotation - might get dampened otherwise
+            if (Math.abs(body.angularVelocity.x) < FAST_ROTATION_VELOCITY) {
+                body.angularVelocity.x = (body.angularVelocity.x > 0) ? 
+                    FAST_ROTATION_VELOCITY : -FAST_ROTATION_VELOCITY;
+            }
         }
     }
     
@@ -927,39 +942,57 @@ export class Game {
             roughness: 0.4, metalness: 0.6
         });
         
+        const purpleMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff33ff, emissive: 0xff33ff, emissiveIntensity: 0.3,
+            roughness: 0.3, metalness: 0.7
+        });
+        
         // Constants for fixed physics behavior (never scaled by deltaTime)
         const HORIZONTAL_VELOCITY = 0.05;
         const VERTICAL_VELOCITY = 0.04;
         const ROTATION_VELOCITY = 0.02;
+        const FAST_ROTATION_VELOCITY = 0.02; // Faster rotation for the flipping platform
         
-        // 1. Horizontal moving platform
+        // 1. Horizontal moving platform - BIGGER
         const horizontalPlatform = RigidBody.createBox(
             new THREE.Vector3(-8, 2.2, 0),
-            new THREE.Vector3(6, 0.6, 6),
-            8.0,
+            new THREE.Vector3(8, 1.2, 8), // Increased size
+            15.0, // Increased mass
             redMaterial
         );
         horizontalPlatform.velocity.set(HORIZONTAL_VELOCITY, 0, 0);
         this.addDynamicBody(horizontalPlatform);
         
-        // 2. Vertical moving platform
+        // 2. Vertical moving platform - BIGGER
         const verticalPlatform = RigidBody.createBox(
             new THREE.Vector3(0, 2.7, -8),
-            new THREE.Vector3(6, 0.6, 6),
-            8.0,
+            new THREE.Vector3(8, 0.8, 8), // Increased size
+            15.0, // Increased mass
             blueMaterial
         );
         verticalPlatform.velocity.set(0, VERTICAL_VELOCITY, 0);
         this.addDynamicBody(verticalPlatform);
         
-        // 3. Rotating platform
+        // 3. Rotating platform - BIGGER
         const rotatingPlatform = RigidBody.createBox(
             new THREE.Vector3(8, 2.2, 0),
-            new THREE.Vector3(6, 0.6, 6),
-            8.0,
+            new THREE.Vector3(8, 0.8, 8), // Increased size
+            15.0, // Increased mass
             greenMaterial
         );
         rotatingPlatform.angularVelocity.set(0, ROTATION_VELOCITY, 0);
         this.addDynamicBody(rotatingPlatform);
+        
+        // 4. NEW: Fast X-axis rotating platform (to flip the player)
+        const flippingPlatform = RigidBody.createBox(
+            new THREE.Vector3(0, 3.5, 8), // Position it on the positive Z side
+            new THREE.Vector3(6, 2, 25), // Long but narrow platform for better flipping
+            12.0,
+            purpleMaterial
+        );
+        
+        // Set fast rotation on X axis to create the flipping effect
+        flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
+        this.addDynamicBody(flippingPlatform);
     }
 } 
