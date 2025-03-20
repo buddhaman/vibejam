@@ -595,39 +595,29 @@ export class Game {
         const radius = 2;
         const segments = 12;
         
-        // Draw a ring of connected spheres and beams
+        // Reuse these vectors outside the loop
+        const pos1 = new THREE.Vector3();
+        const pos2 = new THREE.Vector3();
+
         for (let i = 0; i < segments; i++) {
             const angle1 = (i / segments) * Math.PI * 2 + this.testTime;
             const angle2 = ((i + 1) / segments) * Math.PI * 2 + this.testTime;
             
-            const pos1 = new THREE.Vector3(
+            pos1.set(
                 center.x + Math.cos(angle1) * radius,
                 center.y + Math.sin(this.testTime * 2) * 0.5,
                 center.z + Math.sin(angle1) * radius
             );
             
-            const pos2 = new THREE.Vector3(
+            pos2.set(
                 center.x + Math.cos(angle2) * radius,
                 center.y + Math.sin(this.testTime * 2) * 0.5,
                 center.z + Math.sin(angle2) * radius
             );
             
-            // Draw connecting beam
-            this.instancedRenderer.renderBeam(
-                pos1,
-                pos2,
-                0.1,
-                0.1,
-                undefined,
-                0x44aa88
-            );
-            
-            // Draw sphere at joint
-            this.instancedRenderer.renderSphere(
-                pos1,
-                0.2,
-                0x88ccaa
-            );
+            // Use the reused vectors
+            this.instancedRenderer.renderBeam(pos1, pos2, 0.1, 0.1, undefined, 0x44aa88);
+            this.instancedRenderer.renderSphere(pos1, 0.2, 0x88ccaa);
         }
         
         // Update the instanced renderer after all rendering is done

@@ -106,13 +106,14 @@ export class InstancedRenderer {
         this.tempPosition.copy(from).add(to).multiplyScalar(0.5);
         
         // Calculate the direction vector and length
-        const direction = to.clone().sub(from);
-        const length = direction.length();
-        direction.normalize();
+        // Avoid allocation by using member variables
+        this.tempScale.copy(to).sub(from);
+        const length = this.tempScale.length();
+        this.tempScale.normalize();
         
         // Calculate the rotation from the default orientation to the desired orientation
         // Default box is oriented along Y-axis, so we need to rotate to align with direction
-        this.tempQuaternion.setFromUnitVectors(this.upVector, direction);
+        this.tempQuaternion.setFromUnitVectors(this.upVector, this.tempScale);
         
         // Set the scale for the beam
         this.tempScale.set(width, length, height);
@@ -210,5 +211,23 @@ export class InstancedRenderer {
         
         if (this.beamMesh.instanceColor) this.beamMesh.instanceColor.needsUpdate = true;
         if (this.sphereMesh.instanceColor) this.sphereMesh.instanceColor.needsUpdate = true;
+    }
+
+    /**
+     * Dispose of resources to prevent memory leaks
+     */
+    public dispose(): void {
+        // Dispose of geometries and materials
+        this.beamMesh.geometry.dispose();
+        if (this.beamMesh.material instanceof THREE.Material) {
+            this.beamMesh.material.dispose();
+        }
+        this.scene.remove(this.beamMesh);
+        
+        this.sphereMesh.geometry.dispose();
+        if (this.sphereMesh.material instanceof THREE.Material) {
+            this.sphereMesh.material.dispose();
+        }
+        this.scene.remove(this.sphereMesh);
     }
 }
