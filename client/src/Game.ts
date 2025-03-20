@@ -3,6 +3,7 @@ import { Player } from './Player';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { StaticBody } from './StaticBody';
+import { InstancedRenderer } from './Render';
 
 export class Game {
     public scene: THREE.Scene;
@@ -32,6 +33,10 @@ export class Game {
     // Add this property to the Game class
     public inputKeys: { [key: string]: boolean } = {};
 
+    // Add this property to the Game class
+    private instancedRenderer: InstancedRenderer;
+    private testTime: number = 0;
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -59,6 +64,9 @@ export class Game {
         
         // Add a single test box for collision
         this.createTestBox();
+
+        // Initialize the instanced renderer
+        this.instancedRenderer = new InstancedRenderer(this.scene);
     }
 
     /**
@@ -555,6 +563,52 @@ export class Game {
                 this.renderer.render(this.scene, this.camera);
             }
         }
+        
+        // Add test rendering
+        this.testTime += 0.001;
+        this.instancedRenderer.reset();
+        
+        // Draw a simple animated structure
+        const center = new THREE.Vector3(0, 5, 0);
+        const radius = 2;
+        const segments = 12;
+        
+        // Draw a ring of connected spheres and beams
+        for (let i = 0; i < segments; i++) {
+            const angle1 = (i / segments) * Math.PI * 2 + this.testTime;
+            const angle2 = ((i + 1) / segments) * Math.PI * 2 + this.testTime;
+            
+            const pos1 = new THREE.Vector3(
+                center.x + Math.cos(angle1) * radius,
+                center.y + Math.sin(this.testTime * 2) * 0.5,
+                center.z + Math.sin(angle1) * radius
+            );
+            
+            const pos2 = new THREE.Vector3(
+                center.x + Math.cos(angle2) * radius,
+                center.y + Math.sin(this.testTime * 2) * 0.5,
+                center.z + Math.sin(angle2) * radius
+            );
+            
+            // Draw connecting beam
+            this.instancedRenderer.renderBeam(
+                pos1,
+                pos2,
+                0.1,
+                0.1,
+                undefined,
+                0x44aa88
+            );
+            
+            // Draw sphere at joint
+            this.instancedRenderer.renderSphere(
+                pos1,
+                0.2,
+                0x88ccaa
+            );
+        }
+        
+        this.instancedRenderer.update();
         
         // Continue the game loop
         requestAnimationFrame(this.update.bind(this));
