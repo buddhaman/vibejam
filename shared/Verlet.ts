@@ -27,7 +27,7 @@ export class VerletBody {
     public constraints: { a: Verlet; b: Verlet; restLength: number }[];
     public airFriction: number = 0.98; // Air resistance (0-1)
     public groundFriction: number = 0.6; // Ground friction (0-1)
-    public gravity: number = 0.05; // Increased gravity
+    public gravity: number = 0.04; // Increased gravity
 
     constructor() {
         this.particles = [];

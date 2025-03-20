@@ -5,7 +5,7 @@ import { InstancedRenderer } from './Render';
 export class Player {
     public id: string;
     public verletBody: VerletBody;
-    public moveSpeed: number = 0.08;
+    public moveSpeed: number = 0.14;
     public isMoving: boolean = false;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
     public lastMovementDir: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default last movement direction
@@ -32,30 +32,30 @@ export class Player {
         const headRadius = scale * 0.6;
 
         // Create particles for the simplified figure
-        // Head
-        const head = this.verletBody.addParticle(new THREE.Vector3(0, 4.5 * scale, 0), headRadius);
+        // Head - raise initial position to compensate for physics settling
+        const head = this.verletBody.addParticle(new THREE.Vector3(0, 4.7 * scale, 0), headRadius);
         
-        // Neck
-        const neck = this.verletBody.addParticle(new THREE.Vector3(0, 4.0 * scale, 0), baseRadius);
+        // Neck - raise initial position
+        const neck = this.verletBody.addParticle(new THREE.Vector3(0, 4.2 * scale, 0), baseRadius);
         
-        // Waist
-        const waist = this.verletBody.addParticle(new THREE.Vector3(0, 2.0 * scale, 0), baseRadius);
+        // Waist - raise initial position
+        const waist = this.verletBody.addParticle(new THREE.Vector3(0, 2.2 * scale, 0), baseRadius);
         
-        // Left leg
-        const leftKnee = this.verletBody.addParticle(new THREE.Vector3(0, 1.0 * scale, 0), baseRadius);
-        const leftFoot = this.verletBody.addParticle(new THREE.Vector3(0, 0, 0), baseRadius);
+        // Left leg - raise initial position
+        const leftKnee = this.verletBody.addParticle(new THREE.Vector3(0, 1.2 * scale, 0), baseRadius);
+        const leftFoot = this.verletBody.addParticle(new THREE.Vector3(0, 0.2, 0), baseRadius);
         
-        // Right leg
-        const rightKnee = this.verletBody.addParticle(new THREE.Vector3(0, 1.0 * scale, 0), baseRadius);
-        const rightFoot = this.verletBody.addParticle(new THREE.Vector3(0, 0, 0), baseRadius);
+        // Right leg - raise initial position
+        const rightKnee = this.verletBody.addParticle(new THREE.Vector3(0, 1.2 * scale, 0), baseRadius);
+        const rightFoot = this.verletBody.addParticle(new THREE.Vector3(0, 0.2, 0), baseRadius);
         
-        // Left arm
-        const leftElbow = this.verletBody.addParticle(new THREE.Vector3(0, 3.0 * scale, 0), baseRadius);
-        const leftHand = this.verletBody.addParticle(new THREE.Vector3(0, 2.0 * scale, 0), baseRadius);
+        // Left arm - raise initial position
+        const leftElbow = this.verletBody.addParticle(new THREE.Vector3(0, 3.2 * scale, 0), baseRadius);
+        const leftHand = this.verletBody.addParticle(new THREE.Vector3(0, 2.2 * scale, 0), baseRadius);
         
-        // Right arm
-        const rightElbow = this.verletBody.addParticle(new THREE.Vector3(0, 3.0 * scale, 0), baseRadius);
-        const rightHand = this.verletBody.addParticle(new THREE.Vector3(0, 2.0 * scale, 0), baseRadius);
+        // Right arm - raise initial position
+        const rightElbow = this.verletBody.addParticle(new THREE.Vector3(0, 3.2 * scale, 0), baseRadius);
+        const rightHand = this.verletBody.addParticle(new THREE.Vector3(0, 2.2 * scale, 0), baseRadius);
 
         // Connect the particles with constraints
         // Head and neck
@@ -77,6 +77,28 @@ export class Player {
         this.verletBody.addConstraint(rightElbow, rightHand);
 
         // No need for creating traditional meshes since we'll use instanced rendering
+
+        // Initialize the physics immediately after constructing
+        this.initPhysics();
+    }
+
+    /**
+     * Initialize physics state for the player
+     * This ensures the player starts in a proper position
+     */
+    private initPhysics(): void {
+        // Apply initial standing force to reach equilibrium
+        const particles = this.verletBody.getParticles();
+        const headParticle = particles[0];
+        
+        // Apply a strong initial lift to position the character correctly
+        headParticle.applyImpulse(new THREE.Vector3(0, 0.6, 0));
+        
+        // Run several physics steps to achieve equilibrium
+        for (let i = 0; i < 10; i++) {
+            this.verletBody.update();
+            this.verletBody.handleInternalCollisions();
+        }
     }
 
     /**
@@ -166,9 +188,9 @@ export class Player {
         }
         
         // Standing force - always applied in fixedUpdate
-        let standingForce: number = 0.30;
+        let standingForce: number = 0.2;
         if (!this.isMoving) {
-            standingForce = 0.45;
+            standingForce = 0.3;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
         

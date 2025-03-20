@@ -472,11 +472,11 @@ export class Game {
         
         // Move player to start on high platform if it's the local player
         if (isLocal) {
-            //player.move(new THREE.Vector3(0, 105, 0)); // Position above the platform
+            player.move(new THREE.Vector3(0, 5, 0)); // Position above the platform
             this.localPlayer = player;
             
             // Also update camera target to the high platform
-            this.cameraTarget.set(0, 105, 0);
+            //this.cameraTarget.set(0, 105, 0);
         }
 
         return player;
@@ -662,7 +662,7 @@ export class Game {
                     const tangentComponent = velocity.clone().sub(normalComponent);
                     
                     // Apply friction to tangential component
-                    const friction = 0.8; // Friction coefficient (1 = no friction, 0 = full friction)
+                    const friction = 0.5; // Friction coefficient (1 = no friction, 0 = full friction)
                     tangentComponent.multiplyScalar(friction);
                     
                     // New velocity is just the tangential component (no bounce)
