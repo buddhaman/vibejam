@@ -687,19 +687,6 @@ export class Game {
 
     public toggleToonShadows(enabled: boolean): void {
         this.setupToonShadows(enabled);
-        
-        // Update existing player meshes
-        this.players.forEach(player => {
-            player.getMeshes().forEach(mesh => {
-                if (mesh instanceof THREE.Mesh) {
-                    mesh.castShadow = this.toonShadowsEnabled;
-                    mesh.receiveShadow = this.toonShadowsEnabled;
-                }
-            });
-            
-            // Update player materials
-            player.updateToonTexture(this.toonShadowsEnabled ? this.toonTextureGradient || undefined : undefined);
-        });
     }
 
     private setupToonShadows(enabled: boolean = true): void {

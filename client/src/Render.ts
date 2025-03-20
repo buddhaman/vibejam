@@ -197,6 +197,12 @@ export class InstancedRenderer {
         // Update the instance counts
         this.beamMesh.count = this.beamCount;
         this.sphereMesh.count = this.sphereCount;
+
+        this.beamMesh.computeBoundingSphere();
+        this.beamMesh.computeBoundingBox();
+
+        this.sphereMesh.computeBoundingSphere();
+        this.sphereMesh.computeBoundingBox();
         
         // Update the instance matrices and colors
         this.beamMesh.instanceMatrix.needsUpdate = true;
