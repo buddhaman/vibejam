@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { StaticBody } from './StaticBody';
 import { InstancedRenderer } from './Render';
+import { RigidBody } from './RigidBody';
 
 export class Game {
     public scene: THREE.Scene;
@@ -23,6 +24,9 @@ export class Game {
     
     // Static bodies collection for collision detection
     public staticBodies: StaticBody[] = [];
+    
+    // Dynamic bodies collection (similar to static bodies)
+    public dynamicBodies: RigidBody[] = [];
 
     // Add fixed framerate properties
     public targetFPS: number = 60;
@@ -67,6 +71,9 @@ export class Game {
 
         // Initialize the instanced renderer
         this.instancedRenderer = new InstancedRenderer(this.scene);
+        
+        // Create dynamic platforms
+        this.createDynamicPlatforms();
     }
 
     /**
@@ -622,6 +629,18 @@ export class Game {
         
         // Update the instanced renderer after all rendering is done
         this.instancedRenderer.update();
+        
+        // Update all dynamic bodies with fixed timestep
+        this.updateDynamicBodies();
+        
+        // Check player collisions with dynamic bodies
+        this.players.forEach(player => {
+            // Check collisions with static bodies (existing code)
+            this.checkPlayerCollisions(player);
+            
+            // Check collisions with dynamic bodies (new code)
+            this.checkPlayerDynamicBodyCollisions(player);
+        });
     }
 
     /**
@@ -670,6 +689,125 @@ export class Game {
                     
                     // Update the previous position to create this new velocity
                     particle.previousPosition.copy(particlePosition).sub(newVelocity);
+                }
+            }
+        }
+    }
+
+    /**
+     * Update all dynamic bodies - always using fixed timestep
+     */
+    private updateDynamicBodies(): void {
+        this.dynamicBodies.forEach(body => {
+            // Update physics with no timestep parameter
+            body.update();
+            
+            // Apply constraints and boundaries
+            this.applyDynamicBodyBoundaries(body);
+        });
+    }
+    
+    /**
+     * Apply boundary conditions to dynamic bodies to create movement patterns
+     */
+    private applyDynamicBodyBoundaries(body: RigidBody): void {
+        const pos = body.shape.position;
+        
+        // Use constant velocities - never scaled by deltaTime
+        const HORIZONTAL_VELOCITY = 0.05;
+        const VERTICAL_VELOCITY = 0.04;
+        
+        // For horizontal moving platforms - reverse at x boundaries
+        if (Math.abs(body.velocity.x) > 0.01 && Math.abs(body.velocity.y) < 0.01) {
+            if (Math.abs(pos.x) > 12) {
+                // Always use a constant velocity when reversing direction
+                body.velocity.x = (body.velocity.x > 0) ? -HORIZONTAL_VELOCITY : HORIZONTAL_VELOCITY;
+            }
+        }
+        
+        // For vertical moving platforms - reverse at y boundaries
+        if (Math.abs(body.velocity.y) > 0.01 && Math.abs(body.velocity.x) < 0.01) {
+            if (pos.y < 2.2 || pos.y > 6) {
+                // Always use a constant velocity when reversing direction
+                body.velocity.y = (body.velocity.y > 0) ? -VERTICAL_VELOCITY : VERTICAL_VELOCITY;
+            }
+        }
+        
+        // Keep all platforms within general bounds
+        const generalBounds = 15;
+        if (Math.abs(pos.x) > generalBounds || Math.abs(pos.z) > generalBounds || pos.y < 1 || pos.y > 15) {
+            // Reset position if it gets too far away
+            body.shape.position.set(0, 3, 0);
+            body.velocity.set(0, 0, 0);
+            body.angularVelocity.set(0, 0, 0);
+            body.shape.updateTransform();
+        }
+    }
+    
+    /**
+     * Check and resolve player collisions with dynamic bodies
+     * @param player The player to check collisions for
+     */
+    public checkPlayerDynamicBodyCollisions(player: Player): void {
+        // Get all particles from the player's verlet body
+        const particles = player.verletBody.getParticles();
+        
+        // Check collision for each particle against each dynamic body
+        for (const particle of particles) {
+            const particlePosition = particle.position;
+            const particleRadius = particle.radius;
+            
+            // Check against all dynamic bodies
+            for (const body of this.dynamicBodies) {
+                const translation = body.shape.collideWithSphere(particlePosition, particleRadius);
+                
+                // If collision detected, resolve it
+                if (translation) {
+                    // Move the particle out of collision using the translation vector
+                    particlePosition.add(translation);
+                    
+                    // Compute particle velocity
+                    const particleVelocity = new THREE.Vector3().subVectors(
+                        particlePosition,
+                        particle.previousPosition
+                    );
+                    
+                    // Get the normal from the translation vector
+                    const normal = translation.clone().normalize();
+                    
+                    // Project velocity onto normal and tangent planes
+                    const velAlongNormal = particleVelocity.dot(normal);
+                    const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
+                    const tangentComponent = particleVelocity.clone().sub(normalComponent);
+                    
+                    // Apply friction to tangential component
+                    const friction = 0.6; // 0=full friction, 1=no friction
+                    tangentComponent.multiplyScalar(friction);
+                    
+                    // Calculate dynamic body velocity at the contact point
+                    const bodyVelocity = new THREE.Vector3().copy(body.velocity);
+                    
+                    // Add angular velocity contribution
+                    const contactPoint = particlePosition.clone().sub(translation);
+                    const relativePos = contactPoint.clone().sub(body.shape.position);
+                    const angularComponent = new THREE.Vector3().crossVectors(
+                        body.angularVelocity,
+                        relativePos
+                    );
+                    bodyVelocity.add(angularComponent);
+                    
+                    // Calculate rebound velocity with some bounce
+                    const restitution = 0.2; // 0=no bounce, 1=full bounce
+                    const newNormalVelocity = normal.clone().multiplyScalar(-velAlongNormal * restitution);
+                    
+                    // Combine for final particle velocity
+                    const newParticleVelocity = tangentComponent.clone().add(newNormalVelocity);
+                    
+                    // Add some of the body's velocity to the particle (carry effect)
+                    newParticleVelocity.add(bodyVelocity.clone().multiplyScalar(0.8));
+                    
+                    // Update the previous position to create this new velocity
+                    particle.previousPosition.copy(particlePosition).sub(newParticleVelocity);
                 }
             }
         }
@@ -773,5 +911,72 @@ export class Game {
     public setTargetFPS(fps: number): void {
         this.targetFPS = fps;
         this.timestep = 1000 / fps;
+    }
+
+    /**
+     * Add a dynamic body to the game
+     * @param body The dynamic body to add
+     * @returns The added dynamic body
+     */
+    public addDynamicBody(body: RigidBody): RigidBody {
+        this.dynamicBodies.push(body);
+        this.scene.add(body.mesh);
+        return body;
+    }
+    
+    /**
+     * Create several dynamic platforms
+     */
+    public createDynamicPlatforms(): void {
+        // Create materials for different platforms
+        const redMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff3366, emissive: 0xff3366, emissiveIntensity: 0.2,
+            roughness: 0.4, metalness: 0.6
+        });
+        
+        const blueMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3366ff, emissive: 0x3366ff, emissiveIntensity: 0.2,
+            roughness: 0.4, metalness: 0.6
+        });
+        
+        const greenMaterial = new THREE.MeshStandardMaterial({
+            color: 0x33ff66, emissive: 0x33ff66, emissiveIntensity: 0.2,
+            roughness: 0.4, metalness: 0.6
+        });
+        
+        // Constants for fixed physics behavior (never scaled by deltaTime)
+        const HORIZONTAL_VELOCITY = 0.05;
+        const VERTICAL_VELOCITY = 0.04;
+        const ROTATION_VELOCITY = 0.02;
+        
+        // 1. Horizontal moving platform
+        const horizontalPlatform = RigidBody.createBox(
+            new THREE.Vector3(-8, 2.2, 0),
+            new THREE.Vector3(6, 0.6, 6),
+            8.0,
+            redMaterial
+        );
+        horizontalPlatform.velocity.set(HORIZONTAL_VELOCITY, 0, 0);
+        this.addDynamicBody(horizontalPlatform);
+        
+        // 2. Vertical moving platform
+        const verticalPlatform = RigidBody.createBox(
+            new THREE.Vector3(0, 2.7, -8),
+            new THREE.Vector3(6, 0.6, 6),
+            8.0,
+            blueMaterial
+        );
+        verticalPlatform.velocity.set(0, VERTICAL_VELOCITY, 0);
+        this.addDynamicBody(verticalPlatform);
+        
+        // 3. Rotating platform
+        const rotatingPlatform = RigidBody.createBox(
+            new THREE.Vector3(8, 2.2, 0),
+            new THREE.Vector3(6, 0.6, 6),
+            8.0,
+            greenMaterial
+        );
+        rotatingPlatform.angularVelocity.set(0, ROTATION_VELOCITY, 0);
+        this.addDynamicBody(rotatingPlatform);
     }
 } 

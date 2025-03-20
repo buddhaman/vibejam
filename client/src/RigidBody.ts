@@ -72,23 +72,21 @@ export class RigidBody {
     
     /**
      * Update the rigid body physics
-     * @param timeStep Time step in seconds
      */
-    update(timeStep: number): void {
+    update(): void {
         // Skip update for static bodies
         if (this.mass <= 0) return;
         
-        // Update position
-        const deltaPosition = this.velocity.clone().multiplyScalar(timeStep);
-        this.shape.position.add(deltaPosition);
+        // Update position with fixed increment
+        this.shape.position.add(this.velocity);
         
-        // Update rotation (convert angular velocity to quaternion change)
+        // Update rotation with fixed increment
         if (this.angularVelocity.lengthSq() > 0.000001) {
-            const angle = this.angularVelocity.length() * timeStep;
-            const axis = this.angularVelocity.clone().normalize();
-            
             const rotationDelta = new THREE.Quaternion();
-            rotationDelta.setFromAxisAngle(axis, angle);
+            rotationDelta.setFromAxisAngle(
+                this.angularVelocity.clone().normalize(),
+                this.angularVelocity.length()
+            );
             
             // Apply rotation
             this.shape.orientation.premultiply(rotationDelta);
@@ -108,14 +106,13 @@ export class RigidBody {
      * Apply a force at a point (relative to center of mass)
      * @param force Force vector
      * @param point Point of application (in world space)
-     * @param timeStep Time step in seconds
      */
-    applyForce(force: THREE.Vector3, point: THREE.Vector3, timeStep: number): void {
+    applyForce(force: THREE.Vector3, point: THREE.Vector3): void {
         if (this.mass <= 0) return; // Static bodies don't move
         
         // Apply linear acceleration: F = ma -> a = F/m
         const acceleration = force.clone().multiplyScalar(this.invMass);
-        this.velocity.add(acceleration.multiplyScalar(timeStep));
+        this.velocity.add(acceleration);
         
         // Calculate torque: τ = r × F
         const relativePos = point.clone().sub(this.shape.position);
@@ -129,7 +126,7 @@ export class RigidBody {
             torque.z * this.invInertia.z
         );
         
-        this.angularVelocity.add(angularAcceleration.multiplyScalar(timeStep));
+        this.angularVelocity.add(angularAcceleration);
     }
     
     /**
