@@ -473,18 +473,6 @@ export class Game {
         // Move player to start on high platform if it's the local player
         if (isLocal) {
             //player.move(new THREE.Vector3(0, 105, 0)); // Position above the platform
-        }
-        
-        // Add all player meshes and lines to the scene
-        player.getMeshes().forEach(mesh => {
-            if (mesh instanceof THREE.Mesh) {
-                mesh.castShadow = this.toonShadowsEnabled;
-                mesh.receiveShadow = this.toonShadowsEnabled;
-            }
-            this.scene.add(mesh);
-        });
-
-        if (isLocal) {
             this.localPlayer = player;
             
             // Also update camera target to the high platform
@@ -497,10 +485,6 @@ export class Game {
     public removePlayer(id: string): void {
         const player = this.players.get(id);
         if (player) {
-            // Remove all player meshes and lines from the scene
-            player.getMeshes().forEach(mesh => {
-                this.scene.remove(mesh);
-            });
             this.players.delete(id);
         }
     }
@@ -596,15 +580,21 @@ export class Game {
         });
         
         this.players.forEach(player => player.setDebugMode(true));
-
-        this.testTime += 0.016; // Consistent time increment (roughly 60fps)
+        
+        // Reset the instanced renderer and render all players
         this.instancedRenderer.reset();
-
+        this.players.forEach(player => {
+            player.render(this.instancedRenderer);
+        });
+        
+        // Draw test ring after player rendering
+        this.testTime += 0.016; // Consistent time increment (roughly 60fps)
+        
         // Draw a simple animated structure
         const center = new THREE.Vector3(0, 5, 0);
         const radius = 2;
         const segments = 12;
-
+        
         // Draw a ring of connected spheres and beams
         for (let i = 0; i < segments; i++) {
             const angle1 = (i / segments) * Math.PI * 2 + this.testTime;
@@ -639,7 +629,8 @@ export class Game {
                 0x88ccaa
             );
         }
-
+        
+        // Update the instanced renderer after all rendering is done
         this.instancedRenderer.update();
     }
 
@@ -799,50 +790,6 @@ export class Game {
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
             this.scene.add(ambientLight);
         }
-        
-        // Apply toon materials without outlines
-        this.scene.traverse(object => {
-            if (object instanceof THREE.Mesh && 
-                !(object.material instanceof THREE.MeshToonMaterial) && 
-                !(object.material instanceof THREE.LineBasicMaterial) &&
-                !this.isPlayerMesh(object)) {
-                
-                // Enable shadow casting/receiving
-                object.castShadow = true;
-                object.receiveShadow = true;
-                
-                // Extract color from original material
-                let color = new THREE.Color(0xffffff);
-                if (object.material.hasOwnProperty('color')) {
-                    color = (object.material as any).color;
-                    
-                    // Brighten the color slightly
-                    color.r = Math.min(1.0, color.r * 1.2);
-                    color.g = Math.min(1.0, color.g * 1.2);
-                    color.b = Math.min(1.0, color.b * 1.2);
-                }
-                
-                // Create simple toon material
-                const toonMaterial = new THREE.MeshToonMaterial({
-                    color: color,
-                    gradientMap: this.toonTextureGradient
-                });
-                
-                // Replace material
-                object.material = toonMaterial;
-            }
-        });
-    }
-
-    // Helper method to check if a mesh belongs to a player
-    public isPlayerMesh(mesh: THREE.Object3D): boolean {
-        let isPlayerMesh = false;
-        this.players.forEach(player => {
-            if (player.getMeshes().includes(mesh)) {
-                isPlayerMesh = true;
-            }
-        });
-        return isPlayerMesh;
     }
 
     // Add method to set target FPS

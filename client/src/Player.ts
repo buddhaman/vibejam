@@ -1,37 +1,25 @@
 import * as THREE from 'three';
 import { Verlet, VerletBody } from '../../shared/Verlet';
+import { InstancedRenderer } from './Render';
 
 export class Player {
     public id: string;
     public verletBody: VerletBody;
-    public meshes: THREE.Object3D[];
-    public lines: {
-        mesh: THREE.Mesh;
-        particleA: Verlet;  // Replace with your particle type
-        particleB: Verlet;  // Replace with your particle type
-    }[];
     public moveSpeed: number = 0.08;
     public isMoving: boolean = false;
     public forward: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default forward vector
     public lastMovementDir: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default last movement direction
-    public leftEye: THREE.Mesh;
-    public rightEye: THREE.Mesh;
-    public leftPupil: THREE.Mesh;
-    public rightPupil: THREE.Mesh;
     public eyeBaseOffset: THREE.Vector3 = new THREE.Vector3(0.2, 0.2, 0.5); // Increased z-offset to place eyes on surface of head
     public debugMode: boolean = false;
-    public forwardArrow: THREE.ArrowHelper;
-    public directionArrow: THREE.ArrowHelper;
     private blinkTimer: number = 0;
     private blinkDuration: number = 0;
     private nextBlinkTime: number = Math.random() * 3000 + 2000; // 2-5 seconds
     private isBlinking: boolean = false;
+    private rendererInitialized: boolean = false;
 
     constructor(id: string, toonTexture?: THREE.Texture, enableDebug: boolean = false) {
         this.id = id;
         this.verletBody = new VerletBody();
-        this.meshes = [];
-        this.lines = [];
         this.debugMode = enableDebug;
 
         const scale = 1.0;
@@ -83,155 +71,7 @@ export class Player {
         this.verletBody.addConstraint(neck, rightElbow);
         this.verletBody.addConstraint(rightElbow, rightHand);
 
-        // Create visual meshes for particles with toon material
-        const particleMaterial = new THREE.MeshToonMaterial({ 
-            color: id === 'local' ? 0x77dd77 : 0x6495ed,  // Soft green for local, pastel blue for others
-        });
-        
-        // Only set gradient map if texture is provided
-        if (toonTexture) {
-            particleMaterial.gradientMap = toonTexture;
-        }
-
-        // Create meshes for each particle
-        this.verletBody.getParticles().forEach((particle, index) => {
-            const geometry = new THREE.SphereGeometry(particle.radius, 16, 16);
-            const mesh = new THREE.Mesh(geometry, particleMaterial);
-            mesh.position.copy(particle.position);
-            this.meshes.push(mesh);
-        });
-
-        // For the cylinder constraints with toon material
-        const constraintMaterial = new THREE.MeshToonMaterial({ 
-            color: id === 'local' ? 0x99eebb : 0x88aaff,
-        });
-        
-        // Only set gradient map if texture is provided
-        if (toonTexture) {
-            constraintMaterial.gradientMap = toonTexture;
-        }
-        
-        this.verletBody.getConstraints().forEach(({ a, b }) => {
-            // Calculate distance and direction
-            const start = a.position;
-            const end = b.position;
-            
-            // Create cylinder geometry
-            // The cylinder's height is along the Y-axis by default
-            const radius = 0.2;
-            const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, 1.0, 8);
-            const cylinder = new THREE.Mesh(cylinderGeometry, constraintMaterial);
-            
-            // Position and orient the cylinder
-            this.positionCylinder(cylinder, start, end);
-            
-            this.meshes.push(cylinder);
-            
-            // Store references for updates
-            this.lines.push({
-                mesh: cylinder,
-                particleA: a,
-                particleB: b
-            });
-        });
-
-        // Create eyes
-        const eyeRadius = 0.3;
-        const pupilRadius = 0.1;
-
-        // Left eye
-        const leftEyeGeometry = new THREE.SphereGeometry(eyeRadius, 8, 8);
-        const leftEyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        this.leftEye = new THREE.Mesh(leftEyeGeometry, leftEyeMaterial);
-        // Initial position - set to zero to avoid initial offset
-        this.leftEye.position.set(0, 0, 0);
-        this.meshes.push(this.leftEye);
-
-        // Left pupil
-        const leftPupilGeometry = new THREE.SphereGeometry(pupilRadius, 8, 8);
-        const leftPupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        this.leftPupil = new THREE.Mesh(leftPupilGeometry, leftPupilMaterial);
-        // Initial position - set to zero to avoid initial offset
-        this.leftPupil.position.set(0, 0, 0);
-        this.meshes.push(this.leftPupil);
-
-        // Right eye
-        const rightEyeGeometry = new THREE.SphereGeometry(eyeRadius, 8, 8);
-        const rightEyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        this.rightEye = new THREE.Mesh(rightEyeGeometry, rightEyeMaterial);
-        // Initial position - set to zero to avoid initial offset
-        this.rightEye.position.set(0, 0, 0);
-        this.meshes.push(this.rightEye);
-
-        // Right pupil
-        const rightPupilGeometry = new THREE.SphereGeometry(pupilRadius, 8, 8);
-        const rightPupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        this.rightPupil = new THREE.Mesh(rightPupilGeometry, rightPupilMaterial);
-        // Initial position - set to zero to avoid initial offset
-        this.rightPupil.position.set(0, 0, 0);
-        this.meshes.push(this.rightPupil);
-
-        // Create debug arrows
-        const arrowLength = 3.0;
-        const arrowHeadLength = 0.5;
-        const arrowHeadWidth = 0.3;
-        this.forwardArrow = new THREE.ArrowHelper(
-            this.forward.clone(),
-            new THREE.Vector3(0, 0, 0),
-            arrowLength,
-            0xff0000, // Red color for forward
-            arrowHeadLength,
-            arrowHeadWidth
-        );
-        this.forwardArrow.visible = this.debugMode;
-        
-        this.directionArrow = new THREE.ArrowHelper(
-            this.lastMovementDir.clone(),
-            new THREE.Vector3(0, 0, 0),
-            arrowLength,
-            0x00ff00, // Green color for movement direction
-            arrowHeadLength,
-            arrowHeadWidth
-        );
-        this.directionArrow.visible = this.debugMode;
-        
-        // Add arrows to meshes array
-        this.meshes.push(this.forwardArrow);
-        this.meshes.push(this.directionArrow);
-    }
-
-    // Helper method to position and orient a cylinder between two points
-    public positionCylinder(cylinder: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
-        // Position at midpoint
-        const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-        cylinder.position.copy(midpoint);
-        
-        // Orient cylinder
-        // 1. Create a direction vector from start to end
-        const direction = new THREE.Vector3().subVectors(end, start);
-        
-        // 2. Create a quaternion rotation from the Y axis to this direction
-        // The default cylinder orientation is along the Y axis
-        const quaternion = new THREE.Quaternion();
-        // Get the axis perpendicular to Y and our direction
-        const yAxis = new THREE.Vector3(0, 1, 0);
-        const rotationAxis = new THREE.Vector3().crossVectors(yAxis, direction).normalize();
-        
-        // If direction is parallel to Y, we need a different approach
-        if (rotationAxis.length() === 0) {
-            // Check if pointing up or down
-            if (direction.y < 0) {
-                // Pointing down, rotate 180 degrees around X
-                quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
-            }
-            // If pointing up, no rotation needed
-        } else {
-            // Calculate angle between Y and direction
-            const angle = Math.acos(yAxis.dot(direction.clone().normalize()));
-            quaternion.setFromAxisAngle(rotationAxis, angle);
-        }
-        
-        cylinder.quaternion.copy(quaternion);
+        // No need for creating traditional meshes since we'll use instanced rendering
     }
 
     public handleInput(input: { w: boolean; a: boolean; s: boolean; d: boolean; space: boolean; shift?: boolean }): void {
@@ -347,89 +187,8 @@ export class Player {
         // Handle internal collisions
         this.verletBody.handleInternalCollisions();
 
-        // Update particle meshes
-        this.verletBody.getParticles().forEach((particle, index) => {
-            // Cast to Mesh to ensure we can access position
-            if (this.meshes[index] instanceof THREE.Mesh) {
-                (this.meshes[index] as THREE.Mesh).position.copy(particle.position);
-            }
-        });
-
-        // Update cylinder positions and orientations
-        this.lines.forEach(({ mesh, particleA, particleB }) => {
-            this.positionCylinder(mesh, particleA.position, particleB.position);
-            
-            // Update cylinder length
-            const distance = particleA.position.distanceTo(particleB.position);
-            mesh.scale.y = distance;
-        });
-
-        // Calculate the eye positions using the local head orientation
-        // Create a local coordinate system for the head
-        const headRight = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), this.lastMovementDir).normalize();
-        if (headRight.length() < 0.1) {
-            // If lastMovementDir is parallel to up, use a default right vector
-            headRight.set(1, 0, 0);
-        }
-        
-        const headUp = new THREE.Vector3(0, 1, 0);
-        const headForward = this.lastMovementDir.clone();
-        
-        // Calculate offset in local space then convert to world space
-        // Get head radius (first particle is the head)
-        const headRadius = particles[0].radius;
-
-        // Left eye - position on surface of head
-        const leftEyeOffset = new THREE.Vector3()
-            .addScaledVector(headRight, -this.eyeBaseOffset.x)
-            .addScaledVector(headUp, this.eyeBaseOffset.y)
-            .addScaledVector(headForward, this.eyeBaseOffset.z);
-        leftEyeOffset.normalize().multiplyScalar(headRadius); // Normalize and scale to head radius
-            
-        // Right eye - position on surface of head
-        const rightEyeOffset = new THREE.Vector3()
-            .addScaledVector(headRight, this.eyeBaseOffset.x)
-            .addScaledVector(headUp, this.eyeBaseOffset.y)
-            .addScaledVector(headForward, this.eyeBaseOffset.z);
-        rightEyeOffset.normalize().multiplyScalar(headRadius); // Normalize and scale to head radius
-        
-        // Apply calculated offsets
-        this.leftEye.position.copy(headParticle.position).add(leftEyeOffset);
-        this.rightEye.position.copy(headParticle.position).add(rightEyeOffset);
-        
-        // Calculate pupil positions on the eye surfaces
-        const eyeRadius = (this.leftEye.geometry as THREE.SphereGeometry).parameters.radius;
-        
-        // Calculate direction from head to each eye
-        const leftEyeDir = this.leftEye.position.clone().sub(headParticle.position).normalize();
-        const rightEyeDir = this.rightEye.position.clone().sub(headParticle.position).normalize();
-        
-        // Position pupils on the forward-most part of each eye
-        this.leftPupil.position.copy(this.leftEye.position).add(
-            leftEyeDir.clone().multiplyScalar(eyeRadius * 0.9)
-        );
-        
-        this.rightPupil.position.copy(this.rightEye.position).add(
-            rightEyeDir.clone().multiplyScalar(eyeRadius * 0.9)
-        );
-        
-        // Update debug arrows if debug mode is enabled
-        if (this.debugMode) {
-            // Position arrows at head
-            this.forwardArrow.position.copy(headParticle.position);
-            this.directionArrow.position.copy(headParticle.position);
-            
-            // Set arrow directions
-            this.forwardArrow.setDirection(this.forward.clone().normalize());
-            this.directionArrow.setDirection(this.lastMovementDir.clone().normalize());
-        }
-
         // Update blinking animation with deltaTime
         this.updateBlinking(deltaTime);
-    }
-
-    public getMeshes(): THREE.Object3D[] {
-        return this.meshes;
     }
 
     /**
@@ -466,23 +225,14 @@ export class Player {
 
     public setDebugMode(debugMode: boolean): void {
         this.debugMode = debugMode;
-        this.forwardArrow.visible = this.debugMode;
-        this.directionArrow.visible = this.debugMode;
     }
 
+    /**
+     * This method doesn't need to do anything with instanced rendering
+     * But we keep it for compatibility with existing code
+     */
     public updateToonTexture(toonTexture?: THREE.Texture): void {
-        // Update materials on existing meshes
-        this.meshes.forEach(mesh => {
-            if (mesh instanceof THREE.Mesh && 
-                mesh.material instanceof THREE.MeshToonMaterial) {
-                mesh.material.gradientMap = toonTexture || null;
-                
-                // Enable shadows
-                mesh.material.needsUpdate = true;
-                mesh.castShadow = toonTexture !== undefined;
-                mesh.receiveShadow = toonTexture !== undefined;
-            }
-        });
+        // No need to do anything since materials are handled by the instanced renderer
     }
 
     /**
@@ -498,10 +248,6 @@ export class Player {
             if (this.blinkTimer >= this.blinkDuration) {
                 // End blink
                 this.isBlinking = false;
-                this.leftEye.visible = true;
-                this.rightEye.visible = true;
-                this.leftPupil.visible = true;
-                this.rightPupil.visible = true;
                 
                 // Reset for next blink
                 this.blinkTimer = 0;
@@ -512,14 +258,91 @@ export class Player {
         else if (this.blinkTimer >= this.nextBlinkTime) {
             // Start blinking
             this.isBlinking = true;
-            this.leftEye.visible = false;
-            this.rightEye.visible = false;
-            this.leftPupil.visible = false;
-            this.rightPupil.visible = false;
             
             // Set blink duration
             this.blinkDuration = Math.random() * 100 + 50; // 50-150ms
             this.blinkTimer = 0;
+        }
+    }
+
+    /**
+     * Render the player using the instanced renderer
+     * This draws spheres for particles and beams for connections
+     * @param renderer The instanced renderer to use
+     */
+    public render(renderer: InstancedRenderer): void {
+        if (!this.rendererInitialized) {
+            // First-time initialization if needed
+            this.rendererInitialized = true;
+        }
+        
+        const particles = this.verletBody.getParticles();
+        const constraints = this.verletBody.getConstraints();
+        
+        // Use different colors for local vs remote players
+        const particleColor = this.id === 'local' ? 0x77dd77 : 0x6495ed;  // Green for local, blue for others
+        const constraintColor = this.id === 'local' ? 0x99eebb : 0x88aaff;
+        
+        // Draw particles as spheres
+        particles.forEach(particle => {
+            renderer.renderSphere(
+                particle.position,
+                particle.radius,
+                particleColor
+            );
+        });
+        
+        // Draw constraints as beams
+        constraints.forEach(constraint => {
+            // Get the start and end positions of the constraint
+            const startPos = constraint.a.position;
+            const endPos = constraint.b.position;
+            
+            // Calculate beam thickness (can be adjusted)
+            const beamWidth = 0.2;
+            
+            // Render a beam between the two particles
+            renderer.renderBeam(
+                startPos,
+                endPos,
+                beamWidth,
+                beamWidth,
+                undefined, // Use default up vector
+                constraintColor
+            );
+        });
+        
+        // Skip drawing eyes for now as requested
+        
+        // Draw debug arrows if in debug mode
+        if (this.debugMode) {
+            const headPos = particles[0].position;
+            
+            // Forward direction arrow (red)
+            const forwardEnd = new THREE.Vector3().copy(headPos).add(
+                this.forward.clone().normalize().multiplyScalar(3.0)
+            );
+            renderer.renderBeam(
+                headPos,
+                forwardEnd,
+                0.1,
+                0.1,
+                undefined,
+                0xff0000
+            );
+            
+            // Movement direction arrow (green)
+            const movementEnd = new THREE.Vector3().copy(headPos).add(
+                this.lastMovementDir.clone().normalize().multiplyScalar(3.0)
+            );
+            renderer.renderBeam(
+                headPos,
+                movementEnd,
+                0.1,
+                0.1,
+                undefined,
+                0x00ff00
+            );
         }
     }
 } 
