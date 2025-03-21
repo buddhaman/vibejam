@@ -184,10 +184,10 @@ export class MobileControls {
             this.joystick.on('move', (evt, data) => {
                 if (data.vector && data.vector.x !== undefined && data.vector.y !== undefined) {
                     // Nipplejs returns vector with values between -1 and 1
-                    // Forward is UP in nipplejs which is negative Z in our 3D world
+                    // Forward is UP in nipplejs which maps correctly to our 3D world
                     this.movementDirection.set(
                         data.vector.x,
-                        -data.vector.y // Invert Y axis for 3D space
+                        data.vector.y  // Remove the negative sign here
                     );
                     
                     // Update debug info if present
