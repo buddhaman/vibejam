@@ -64,6 +64,9 @@ export class MobileControls {
         joystickZone.style.border = '2px solid rgba(255, 255, 255, 0.5)'; // Add border for visibility
         this.container.appendChild(joystickZone);
         
+        // Add fullscreen button
+        this.addFullscreenButton();
+        
         // Create jump button
         this.jumpButton = document.createElement('div');
         this.jumpButton.className = 'jump-button';
@@ -482,5 +485,95 @@ export class MobileControls {
             space: this.jumpActive,
             shift: this.crouchActive
         };
+    }
+    
+    /**
+     * Add a fullscreen button for mobile devices
+     */
+    private addFullscreenButton(): void {
+        // Create fullscreen button
+        const fullscreenButton = document.createElement('div');
+        fullscreenButton.className = 'fullscreen-button';
+        fullscreenButton.style.position = 'absolute';
+        fullscreenButton.style.top = '10px';
+        fullscreenButton.style.right = '10px';
+        fullscreenButton.style.width = '40px';
+        fullscreenButton.style.height = '40px';
+        fullscreenButton.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+        fullscreenButton.style.borderRadius = '5px';
+        fullscreenButton.style.display = 'flex';
+        fullscreenButton.style.justifyContent = 'center';
+        fullscreenButton.style.alignItems = 'center';
+        fullscreenButton.style.zIndex = '9999';
+        fullscreenButton.style.pointerEvents = 'auto';
+        fullscreenButton.style.cursor = 'pointer';
+        fullscreenButton.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+        
+        // Create an SVG icon for fullscreen
+        fullscreenButton.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>`;
+        
+        // Add touch/click event to enter fullscreen
+        fullscreenButton.addEventListener('click', this.toggleFullscreen.bind(this));
+        
+        // Add to container
+        this.container.appendChild(fullscreenButton);
+    }
+    
+    /**
+     * Toggle fullscreen mode
+     */
+    private toggleFullscreen(): void {
+        const doc = window.document;
+        const docEl = doc.documentElement;
+        
+        // Different browser implementations
+        const requestFullScreen = docEl.requestFullscreen || 
+                               (docEl as any).mozRequestFullScreen || 
+                               (docEl as any).webkitRequestFullScreen || 
+                               (docEl as any).msRequestFullscreen;
+        
+        const exitFullScreen = doc.exitFullscreen ||
+                             (doc as any).mozCancelFullScreen ||
+                             (doc as any).webkitExitFullscreen ||
+                             (doc as any).msExitFullscreen;
+        
+        // Check if we're in fullscreen mode already
+        if (!doc.fullscreenElement &&
+            !(doc as any).mozFullScreenElement &&
+            !(doc as any).webkitFullscreenElement &&
+            !(doc as any).msFullscreenElement) {
+            
+            // Enter fullscreen
+            if (requestFullScreen) {
+                requestFullScreen.call(docEl);
+            }
+            
+            // Try to hide navigation bar on mobile
+            setTimeout(() => {
+                // iOS Safari trick to hide toolbars
+                if ('scrollTo' in window) {
+                    window.scrollTo(0, 1);
+                }
+                
+                // Try to lock screen orientation to landscape if possible
+                try {
+                    if (screen.orientation && 'lock' in screen.orientation) {
+                        (screen.orientation as any).lock('landscape').catch(() => {
+                            console.log("Could not lock screen orientation");
+                        });
+                    }
+                } catch (e) {
+                    console.log("Screen orientation locking not supported");
+                }
+            }, 100);
+        } else {
+            // Exit fullscreen
+            if (exitFullScreen) {
+                exitFullScreen.call(doc);
+            }
+        }
     }
 } 
