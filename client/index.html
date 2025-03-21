@@ -6,6 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="screen-orientation" content="landscape" />
+    <meta name="msapplication-orientation" content="landscape" />
     <!-- Safari fullscreen hint -->
     <meta name="apple-mobile-web-app-title" content="Fullscreen Game">
     <title>3D Multiplayer Game</title>
@@ -58,6 +60,27 @@
         font-size: 16px;
         margin-top: 20px;
       }
+      #orientation-message {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+      }
+      @media screen and (orientation: portrait) {
+        #orientation-message {
+          display: flex;
+        }
+      }
     </style>
   </head>
   <body>
@@ -68,6 +91,13 @@
       <p>Then select <strong>"Add to Home Screen"</strong></p>
       <p>Launch the game from your home screen icon</p>
       <button id="close-prompt">Continue anyway</button>
+    </div>
+    
+    <div id="orientation-message">
+      <div>
+        <div style="font-size: 24px; margin-bottom: 20px;">📱 Please rotate your device</div>
+        <div>This game works best in landscape mode</div>
+      </div>
     </div>
     
     <script>
@@ -88,6 +118,30 @@
         setTimeout(function() {
           window.scrollTo(0, 1);
         }, 0);
+      });
+
+      // Force landscape orientation if possible
+      function forceLandscape() {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(function(error) {
+            console.log('Unable to lock screen orientation:', error);
+          });
+        }
+      }
+
+      // Try to force landscape on page load
+      forceLandscape();
+
+      // Try again when device orientation changes
+      window.addEventListener('orientationchange', function() {
+        forceLandscape();
+      });
+
+      // Try again when fullscreen changes
+      document.addEventListener('fullscreenchange', function() {
+        if (document.fullscreenElement) {
+          forceLandscape();
+        }
       });
     </script>
     

@@ -651,4 +651,46 @@ export class MobileControls {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                window.innerWidth <= 900;
     }
+
+    /**
+     * Force landscape orientation
+     */
+    private forceLandscape(): void {
+        try {
+            if (screen.orientation && 'lock' in screen.orientation) {
+                (screen.orientation as any).lock('landscape').catch((error: Error) => {
+                    console.log('Unable to lock screen orientation:', error.message);
+                });
+            }
+        } catch (error) {
+            console.log('Screen orientation locking not supported');
+        }
+    }
+
+    /**
+     * Handle orientation changes
+     */
+    private handleOrientationChange(): void {
+        // Force landscape mode
+        this.forceLandscape();
+        
+        // Update control positions based on new orientation
+        if (this.container) {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            
+            // Adjust joystick position
+            const joystickZone = this.container.querySelector('.joystick-zone');
+            if (joystickZone) {
+                (joystickZone as HTMLElement).style.left = isLandscape ? '5%' : '5%';
+                (joystickZone as HTMLElement).style.bottom = isLandscape ? '20%' : '30%';
+            }
+            
+            // Adjust action buttons position
+            const actionButtons = this.container.querySelector('div[style*="display: flex"]');
+            if (actionButtons) {
+                (actionButtons as HTMLElement).style.right = isLandscape ? '5%' : '5%';
+                (actionButtons as HTMLElement).style.bottom = isLandscape ? '20%' : '15%';
+            }
+        }
+    }
 } 
