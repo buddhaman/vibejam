@@ -415,8 +415,8 @@ export class Game {
         
         // Set the zoom callback
         this.mobileControls.setZoomCallback((zoomDelta) => {
-            // Adjust camera distance based on pinch gesture
-            this.cameraDistance = Math.max(2, Math.min(20, this.cameraDistance - zoomDelta));
+            // Adjust camera distance with higher sensitivity
+            this.cameraDistance = Math.max(2, Math.min(20, this.cameraDistance - zoomDelta * 2)); // Multiplied by 2 for more sensitivity
             console.log(`Camera zoom: distance=${this.cameraDistance.toFixed(2)}`);
         });
         

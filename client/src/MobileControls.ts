@@ -296,89 +296,43 @@ export class MobileControls {
      * Handle camera touch start
      */
     private handleCameraTouchStart(event: TouchEvent): void {
-        // First check if we can start pinch-to-zoom (need two touches)
-        if (event.touches.length >= 2 && this.cameraTouchId === null && 
-            this.zoomTouchId1 === null && this.zoomTouchId2 === null) {
-            
-            // Get the first two touches
-            const touch1 = event.touches[0];
-            const touch2 = event.touches[1];
-            
-            // Get elements at touch positions
-            const target1 = document.elementFromPoint(touch1.clientX, touch1.clientY) as Element;
-            const target2 = document.elementFromPoint(touch2.clientX, touch2.clientY) as Element;
-            
-            // Check if touches are on controls
-            const isControl = (el: Element) => el && (
-                el.classList.contains('jump-button') ||
-                el.classList.contains('crouch-button') ||
-                el.classList.contains('joystick-zone') ||
-                el.closest('.jump-button') ||
-                el.closest('.crouch-button') ||
-                el.closest('.joystick-zone') ||
-                el.closest('.nipple')
-            );
-            
-            // If neither touch is on a control, start zooming
-            if (!isControl(target1) && !isControl(target2)) {
-                this.zoomTouchId1 = touch1.identifier;
-                this.zoomTouchId2 = touch2.identifier;
-                this.previousZoomDistance = Math.hypot(
-                    touch2.clientX - touch1.clientX,
-                    touch2.clientY - touch1.clientY
-                );
-                
-                // Update debug info
-                const debugEl = this.container.querySelector('.mobile-debug-info');
-                if (debugEl) {
-                    debugEl.textContent = `Zoom started: ${this.previousZoomDistance.toFixed(0)}px`;
-                }
-                
-                event.preventDefault();
-                return; // Exit early, we're handling zoom
-            }
-        }
-        
-        // If we're not starting zoom, handle camera rotation as before
-        // Prevent default behavior only for camera control touches
+        // Process each new touch for potential camera control
         for (let i = 0; i < event.changedTouches.length; i++) {
             const touch = event.changedTouches[i];
             
-            // Skip if we're already tracking a touch for camera
-            if (this.cameraTouchId !== null) continue;
+            // Skip if we're already tracking this specific touch ID
+            if (touch.identifier === this.cameraTouchId) continue;
             
             // Get the element at the touch position
             const targetEl = document.elementFromPoint(touch.clientX, touch.clientY) as Element;
             
             // Check if touch is on any control element
-            if (targetEl && (
-                // Check button classes
+            const isControlElement = targetEl && (
                 targetEl.classList.contains('jump-button') ||
                 targetEl.classList.contains('crouch-button') ||
                 targetEl.classList.contains('joystick-zone') ||
-                // Check parent elements
                 targetEl.closest('.jump-button') ||
                 targetEl.closest('.crouch-button') ||
                 targetEl.closest('.joystick-zone') ||
                 targetEl.closest('.nipple')
-            )) {
-                // Skip touches on controls
-                console.log("Touch on control element, skipping camera control");
-                continue;
+            );
+            
+            // Skip touches on controls
+            if (isControlElement) continue;
+            
+            // If we don't have a camera touch yet, use this one
+            if (this.cameraTouchId === null) {
+                this.cameraTouchId = touch.identifier;
+                this.previousCameraPos = { x: touch.clientX, y: touch.clientY };
+                
+                console.log(`Camera touch started: ID=${touch.identifier}, pos=${touch.clientX},${touch.clientY}`);
+                
+                // Update debug info
+                const debugEl = this.container.querySelector('.mobile-debug-info');
+                if (debugEl) {
+                    debugEl.textContent = `Camera start: ${touch.clientX}, ${touch.clientY}`;
+                }
             }
-            
-            // Allow camera control from anywhere on the background
-            this.cameraTouchId = touch.identifier;
-            this.previousCameraPos = { x: touch.clientX, y: touch.clientY };
-            
-            // Update debug info
-            const debugEl = this.container.querySelector('.mobile-debug-info');
-            if (debugEl) {
-                debugEl.textContent = `Camera start: ${touch.clientX}, ${touch.clientY}`;
-            }
-            
-            event.preventDefault();
-            break; // Only track one camera touch
         }
     }
     
@@ -386,82 +340,41 @@ export class MobileControls {
      * Handle camera touch move
      */
     private handleCameraTouchMove(event: TouchEvent): void {
-        // Check for pinch-to-zoom gesture
-        if (this.zoomTouchId1 !== null && this.zoomTouchId2 !== null) {
-            // Find the two zoom touches
-            let touch1 = null, touch2 = null;
+        // Process camera movement
+        if (this.cameraTouchId !== null) {
+            // Find our camera touch
+            let cameraTouch = null;
             for (let i = 0; i < event.touches.length; i++) {
-                const touch = event.touches[i];
-                if (touch.identifier === this.zoomTouchId1) touch1 = touch;
-                if (touch.identifier === this.zoomTouchId2) touch2 = touch;
+                if (event.touches[i].identifier === this.cameraTouchId) {
+                    cameraTouch = event.touches[i];
+                    break;
+                }
             }
             
-            if (touch1 && touch2) {
-                // Calculate current distance between touches
-                const currentDistance = Math.hypot(
-                    touch2.clientX - touch1.clientX,
-                    touch2.clientY - touch1.clientY
-                );
+            if (cameraTouch) {
+                const currentPos = { x: cameraTouch.clientX, y: cameraTouch.clientY };
+                const deltaX = currentPos.x - this.previousCameraPos.x;
+                const deltaY = currentPos.y - this.previousCameraPos.y;
                 
-                // Calculate zoom delta
-                const zoomDelta = currentDistance - this.previousZoomDistance;
-                
-                // Call zoom callback if set
-                if (this.zoomCallback && Math.abs(zoomDelta) > 1) {
-                    this.zoomCallback(zoomDelta * 0.01);
+                // Only process meaningful movements
+                if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+                    if (this.cameraRotateCallback) {
+                        this.cameraRotateCallback(deltaX, deltaY);
+                        console.log(`Camera moved: dx=${deltaX}, dy=${deltaY}`);
+                    }
                     
                     // Update debug info
                     const debugEl = this.container.querySelector('.mobile-debug-info');
                     if (debugEl) {
-                        debugEl.textContent = `Zoom: ${zoomDelta.toFixed(0)}px`;
+                        debugEl.textContent = `Camera move: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`;
                     }
+                    
+                    this.previousCameraPos = currentPos;
                 }
-                
-                this.previousZoomDistance = currentDistance;
-                event.preventDefault();
-                return; // Exit early, we're handling zoom
             } else {
-                // Lost one of the touches, reset zoom
-                this.zoomTouchId1 = null;
-                this.zoomTouchId2 = null;
+                // Lost the camera touch
+                this.cameraTouchId = null;
             }
-        }
-        
-        // Handle camera rotation if not zooming
-        // If we're not tracking a camera touch, exit early
-        if (this.cameraTouchId === null) return;
-        
-        // Try to find our active camera touch
-        let cameraTouch = null;
-        for (let i = 0; i < event.touches.length; i++) {
-            if (event.touches[i].identifier === this.cameraTouchId) {
-                cameraTouch = event.touches[i];
-                break;
-            }
-        }
-        
-        // If we found our camera touch, process it
-        if (cameraTouch) {
-            const currentPos = { x: cameraTouch.clientX, y: cameraTouch.clientY };
-            const deltaX = currentPos.x - this.previousCameraPos.x;
-            const deltaY = currentPos.y - this.previousCameraPos.y;
-            
-            // Call camera rotation callback if set
-            if (this.cameraRotateCallback && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
-                this.cameraRotateCallback(deltaX, deltaY);
-                
-                // Update debug info
-                const debugEl = this.container.querySelector('.mobile-debug-info');
-                if (debugEl) {
-                    debugEl.textContent = `Camera move: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`;
-                }
-            }
-            
-            this.previousCameraPos = currentPos;
-            event.preventDefault();
-        } else {
-            // Lost our touch somehow, reset
-            this.cameraTouchId = null;
         }
     }
     
