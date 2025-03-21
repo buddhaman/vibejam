@@ -7,6 +7,7 @@ import { InstancedRenderer } from './Render';
 import { RigidBody } from './RigidBody';
 import { Rope } from './Rope';
 import { MobileControls } from './MobileControls';
+import { Saw } from './Saw';
 
 export class Game {
     public scene: THREE.Scene;
@@ -53,6 +54,9 @@ export class Game {
     private mobileControls: MobileControls | null = null;
     private isMobile: boolean = false;
 
+    // Saw blades collection
+    public saws: Saw[] = [];
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -94,6 +98,9 @@ export class Game {
         
         // Create dynamic platforms
         this.createDynamicPlatforms();
+        
+        // Create saws
+        this.createSaws();
         
         // Create test ropes
         this.createTestRopes();
@@ -992,6 +999,9 @@ export class Game {
             
             // Check collisions with dynamic bodies (new code)
             this.checkPlayerDynamicBodyCollisions(player);
+            
+            // Check collisions with saws
+            this.checkPlayerSawCollisions(player);
         });
 
         // Update and render all ropes
@@ -999,6 +1009,9 @@ export class Game {
             rope.update();
             rope.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
         });
+
+        // Update the circular path for moving saws
+        this.updateSawPaths();
     }
 
     /**
@@ -1062,6 +1075,11 @@ export class Game {
             
             // Apply constraints and boundaries
             this.applyDynamicBodyBoundaries(body);
+        });
+        
+        // Update all saws
+        this.saws.forEach(saw => {
+            saw.update();
         });
     }
     
@@ -1503,5 +1521,87 @@ export class Game {
         
         // Initially set controls hint to semi-transparent
         controlsHint.style.opacity = '0.3';
+    }
+
+    /**
+     * Create dangerous saw blades
+     */
+    public createSaws(): void {
+        // Create a single test saw
+        const testSaw = new Saw(
+            new THREE.Vector3(10, 8, 0),  // Position
+            4.0,                          // Radius
+            0.2,                          // Thickness
+            0.1                           // Spin speed
+        );
+        this.addSaw(testSaw);
+    }
+    
+    /**
+     * Add a saw to the game
+     * @param saw The saw to add
+     * @returns The added saw
+     */
+    public addSaw(saw: Saw): Saw {
+        this.saws.push(saw);
+        this.scene.add(saw.mesh);
+        return saw;
+    }
+    
+    /**
+     * Check and resolve player collisions with saws
+     * @param player The player to check collisions for
+     */
+    public checkPlayerSawCollisions(player: Player): void {
+        // Get all particles from the player's verlet body
+        const particles = player.verletBody.getParticles();
+        
+        // Check collision for each particle against each saw
+        for (const particle of particles) {
+            const particlePosition = particle.position;
+            const particleRadius = particle.radius;
+            
+            // Check against all saws
+            for (const saw of this.saws) {
+                const translation = saw.body.shape.collideWithSphere(particlePosition, particleRadius);
+                
+                // If collision detected, resolve it and apply damage effect
+                if (translation) {
+                    // Move the particle out of collision
+                    particlePosition.add(translation);
+                    
+                    // Compute particle velocity
+                    const particleVelocity = new THREE.Vector3().subVectors(
+                        particlePosition,
+                        particle.previousPosition
+                    );
+                    
+                    // Get the normal from the translation vector
+                    const normal = translation.clone().normalize();
+                    
+                    // Apply strong repulsion force (the saw pushes the player away)
+                    const repulsionForce = normal.clone().multiplyScalar(0.3);
+                    particle.applyImpulse(repulsionForce);
+                    
+                    // Add some random motion to simulate the saw's teeth catching
+                    const randomForce = new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1
+                    );
+                    particle.applyImpulse(randomForce);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Update the paths for saws that move in patterns
+     */
+    private updateSawPaths(): void {
+        // Update each saw's physics body
+        for (const saw of this.saws) {
+            saw.update();
+        }
     }
 } 
