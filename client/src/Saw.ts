@@ -3,13 +3,13 @@ import { RigidBody } from './RigidBody';
 import { ConvexShape } from '../../shared/ConvexShape';
 
 /**
- * Represents a dangerous sawblade obstacle
+ * Represents a dangerous sawblade obstacle that behaves like a regular rigid body
  */
 export class Saw {
     // The physics body
     public body: RigidBody;
     
-    // Visual mesh
+    // Reference to the mesh (directly from RigidBody)
     public mesh: THREE.Mesh;
     
     // Spinning speed
@@ -23,7 +23,7 @@ export class Saw {
     ) {
         this.spinSpeed = spinSpeed;
         
-        // Create the physics shape (octagonal prism)
+        // Create the octagonal prism shape (centered at origin)
         const points: THREE.Vector3[] = [];
         const numVertices = 8; // Octagon
         
@@ -50,19 +50,24 @@ export class Saw {
         // Create faces for the octagon
         const faces: {indices: number[]}[] = [];
         
-        // Front and back faces
-        const frontIndices: number[] = [];
-        const backIndices: number[] = [];
-        
-        for (let i = 0; i < numVertices; i++) {
-            frontIndices.push(i);
-            backIndices.push(numVertices + numVertices - 1 - i); // Reverse order for back face
+        // FIXED: Front face - counter-clockwise when viewed from +z
+        // Use triangulation (fan) from vertex 0
+        for (let i = 1; i < numVertices - 1; i++) {
+            faces.push({
+                indices: [0, i, i + 1]
+            });
         }
         
-        faces.push({indices: frontIndices});
-        faces.push({indices: backIndices});
+        // FIXED: Back face - counter-clockwise when viewed from -z
+        // Note that from -z looking at the origin, counter-clockwise
+        // means going in reverse order through vertices
+        for (let i = 1; i < numVertices - 1; i++) {
+            faces.push({
+                indices: [numVertices, numVertices + i + 1, numVertices + i]
+            });
+        }
         
-        // Side faces
+        // Side faces - keep the existing implementation as it works
         for (let i = 0; i < numVertices; i++) {
             const next = (i + 1) % numVertices;
             faces.push({
@@ -75,119 +80,42 @@ export class Saw {
             });
         }
         
-        // Create the physics shape
+        // Create the physics shape (centered at origin)
         const shape = new ConvexShape(points, faces);
-        shape.setPosition(position);
         
-        // Create the rigid body with the shape
+        // Create material for the saw
         const material = new THREE.MeshStandardMaterial({
-            color: 0x888888,
+            color: 0xff3333, // Red color for danger
             roughness: 0.3,
             metalness: 0.8,
-            emissive: 0x222222,
-            emissiveIntensity: 0.2
+            emissive: 0x441111,
+            emissiveIntensity: 0.3
         });
         
+        // Create the rigid body (shape is centered at origin)
         this.body = new RigidBody(shape, 10.0, material);
+        
+        // Position the body after creation (avoids double transformation)
+        this.body.shape.position.copy(position);
+        this.body.shape.updateTransform();
         
         // Set initial spin
         this.body.angularVelocity.set(0, 0, spinSpeed);
         
-        // Create the visual mesh
-        this.createVisualMesh(radius, thickness);
-    }
-    
-    private createVisualMesh(radius: number, thickness: number): void {
-        // Create a cylinder for the main disk
-        const diskGeometry = new THREE.CylinderGeometry(radius, radius, thickness, 32);
-        
-        const sawMaterial = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.3,
-            metalness: 0.8,
-            emissive: 0x222222,
-            emissiveIntensity: 0.2
-        });
-        
-        const diskMesh = new THREE.Mesh(diskGeometry, sawMaterial);
-        
-        // Create a group for all the saw parts
-        const sawGroup = new THREE.Group();
-        sawGroup.add(diskMesh);
-        
-        // Add teeth around the edge
-        const toothCount = 16;
-        const toothHeight = radius * 0.2;
-        const toothWidth = radius * 0.1;
-        const toothDepth = thickness * 1.5;
-        
-        const toothGeometry = new THREE.BoxGeometry(toothWidth, toothHeight, toothDepth);
-        const toothMaterial = new THREE.MeshStandardMaterial({
-            color: 0x444444,
-            roughness: 0.2,
-            metalness: 0.9,
-            emissive: 0x111111,
-            emissiveIntensity: 0.1
-        });
-        
-        for (let i = 0; i < toothCount; i++) {
-            const angle = (i / toothCount) * Math.PI * 2;
-            const tooth = new THREE.Mesh(toothGeometry, toothMaterial);
-            
-            // Position teeth around the edge
-            tooth.position.set(
-                Math.cos(angle) * (radius + toothHeight/2),
-                Math.sin(angle) * (radius + toothHeight/2),
-                0
-            );
-            
-            // Rotate teeth to point outward
-            tooth.rotation.z = -angle;
-            
-            sawGroup.add(tooth);
-        }
-        
-        // Add center hub
-        const hubRadius = radius * 0.2;
-        const hubGeometry = new THREE.CylinderGeometry(hubRadius, hubRadius, thickness * 1.5, 16);
-        const hubMaterial = new THREE.MeshStandardMaterial({
-            color: 0x444444,
-            roughness: 0.3,
-            metalness: 0.7
-        });
-        
-        const hub = new THREE.Mesh(hubGeometry, hubMaterial);
-        sawGroup.add(hub);
-        
-        // Create a dummy mesh to hold the group
-        const dummyGeometry = new THREE.BufferGeometry();
-        const dummyMesh = new THREE.Mesh(dummyGeometry, sawMaterial);
-        dummyMesh.add(sawGroup);
-        
-        this.mesh = dummyMesh;
+        // Use the rigid body's mesh directly
+        this.mesh = this.body.mesh;
         
         // Set up shadows
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
-        
-        // Update transform
-        this.updateMeshTransform();
     }
     
     public update(): void {
         // Maintain constant spin speed
         this.body.angularVelocity.set(0, 0, this.spinSpeed);
         
-        // Update physics
+        // Update physics (let the rigid body handle all transformations)
         this.body.update();
-        
-        // Update visual mesh to match physics body
-        this.updateMeshTransform();
-    }
-    
-    private updateMeshTransform(): void {
-        this.mesh.position.copy(this.body.shape.position);
-        this.mesh.quaternion.copy(this.body.shape.orientation);
     }
     
     static create(
@@ -197,5 +125,5 @@ export class Saw {
         spinSpeed: number = 0.1
     ): Saw {
         return new Saw(position, radius, thickness, spinSpeed);
-   }
+    }
 }

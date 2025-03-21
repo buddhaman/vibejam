@@ -1283,17 +1283,7 @@ export class Game {
         );
         verticalPlatform.velocity.set(0, VERTICAL_VELOCITY, 0);
         this.addDynamicBody(verticalPlatform);
-        
-        // 3. Rotating platform - BIGGER
-        const rotatingPlatform = RigidBody.createBox(
-            new THREE.Vector3(8, 2.2, 0),
-            new THREE.Vector3(8, 0.8, 8), // Increased size
-            15.0, // Increased mass
-            greenMaterial
-        );
-        rotatingPlatform.angularVelocity.set(0, ROTATION_VELOCITY, 0);
-        this.addDynamicBody(rotatingPlatform);
-        
+
         // 4. NEW: Fast X-axis rotating platform (to flip the player)
         const flippingPlatform = RigidBody.createBox(
             new THREE.Vector3(0, 3.5, 8), // Position it on the positive Z side
@@ -1531,8 +1521,8 @@ export class Game {
         const testSaw = new Saw(
             new THREE.Vector3(10, 8, 0),  // Position
             4.0,                          // Radius
-            0.2,                          // Thickness
-            0.1                           // Spin speed
+            8.0,                          // Thickness
+            0.0                           // Spin speed
         );
         this.addSaw(testSaw);
     }
@@ -1561,17 +1551,17 @@ export class Game {
             const particlePosition = particle.position;
             const particleRadius = particle.radius;
             
-            // Check against all saws
+            // Check against all saws - treat them just like any other rigid body
             for (const saw of this.saws) {
                 const translation = saw.body.shape.collideWithSphere(particlePosition, particleRadius);
                 
-                // If collision detected, resolve it and apply damage effect
+                // If collision detected, resolve it normally
                 if (translation) {
                     // Move the particle out of collision
                     particlePosition.add(translation);
                     
-                    // Compute particle velocity
-                    const particleVelocity = new THREE.Vector3().subVectors(
+                    // Compute velocity vector
+                    const velocity = new THREE.Vector3().subVectors(
                         particlePosition,
                         particle.previousPosition
                     );
@@ -1579,17 +1569,20 @@ export class Game {
                     // Get the normal from the translation vector
                     const normal = translation.clone().normalize();
                     
-                    // Apply strong repulsion force (the saw pushes the player away)
-                    const repulsionForce = normal.clone().multiplyScalar(0.3);
-                    particle.applyImpulse(repulsionForce);
+                    // Project velocity onto normal and tangent planes
+                    const velAlongNormal = velocity.dot(normal);
+                    const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
+                    const tangentComponent = velocity.clone().sub(normalComponent);
                     
-                    // Add some random motion to simulate the saw's teeth catching
-                    const randomForce = new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.1,
-                        (Math.random() - 0.5) * 0.1,
-                        (Math.random() - 0.5) * 0.1
-                    );
-                    particle.applyImpulse(randomForce);
+                    // Apply friction to tangential component
+                    const friction = 0.2; // Friction coefficient
+                    tangentComponent.multiplyScalar(friction);
+                    
+                    // New velocity is just the tangential component (no bounce)
+                    const newVelocity = tangentComponent;
+                    
+                    // Update the previous position to create this new velocity
+                    particle.previousPosition.copy(particlePosition).sub(newVelocity);
                 }
             }
         }
