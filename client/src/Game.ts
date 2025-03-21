@@ -38,6 +38,9 @@ export class Game {
     // Add this property to the Game class
     public inputKeys: { [key: string]: boolean } = {};
 
+    // Add high performance mode toggle
+    private highPerformanceMode: boolean = true;
+    
     // Add this property to the Game class
     private instancedRenderer: InstancedRenderer;
     private testTime: number = 0;
@@ -49,13 +52,16 @@ export class Game {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
-        // Configure high-quality renderer
+        // Configure renderer with performance detection
         this.renderer = new THREE.WebGLRenderer({ 
             antialias: true,
             powerPreference: "high-performance"
         });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Detect mobile devices and set performance mode accordingly
+        this.detectDeviceCapabilities();
         
         // Initialize players first
         this.players = new Map();
@@ -64,11 +70,11 @@ export class Game {
         // Initialize AFTER renderer is set up
         this.init();
         
-        // Initialize composer at the end
-        this.initComposer();
-        
-        // Add cell shader setup
-        this.setupSimpleCellShading();
+        // Initialize composer only in high performance mode
+        if (this.highPerformanceMode) {
+            this.initComposer();
+            this.setupSimpleCellShading();
+        }
         
         // Add a single test box for collision
         this.createTestBox();
@@ -81,6 +87,73 @@ export class Game {
         
         // Create test ropes
         this.createTestRopes();
+    }
+
+    /**
+     * Detect device capabilities and set performance mode
+     */
+    private detectDeviceCapabilities(): void {
+        // Simple mobile detection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Set performance mode based on device - default to high performance on desktop
+        this.highPerformanceMode = !isMobile;
+        
+        console.log(`Device detected as ${isMobile ? 'mobile' : 'desktop'}, using ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
+        
+        // Apply appropriate renderer settings
+        if (!this.highPerformanceMode) {
+            this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+            this.renderer.shadowMap.enabled = false;
+        } else {
+            // For high performance mode, enable shadows and toon shading by default
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.PCFShadowMap;
+            this.toonShadowsEnabled = true;
+        }
+    }
+
+    /**
+     * Toggle between high and low performance modes
+     */
+    public togglePerformanceMode(): void {
+        this.setPerformanceMode(!this.highPerformanceMode);
+    }
+
+    /**
+     * Manually set performance mode
+     */
+    public setPerformanceMode(highPerformance: boolean): void {
+        if (this.highPerformanceMode === highPerformance) return;
+        
+        this.highPerformanceMode = highPerformance;
+        
+        // Apply appropriate settings
+        if (highPerformance) {
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.PCFShadowMap;
+            
+            // Initialize composer for the rendering pipeline
+            if (!this.composer) {
+                this.initComposer();
+            }
+            
+            // Setup cell shading and turn on toon shadows by default
+            this.setupSimpleCellShading();
+            
+            // Recreate all lights for high performance mode
+            this.setupLighting();
+        } else {
+            this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+            this.renderer.shadowMap.enabled = false;
+            this.toonShadowsEnabled = false;
+            
+            // Recreate simple lighting for low performance mode
+            this.setupLighting();
+        }
+        
+        console.log(`Switched to ${highPerformance ? 'high' : 'low'} performance mode`);
     }
 
     /**
@@ -309,50 +382,72 @@ export class Game {
         this.camera.position.set(0, 8, 8);
         this.camera.lookAt(0, 0, 0);
 
-        // Add some basic lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-        this.scene.add(ambientLight);
-        
-        // Use a warm-tinted directional light with broader range
-        const directionalLight = new THREE.DirectionalLight(0xfff0e6, 0.7);
-        directionalLight.position.set(5, 20, 7.5); // Higher position for broader shadows
-        
-        // Increase shadow map size for better detail
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        
-        // Expand shadow camera frustum to cover more of the level
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 150; // Increased far plane
-        directionalLight.shadow.camera.left = -60;
-        directionalLight.shadow.camera.right = 60;
-        directionalLight.shadow.camera.top = 60;
-        directionalLight.shadow.camera.bottom = -60;
-        
-        this.scene.add(directionalLight);
-        
-        // Add multiple point lights throughout the level for better illumination
-        const lightPositions = [
-            { pos: new THREE.Vector3(0, 5, 0), color: 0xff9ee0, intensity: 0.5, distance: 20 },
-            { pos: new THREE.Vector3(30, 5, 0), color: 0xff9ee0, intensity: 0.5, distance: 20 },
-            { pos: new THREE.Vector3(0, 5, -30), color: 0xff9ee0, intensity: 0.5, distance: 20 },
-            { pos: new THREE.Vector3(0, 40, -30), color: 0xff9ee0, intensity: 0.5, distance: 30 }, // Tower light
-            { pos: new THREE.Vector3(0, 100, 0), color: 0xffffaa, intensity: 0.7, distance: 40 } // Final platform light
-        ];
-        
-        for (const lightData of lightPositions) {
-            const pointLight = new THREE.PointLight(
-                lightData.color, 
-                lightData.intensity, 
-                lightData.distance
-            );
-            pointLight.position.copy(lightData.pos);
-            this.scene.add(pointLight);
-        }
+        // Add lighting based on performance mode
+        this.setupLighting();
 
         // Set up event listeners
         this.setupControls();
         window.addEventListener('resize', this.onWindowResize.bind(this));
+    }
+
+    /**
+     * Set up lighting based on current performance mode
+     */
+    private setupLighting(): void {
+        // Clear existing lights
+        this.scene.children = this.scene.children.filter(child => !(child instanceof THREE.Light));
+        
+        // Add ambient light (used in both modes)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.scene.add(ambientLight);
+        
+        if (this.highPerformanceMode) {
+            // High performance mode: multiple lights with shadows
+            const directionalLight = new THREE.DirectionalLight(0xfff0e6, 0.7);
+            directionalLight.position.set(5, 20, 7.5);
+            
+            // Setup shadow details for high performance mode
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 150;
+            directionalLight.shadow.camera.left = -60;
+            directionalLight.shadow.camera.right = 60;
+            directionalLight.shadow.camera.top = 60;
+            directionalLight.shadow.camera.bottom = -60;
+            directionalLight.shadow.bias = -0.0005;
+            
+            this.scene.add(directionalLight);
+            
+            // Additional lights for high performance mode - reduced number for efficiency
+            const lightPositions = [
+                { pos: new THREE.Vector3(0, 5, 0), color: 0xff9ee0, intensity: 0.5, distance: 20 },
+                { pos: new THREE.Vector3(0, 40, -30), color: 0xff9ee0, intensity: 0.5, distance: 30 },
+                { pos: new THREE.Vector3(0, 100, 0), color: 0xffffaa, intensity: 0.7, distance: 40 }
+            ];
+            
+            for (const lightData of lightPositions) {
+                const pointLight = new THREE.PointLight(
+                    lightData.color, 
+                    lightData.intensity, 
+                    lightData.distance
+                );
+                pointLight.position.copy(lightData.pos);
+                pointLight.castShadow = true;
+                this.scene.add(pointLight);
+            }
+        } else {
+            // Low performance mode: just one directional light, no shadows
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(5, 20, 7.5);
+            this.scene.add(directionalLight);
+            
+            // Add one simple point light for the final platform - no shadows
+            const finalPlatformLight = new THREE.PointLight(0xffffaa, 0.7, 40);
+            finalPlatformLight.position.set(0, 100, 0);
+            this.scene.add(finalPlatformLight);
+        }
     }
 
     public initComposer(): void {
@@ -371,12 +466,34 @@ export class Game {
     }
 
     public setupSimpleCellShading(): void {
-        // Set up the composer
+        // Only proceed if in high performance mode
+        if (!this.highPerformanceMode) return;
+        
+        // Set up the composer with a render pass
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
         
-        // Setup initial toon shadows with toggle (disabled by default for performance)
-        this.setupToonShadows(false);
+        // Create a texture gradient for toon materials if not already created
+        if (!this.toonTextureGradient) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 1;
+            const context = canvas.getContext('2d');
+            if (context) {
+                // Create a 4-step gradient that's not too dark
+                const gradient = context.createLinearGradient(0, 0, 64, 0);
+                gradient.addColorStop(0, "#555555");    // Dark tone but not pure black
+                gradient.addColorStop(0.3, "#777777");  // Softer shadow tone
+                gradient.addColorStop(0.6, "#BBBBBB");  // Lighter mid tone
+                gradient.addColorStop(1, "#FFFFFF");    // Highlight
+                
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 64, 1);
+                
+                this.toonTextureGradient = new THREE.CanvasTexture(canvas);
+                this.toonTextureGradient.colorSpace = THREE.SRGBColorSpace;
+            }
+        }
     }
     
     public setupControls(): void {
@@ -426,11 +543,14 @@ export class Game {
             this.inputKeys[event.key.toLowerCase()] = false;
         });
 
-        // Add shadow toggle
+        // Use 'T' key to toggle performance mode instead of just toon shadows
         window.addEventListener('keydown', (event) => {
             if (event.key === 't' || event.key === 'T') {
-                this.toggleToonShadows(!this.toonShadowsEnabled);
-                console.log(`Toon shadows ${this.toonShadowsEnabled ? 'enabled' : 'disabled'}`);
+                // Only allow toggling on desktop devices
+                if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    this.togglePerformanceMode();
+                    console.log(`Toggled to ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
+                }
             }
         });
     }
@@ -491,10 +611,18 @@ export class Game {
         
         // Update renderer
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
         
-        // Recreate the composer with the new size
-        this.initComposer();
+        // Set appropriate pixel ratio based on performance mode
+        if (this.highPerformanceMode) {
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+        } else {
+            this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+        }
+        
+        // Recreate the composer only in high performance mode
+        if (this.highPerformanceMode) {
+            this.initComposer();
+        }
     }
 
     public update(): void {
@@ -532,8 +660,8 @@ export class Game {
             // Update camera
             this.updateCamera();
             
-            // Render
-            if (this.composer) {
+            // Render based on performance mode
+            if (this.highPerformanceMode && this.composer) {
                 this.composer.render();
             } else {
                 this.renderer.render(this.scene, this.camera);
@@ -828,96 +956,9 @@ export class Game {
     }
 
     public toggleToonShadows(enabled: boolean): void {
-        this.setupToonShadows(enabled);
-    }
-
-    private setupToonShadows(enabled: boolean = true): void {
-        this.toonShadowsEnabled = enabled;
-        
-        if (!enabled) {
-            // Disable shadows on all lights
-            this.scene.traverse(object => {
-                if (object instanceof THREE.Light) {
-                    object.castShadow = false;
-                }
-            });
-            
-            // Disable shadow maps on renderer
-            this.renderer.shadowMap.enabled = false;
-            
-            // Hide any shadow-only elements
-            if (this.scene.userData.shadowGround) {
-                (this.scene.userData.shadowGround as THREE.Mesh).visible = false;
-            }
-            return;
-        }
-        
-        // Enable shadow maps with an appropriate shadow type
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap;
-        
-        // Create a more defined gradient texture for toon shading - but not too dark
-        if (!this.toonTextureGradient) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64;
-            canvas.height = 1;
-            const context = canvas.getContext('2d');
-            if (context) {
-                // Create a 4-step gradient that's not too dark
-                const gradient = context.createLinearGradient(0, 0, 64, 0);
-                gradient.addColorStop(0, "#555555");    // Dark tone but not pure black
-                gradient.addColorStop(0.3, "#777777");  // Softer shadow tone
-                gradient.addColorStop(0.6, "#BBBBBB");  // Lighter mid tone
-                gradient.addColorStop(1, "#FFFFFF");    // Highlight
-                
-                context.fillStyle = gradient;
-                context.fillRect(0, 0, 64, 1);
-                
-                this.toonTextureGradient = new THREE.CanvasTexture(canvas);
-                this.toonTextureGradient.colorSpace = THREE.SRGBColorSpace;
-            }
-        }
-        
-        // Configure lighting - keep it bright
-        this.scene.traverse(object => {
-            if (object instanceof THREE.DirectionalLight) {
-                object.castShadow = true;
-                object.intensity = 1.0; // Brighter light
-                
-                // Higher resolution shadow maps
-                object.shadow.mapSize.width = 2048;
-                object.shadow.mapSize.height = 2048;
-                
-                // Adjust shadow camera for much larger scene size
-                object.shadow.camera.near = 0.5;
-                object.shadow.camera.far = 150;
-                object.shadow.camera.left = -60;
-                object.shadow.camera.right = 60;
-                object.shadow.camera.top = 60;
-                object.shadow.camera.bottom = -60;
-                
-                // Fix shadow acne with moderate bias
-                object.shadow.bias = -0.0005;
-                object.shadow.normalBias = 0;
-            } else if (object instanceof THREE.PointLight) {
-                object.castShadow = true;
-                object.intensity *= 1.2; // Increase intensity
-            }
-        });
-        
-        // Make sure ambient light is bright enough
-        let hasAmbient = false;
-        this.scene.traverse(object => {
-            if (object instanceof THREE.AmbientLight) {
-                object.intensity = 1.0; // Ensure bright ambient light
-                hasAmbient = true;
-            }
-        });
-        
-        // Add ambient light if none exists
-        if (!hasAmbient) {
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-            this.scene.add(ambientLight);
+        // This now just becomes a passthrough to performance toggle
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            this.togglePerformanceMode();
         }
     }
 
