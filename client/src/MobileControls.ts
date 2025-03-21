@@ -68,15 +68,16 @@ export class MobileControls {
         this.jumpButton.style.height = '80px';
         this.jumpButton.style.borderRadius = '40px';
         this.jumpButton.style.backgroundColor = 'rgba(100, 200, 255, 0.5)';
-        this.jumpButton.style.border = '2px solid rgba(255, 255, 255, 0.8)'; // Make border more visible
+        this.jumpButton.style.border = '2px solid rgba(255, 255, 255, 0.8)';
         this.jumpButton.style.pointerEvents = 'auto';
         this.jumpButton.style.display = 'flex';
         this.jumpButton.style.justifyContent = 'center';
         this.jumpButton.style.alignItems = 'center';
-        this.jumpButton.style.fontSize = '18px'; // Larger text
+        this.jumpButton.style.fontSize = '18px';
         this.jumpButton.style.fontWeight = 'bold';
         this.jumpButton.style.color = 'white';
-        this.jumpButton.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; // Add text shadow for readability
+        this.jumpButton.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)';
+        this.jumpButton.style.zIndex = '9999'; // Ensure highest z-index
         this.jumpButton.innerText = 'JUMP';
         
         // Create crouch button
@@ -89,15 +90,16 @@ export class MobileControls {
         this.crouchButton.style.height = '80px';
         this.crouchButton.style.borderRadius = '40px';
         this.crouchButton.style.backgroundColor = 'rgba(255, 150, 100, 0.5)';
-        this.crouchButton.style.border = '2px solid rgba(255, 255, 255, 0.8)'; // Make border more visible
+        this.crouchButton.style.border = '2px solid rgba(255, 255, 255, 0.8)';
         this.crouchButton.style.pointerEvents = 'auto';
         this.crouchButton.style.display = 'flex';
         this.crouchButton.style.justifyContent = 'center';
         this.crouchButton.style.alignItems = 'center';
-        this.crouchButton.style.fontSize = '18px'; // Larger text
+        this.crouchButton.style.fontSize = '18px';
         this.crouchButton.style.fontWeight = 'bold';
         this.crouchButton.style.color = 'white';
-        this.crouchButton.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; // Add text shadow for readability
+        this.crouchButton.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)';
+        this.crouchButton.style.zIndex = '9999'; // Ensure highest z-index
         this.crouchButton.innerText = 'CROUCH';
         
         this.container.appendChild(this.jumpButton);
@@ -130,10 +132,6 @@ export class MobileControls {
         
         // Set up the camera controls and button handlers
         this.setupCameraControls();
-        this.setupButtonHandlers();
-        
-        // Add debug message to confirm attachment
-        console.log("Mobile controls attached");
         
         // Add camera drag area for visibility
         const cameraArea = document.createElement('div');
@@ -142,10 +140,10 @@ export class MobileControls {
         cameraArea.style.top = '0';
         cameraArea.style.right = '0';
         cameraArea.style.width = '50%';
-        cameraArea.style.height = '100%';
+        cameraArea.style.height = 'calc(100% - 200px)'; // Leave space at bottom for buttons
         cameraArea.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
         cameraArea.style.pointerEvents = 'auto';
-        cameraArea.style.zIndex = '999';
+        cameraArea.style.zIndex = '10'; // Lower z-index so buttons can be on top
         cameraArea.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
         
         // Update debug info when touched
@@ -164,6 +162,22 @@ export class MobileControls {
         });
         
         this.container.appendChild(cameraArea);
+        
+        // Remove and re-append buttons to ensure they're on top
+        if (this.jumpButton.parentNode) {
+            this.jumpButton.parentNode.removeChild(this.jumpButton);
+        }
+        if (this.crouchButton.parentNode) {
+            this.crouchButton.parentNode.removeChild(this.crouchButton);
+        }
+        this.container.appendChild(this.jumpButton);
+        this.container.appendChild(this.crouchButton);
+        
+        // Set up button handlers
+        this.setupButtonHandlers();
+        
+        // Add debug message to confirm attachment
+        console.log("Mobile controls attached");
     }
     
     /**
@@ -242,31 +256,64 @@ export class MobileControls {
      * Set up button handlers
      */
     private setupButtonHandlers(): void {
-        // Jump button events
+        console.log("Setting up button handlers");
+        
+        // Log button visibility to help debugging
+        console.log("Jump button:", this.jumpButton);
+        console.log("Crouch button:", this.crouchButton);
+        
+        // Button touch events need capture phase to ensure they're handled first
         this.jumpButton.addEventListener('touchstart', (event) => {
+            console.log("Jump button touchstart");
+            event.stopPropagation();
             event.preventDefault();
             this.jumpActive = true;
             this.jumpButton.style.backgroundColor = 'rgba(100, 200, 255, 0.8)';
-        });
+            
+            // Update debug info
+            const debugEl = this.container.querySelector('.mobile-debug-info');
+            if (debugEl) {
+                debugEl.textContent = 'JUMP pressed';
+            }
+        }, { capture: true });
         
         this.jumpButton.addEventListener('touchend', (event) => {
+            console.log("Jump button touchend");
+            event.stopPropagation();
             event.preventDefault();
             this.jumpActive = false;
             this.jumpButton.style.backgroundColor = 'rgba(100, 200, 255, 0.5)';
-        });
+        }, { capture: true });
         
         // Crouch button events
         this.crouchButton.addEventListener('touchstart', (event) => {
+            console.log("Crouch button touchstart");
+            event.stopPropagation();
             event.preventDefault();
             this.crouchActive = true;
             this.crouchButton.style.backgroundColor = 'rgba(255, 150, 100, 0.8)';
-        });
+            
+            // Update debug info
+            const debugEl = this.container.querySelector('.mobile-debug-info');
+            if (debugEl) {
+                debugEl.textContent = 'CROUCH pressed';
+            }
+        }, { capture: true });
         
         this.crouchButton.addEventListener('touchend', (event) => {
+            console.log("Crouch button touchend");
+            event.stopPropagation();
             event.preventDefault();
             this.crouchActive = false;
             this.crouchButton.style.backgroundColor = 'rgba(255, 150, 100, 0.5)';
-        });
+        }, { capture: true });
+        
+        // Add global touch logging to debug issues
+        document.addEventListener('touchstart', (e) => {
+            const target = e.target as Element;
+            const targetInfo = target ? `${target.tagName}${target.className ? '.' + target.className : ''}` : 'unknown';
+            console.log(`Global touchstart: x=${e.touches[0].clientX}, y=${e.touches[0].clientY}, target=${targetInfo}`);
+        }, { passive: true });
     }
     
     /**
@@ -280,18 +327,31 @@ export class MobileControls {
             // Skip if we're already tracking a touch for camera
             if (this.cameraTouchId !== null) continue;
             
-            // Check if touch is in the right half of the screen
-            const isRightHalf = touch.clientX > window.innerWidth / 2;
+            // Get the element at the touch position
+            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY) as Element;
             
-            // Skip touches on control elements
-            const targetEl = touch.target as Element;
-            const isControl = 
-                targetEl === this.jumpButton || 
-                targetEl === this.crouchButton || 
+            // Check if touch is on any control element
+            if (targetEl && (
+                // Check button classes
+                targetEl.classList.contains('jump-button') ||
+                targetEl.classList.contains('crouch-button') ||
                 targetEl.classList.contains('joystick-zone') ||
-                !!targetEl.closest('.nipple');
+                // Check parent elements
+                targetEl.closest('.jump-button') ||
+                targetEl.closest('.crouch-button') ||
+                targetEl.closest('.joystick-zone') ||
+                targetEl.closest('.nipple')
+            )) {
+                // Skip touches on controls
+                console.log("Touch on control element, skipping camera control");
+                continue;
+            }
             
-            if (isRightHalf && !isControl) {
+            // For camera control, only use touches on the right half and upper portion of the screen
+            const isRightHalf = touch.clientX > window.innerWidth / 2;
+            const isBelowButtonArea = touch.clientY > (window.innerHeight - 200);
+            
+            if (isRightHalf && !isBelowButtonArea) {
                 this.cameraTouchId = touch.identifier;
                 this.previousCameraPos = { x: touch.clientX, y: touch.clientY };
                 
