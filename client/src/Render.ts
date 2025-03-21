@@ -191,6 +191,82 @@ export class InstancedRenderer {
     }
     
     /**
+     * Render an elongated sphere (for particles with velocity)
+     * @param center Center position of the particle
+     * @param velocity Velocity vector of the particle (determines elongation direction)
+     * @param radius Base radius of the particle
+     * @param elongationFactor How much to stretch the particle in velocity direction
+     * @param color Color of the particle
+     */
+    public renderElongatedSphere(
+        center: THREE.Vector3,
+        velocity: THREE.Vector3,
+        radius: number = 1.0,
+        elongationFactor: number = 1.0,
+        color: THREE.Color | number = 0xffffff
+    ): void {
+        // Check if we've reached the maximum number of spheres
+        if (this.sphereCount >= this.maxSpheres) {
+            console.warn('Maximum number of particles reached');
+            return;
+        }
+        
+        // Set the position
+        this.tempPosition.copy(center);
+        
+        // Calculate elongation based on velocity
+        const speed = velocity.length();
+        
+        // Only apply elongation if there's significant velocity
+        if (speed > 0.01) {
+            // Get the direction of the velocity
+            const direction = velocity.clone().normalize();
+            
+            // Calculate scale: normal radius in perpendicular directions,
+            // elongated in the velocity direction
+            this.tempScale.set(
+                radius,
+                radius,
+                radius
+            );
+            
+            // Apply elongation in the velocity direction
+            const elongation = 1.0 + (speed * elongationFactor);
+            
+            // We need to create a quaternion to rotate our sphere to align with velocity
+            this.tempQuaternion.setFromUnitVectors(
+                this.upVector,  // Default up vector
+                direction       // Align with velocity direction
+            );
+            
+            // Stretch in the local Y direction (after rotation)
+            this.tempScale.y *= elongation;
+        } else {
+            // No significant velocity, just use regular sphere
+            this.tempScale.set(radius, radius, radius);
+            this.tempQuaternion.identity();
+        }
+        
+        // Compose the transformation matrix
+        this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        
+        // Set the instance matrix
+        this.sphereMesh.setMatrixAt(this.sphereCount, this.tempMatrix);
+        
+        // Set the color
+        if (typeof color === 'number') {
+            this.tempColor.set(color);
+        } else {
+            this.tempColor.copy(color);
+        }
+        this.sphereMesh.setColorAt(this.sphereCount, this.tempColor);
+        
+        // Increment the sphere count
+        this.sphereCount++;
+        this.sphereMesh.count = this.sphereCount;
+    }
+    
+    /**
      * Update the meshes after all instances have been added
      * This must be called after rendering all beams and spheres for a frame
      */

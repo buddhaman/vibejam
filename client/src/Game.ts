@@ -8,6 +8,7 @@ import { RigidBody } from './RigidBody';
 import { Rope } from './Rope';
 import { MobileControls } from './MobileControls';
 import { Saw } from './Saw';
+import { ParticleSystem } from './ParticleSystem';
 
 export class Game {
     public scene: THREE.Scene;
@@ -57,6 +58,9 @@ export class Game {
     // Saw blades collection
     public saws: Saw[] = [];
 
+    // Add particle system
+    private particleSystem: ParticleSystem;
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -104,6 +108,9 @@ export class Game {
         
         // Create test ropes
         this.createTestRopes();
+
+        // Initialize particle system
+        this.particleSystem = new ParticleSystem(this.instancedRenderer);
     }
 
     /**
@@ -1012,6 +1019,12 @@ export class Game {
 
         // Update the circular path for moving saws
         this.updateSawPaths();
+
+        // Update particles with fixed timestep (convert milliseconds to seconds)
+        this.particleSystem.update(this.timestep / 1000);
+
+        // Render particles
+        this.particleSystem.render();
     }
 
     /**
@@ -1576,6 +1589,13 @@ export class Game {
                     
                     // Update the previous position to create this new velocity
                     particle.previousPosition.copy(particlePosition).sub(newVelocity);
+
+                    // Spawn particles at the contact point
+                    this.spawnSawCollisionParticles(
+                        contactPoint,
+                        angularComponent.normalize(),
+                        saw.body.angularVelocity.clone()
+                    );
                 }
             }
         }
@@ -1589,5 +1609,24 @@ export class Game {
         for (const saw of this.saws) {
             saw.update();
         }
+    }
+
+    // Add method to spawn particles when a saw collision occurs
+    private spawnSawCollisionParticles(position: THREE.Vector3, normal: THREE.Vector3, sawVelocity: THREE.Vector3): void {
+        // Create a burst of particles in the saw impact
+        this.particleSystem.spawnParticleBurst(
+            15, // Number of particles
+            {
+                position: position.clone(),
+                velocity: normal.clone().multiplyScalar(2).add(sawVelocity),
+                radius: 0.1,
+                color: 0xff3333, // Red spark color
+                lifetime: 0.5,
+                gravity: true
+            },
+            1.0,  // Randomize velocity
+            0.05, // Randomize radius
+            0.2   // Randomize lifetime
+        );
     }
 } 
