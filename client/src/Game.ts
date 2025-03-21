@@ -421,7 +421,8 @@ export class Game {
             // Adjust camera angles based on touch movement - use higher sensitivity for mobile
             const sensitivity = 0.02; // Doubled from 0.01
             this.cameraTheta += deltaX * sensitivity;
-            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaY * sensitivity));
+            // INVERTED Y-axis for more natural camera control - using negative deltaY
+            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi - deltaY * sensitivity));
             
             // Log camera rotation for debugging
             console.log(`Camera rotation: theta=${this.cameraTheta.toFixed(2)}, phi=${this.cameraPhi.toFixed(2)}`);
