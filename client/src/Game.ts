@@ -6,6 +6,7 @@ import { StaticBody } from './StaticBody';
 import { InstancedRenderer } from './Render';
 import { RigidBody } from './RigidBody';
 import { Rope } from './Rope';
+import { MobileControls } from './MobileControls';
 
 export class Game {
     public scene: THREE.Scene;
@@ -48,6 +49,10 @@ export class Game {
     // Add rope collection to Game class
     public ropes: Rope[] = [];
 
+    // Add mobile controls
+    private mobileControls: MobileControls | null = null;
+    private isMobile: boolean = false;
+
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -62,6 +67,11 @@ export class Game {
         
         // Detect mobile devices and set performance mode accordingly
         this.detectDeviceCapabilities();
+        
+        // Initialize mobile controls immediately if on mobile device
+        if (this.isMobile) {
+            this.setupMobileControls();
+        }
         
         // Initialize players first
         this.players = new Map();
@@ -93,13 +103,27 @@ export class Game {
      * Detect device capabilities and set performance mode
      */
     private detectDeviceCapabilities(): void {
-        // Simple mobile detection
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // Enhanced mobile detection - check both user agent and screen size
+        const userAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Chrome DevTools mobile emulation often has small screen size
+        const sizeMobile = window.innerWidth <= 900;
+        
+        // Set mobile detection flag
+        this.isMobile = userAgentMobile || sizeMobile;
+        
+        // Force mobile mode for debugging
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('forceMobile')) {
+            this.isMobile = true;
+            console.log("Forcing mobile mode via URL parameter");
+        }
         
         // Set performance mode based on device - default to high performance on desktop
-        this.highPerformanceMode = !isMobile;
+        this.highPerformanceMode = !this.isMobile;
         
-        console.log(`Device detected as ${isMobile ? 'mobile' : 'desktop'}, using ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
+        console.log(`Device detected as ${this.isMobile ? 'mobile' : 'desktop'}, using ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
+        console.log(`Screen dimensions: ${window.innerWidth}x${window.innerHeight}, devicePixelRatio: ${window.devicePixelRatio}`);
         
         // Apply appropriate renderer settings
         if (!this.highPerformanceMode) {
@@ -371,6 +395,43 @@ export class Game {
         console.log("Complex level created with multiple platforms and challenges");
     }
 
+    /**
+     * Setup mobile controls
+     */
+    private setupMobileControls(): void {
+        // Create new mobile controls
+        this.mobileControls = new MobileControls();
+        
+        // Set the camera rotation callback
+        this.mobileControls.setCameraRotateCallback((deltaX, deltaY) => {
+            // Adjust camera angles based on touch movement
+            this.cameraTheta += deltaX * 0.01;
+            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaY * 0.01));
+        });
+        
+        // Attach the controls to the DOM
+        this.mobileControls.attach();
+        
+        console.log("Mobile controls initialized", this.mobileControls);
+        
+        // Debug helper for DevTools: force mobile controls visibility
+        if (window.navigator.userAgent.includes('Chrome')) {
+            const mobileControlsDiv = document.querySelector('.mobile-controls');
+            if (mobileControlsDiv) {
+                console.log("Forcing mobile controls visibility for Chrome DevTools");
+                (mobileControlsDiv as HTMLElement).style.display = 'block';
+                (mobileControlsDiv as HTMLElement).style.visibility = 'visible';
+                
+                // Make sure joystick is visible
+                const joystickZone = document.querySelector('.joystick-zone');
+                if (joystickZone) {
+                    (joystickZone as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                    console.log("Joystick zone visibility enhanced");
+                }
+            }
+        }
+    }
+
     public init(): void {
         // Renderer setup
         document.body.appendChild(this.renderer.domElement);
@@ -388,6 +449,11 @@ export class Game {
         // Set up event listeners
         this.setupControls();
         window.addEventListener('resize', this.onWindowResize.bind(this));
+        
+        // Ensure mobile controls are set up immediately after initialization if on mobile
+        if (this.isMobile && !this.mobileControls) {
+            this.setupMobileControls();
+        }
     }
 
     /**
@@ -681,13 +747,37 @@ export class Game {
         if (this.localPlayer) {
             this.localPlayer.forward.set(forwardX, 0, forwardZ).normalize();
             
+            // Get mobile input if available
+            let mobileInput = { w: false, a: false, s: false, d: false, space: false, shift: false };
+            
+            if (this.isMobile && this.mobileControls) {
+                // Get input from mobile controls
+                const direction = this.mobileControls.movementDirection;
+                
+                // Convert joystick direction to WASD
+                if (direction.length() > 0.1) {
+                    // Forward/backward based on y component
+                    mobileInput.w = direction.y > 0.3;
+                    mobileInput.s = direction.y < -0.3;
+                    
+                    // Left/right based on x component
+                    mobileInput.a = direction.x < -0.3;
+                    mobileInput.d = direction.x > 0.3;
+                }
+                
+                // Get jump and crouch status from mobile controls
+                const buttonState = this.mobileControls.getInputState();
+                mobileInput.space = buttonState.space;
+                mobileInput.shift = buttonState.shift;
+            }
+            
             this.localPlayer.handleInput({
-                w: this.inputKeys['w'] || false,
-                a: this.inputKeys['a'] || false,
-                s: this.inputKeys['s'] || false,
-                d: this.inputKeys['d'] || false,
-                space: this.inputKeys[' '] || false,
-                shift: this.inputKeys['shift'] || false
+                w: this.inputKeys['w'] || mobileInput.w || false,
+                a: this.inputKeys['a'] || mobileInput.a || false,
+                s: this.inputKeys['s'] || mobileInput.s || false,
+                d: this.inputKeys['d'] || mobileInput.d || false,
+                space: this.inputKeys[' '] || mobileInput.space || false,
+                shift: this.inputKeys['shift'] || mobileInput.shift || false
             });
         }
 
