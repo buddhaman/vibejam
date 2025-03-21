@@ -50,24 +50,21 @@ export class Saw {
         // Create faces for the octagon
         const faces: {indices: number[]}[] = [];
         
-        // FIXED: Front face - counter-clockwise when viewed from +z
-        // Use triangulation (fan) from vertex 0
+        // Front face - INVERTED winding order
         for (let i = 1; i < numVertices - 1; i++) {
             faces.push({
-                indices: [0, i, i + 1]
+                indices: [0, i + 1, i]  // Changed from [0, i, i+1]
             });
         }
         
-        // FIXED: Back face - counter-clockwise when viewed from -z
-        // Note that from -z looking at the origin, counter-clockwise
-        // means going in reverse order through vertices
+        // Back face - INVERTED winding order
         for (let i = 1; i < numVertices - 1; i++) {
             faces.push({
-                indices: [numVertices, numVertices + i + 1, numVertices + i]
+                indices: [numVertices, numVertices + i, numVertices + i + 1]  // Changed from [numVertices, numVertices+i+1, numVertices+i]
             });
         }
         
-        // Side faces - keep the existing implementation as it works
+        // Side faces - keep unchanged
         for (let i = 0; i < numVertices; i++) {
             const next = (i + 1) % numVertices;
             faces.push({

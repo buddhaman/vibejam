@@ -1522,7 +1522,7 @@ export class Game {
             new THREE.Vector3(10, 8, 0),  // Position
             4.0,                          // Radius
             8.0,                          // Thickness
-            0.0                           // Spin speed
+            0.05                           // Spin speed
         );
         this.addSaw(testSaw);
     }
@@ -1574,8 +1574,8 @@ export class Game {
                     const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
                     const tangentComponent = velocity.clone().sub(normalComponent);
                     
-                    // Apply friction to tangential component
-                    const friction = 0.2; // Friction coefficient
+                    // Cool hack to make the saw work, extreme negative friction
+                    const friction = -10; // Friction coefficient
                     tangentComponent.multiplyScalar(friction);
                     
                     // New velocity is just the tangential component (no bounce)
