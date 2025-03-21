@@ -131,6 +131,39 @@ export class MobileControls {
         // Set up the camera controls and button handlers
         this.setupCameraControls();
         this.setupButtonHandlers();
+        
+        // Add debug message to confirm attachment
+        console.log("Mobile controls attached");
+        
+        // Add camera drag area for visibility
+        const cameraArea = document.createElement('div');
+        cameraArea.className = 'camera-control-area';
+        cameraArea.style.position = 'absolute';
+        cameraArea.style.top = '0';
+        cameraArea.style.right = '0';
+        cameraArea.style.width = '50%';
+        cameraArea.style.height = '100%';
+        cameraArea.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+        cameraArea.style.pointerEvents = 'auto';
+        cameraArea.style.zIndex = '999';
+        cameraArea.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
+        
+        // Update debug info when touched
+        cameraArea.addEventListener('touchstart', (event) => {
+            const debugEl = this.container.querySelector('.mobile-debug-info');
+            if (debugEl) {
+                debugEl.textContent = 'Camera control active';
+            }
+        });
+        
+        cameraArea.addEventListener('touchend', (event) => {
+            const debugEl = this.container.querySelector('.mobile-debug-info');
+            if (debugEl) {
+                debugEl.textContent = 'Mobile Controls Active';
+            }
+        });
+        
+        this.container.appendChild(cameraArea);
     }
     
     /**
@@ -196,11 +229,13 @@ export class MobileControls {
      * Set up camera control touch handling
      */
     private setupCameraControls(): void {
-        // Add touch event listeners to the container
-        this.container.addEventListener('touchstart', this.handleCameraTouchStart.bind(this), { passive: false });
-        this.container.addEventListener('touchmove', this.handleCameraTouchMove.bind(this), { passive: false });
-        this.container.addEventListener('touchend', this.handleCameraTouchEnd.bind(this), { passive: false });
-        this.container.addEventListener('touchcancel', this.handleCameraTouchEnd.bind(this), { passive: false });
+        // Get the entire document for touch events to ensure we don't miss any
+        document.addEventListener('touchstart', this.handleCameraTouchStart.bind(this), { passive: false });
+        document.addEventListener('touchmove', this.handleCameraTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleCameraTouchEnd.bind(this), { passive: false });
+        document.addEventListener('touchcancel', this.handleCameraTouchEnd.bind(this), { passive: false });
+        
+        console.log("Camera controls set up on document");
     }
     
     /**
@@ -238,22 +273,36 @@ export class MobileControls {
      * Handle camera touch start
      */
     private handleCameraTouchStart(event: TouchEvent): void {
-        // Only process touches in the right half of the screen for camera control
+        // Prevent default behavior only for camera control touches
         for (let i = 0; i < event.changedTouches.length; i++) {
             const touch = event.changedTouches[i];
             
-            // Ignore touches on buttons or joystick zone
-            if (touch.target === this.jumpButton || 
-                touch.target === this.crouchButton || 
-                (touch.target as Element).classList.contains('joystick-zone') ||
-                (touch.target as Element).closest('.nipple')) {
-                continue;
-            }
+            // Skip if we're already tracking a touch for camera
+            if (this.cameraTouchId !== null) continue;
             
-            // For camera control, only use touches on the right half of the screen
-            if (touch.clientX > window.innerWidth / 2 && this.cameraTouchId === null) {
+            // Check if touch is in the right half of the screen
+            const isRightHalf = touch.clientX > window.innerWidth / 2;
+            
+            // Skip touches on control elements
+            const targetEl = touch.target as Element;
+            const isControl = 
+                targetEl === this.jumpButton || 
+                targetEl === this.crouchButton || 
+                targetEl.classList.contains('joystick-zone') ||
+                !!targetEl.closest('.nipple');
+            
+            if (isRightHalf && !isControl) {
                 this.cameraTouchId = touch.identifier;
                 this.previousCameraPos = { x: touch.clientX, y: touch.clientY };
+                
+                // Update debug info
+                const debugEl = this.container.querySelector('.mobile-debug-info');
+                if (debugEl) {
+                    debugEl.textContent = `Camera start: ${touch.clientX}, ${touch.clientY}`;
+                }
+                
+                event.preventDefault();
+                break; // Only track one camera touch
             }
         }
     }
@@ -262,22 +311,40 @@ export class MobileControls {
      * Handle camera touch move
      */
     private handleCameraTouchMove(event: TouchEvent): void {
-        // Find the active camera touch and update camera
-        for (let i = 0; i < event.changedTouches.length; i++) {
-            const touch = event.changedTouches[i];
-            
-            if (touch.identifier === this.cameraTouchId) {
-                const currentPos = { x: touch.clientX, y: touch.clientY };
-                const deltaX = currentPos.x - this.previousCameraPos.x;
-                const deltaY = currentPos.y - this.previousCameraPos.y;
-                
-                // Call camera rotation callback if set
-                if (this.cameraRotateCallback) {
-                    this.cameraRotateCallback(deltaX, deltaY);
-                }
-                
-                this.previousCameraPos = currentPos;
+        // If we're not tracking a camera touch, exit early
+        if (this.cameraTouchId === null) return;
+        
+        // Try to find our active camera touch
+        let cameraTouch = null;
+        for (let i = 0; i < event.touches.length; i++) {
+            if (event.touches[i].identifier === this.cameraTouchId) {
+                cameraTouch = event.touches[i];
+                break;
             }
+        }
+        
+        // If we found our camera touch, process it
+        if (cameraTouch) {
+            const currentPos = { x: cameraTouch.clientX, y: cameraTouch.clientY };
+            const deltaX = currentPos.x - this.previousCameraPos.x;
+            const deltaY = currentPos.y - this.previousCameraPos.y;
+            
+            // Call camera rotation callback if set
+            if (this.cameraRotateCallback && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+                this.cameraRotateCallback(deltaX, deltaY);
+                
+                // Update debug info
+                const debugEl = this.container.querySelector('.mobile-debug-info');
+                if (debugEl) {
+                    debugEl.textContent = `Camera move: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`;
+                }
+            }
+            
+            this.previousCameraPos = currentPos;
+            event.preventDefault();
+        } else {
+            // Lost our touch somehow, reset
+            this.cameraTouchId = null;
         }
     }
     
@@ -285,12 +352,25 @@ export class MobileControls {
      * Handle camera touch end
      */
     private handleCameraTouchEnd(event: TouchEvent): void {
-        // Find the active camera touch and clear it
+        // Check if our tracked camera touch has ended
         for (let i = 0; i < event.changedTouches.length; i++) {
-            const touch = event.changedTouches[i];
-            
-            if (touch.identifier === this.cameraTouchId) {
+            if (event.changedTouches[i].identifier === this.cameraTouchId) {
                 this.cameraTouchId = null;
+                
+                // Update debug info
+                const debugEl = this.container.querySelector('.mobile-debug-info');
+                if (debugEl) {
+                    debugEl.textContent = 'Camera control released';
+                    
+                    // Reset to default message after a short delay
+                    setTimeout(() => {
+                        if (debugEl) {
+                            debugEl.textContent = 'Mobile Controls Active';
+                        }
+                    }, 1000);
+                }
+                
+                break;
             }
         }
     }

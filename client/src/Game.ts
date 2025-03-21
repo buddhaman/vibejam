@@ -402,11 +402,15 @@ export class Game {
         // Create new mobile controls
         this.mobileControls = new MobileControls();
         
-        // Set the camera rotation callback
+        // Set the camera rotation callback with increased sensitivity for mobile
         this.mobileControls.setCameraRotateCallback((deltaX, deltaY) => {
-            // Adjust camera angles based on touch movement
-            this.cameraTheta += deltaX * 0.01;
-            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaY * 0.01));
+            // Adjust camera angles based on touch movement - use higher sensitivity for mobile
+            const sensitivity = 0.02; // Doubled from 0.01
+            this.cameraTheta += deltaX * sensitivity;
+            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaY * sensitivity));
+            
+            // Log camera rotation for debugging
+            console.log(`Camera rotation: theta=${this.cameraTheta.toFixed(2)}, phi=${this.cameraPhi.toFixed(2)}`);
         });
         
         // Attach the controls to the DOM
@@ -415,7 +419,11 @@ export class Game {
         console.log("Mobile controls initialized", this.mobileControls);
         
         // Debug helper for DevTools: force mobile controls visibility
-        if (window.navigator.userAgent.includes('Chrome')) {
+        const isDevToolsOpen = window.navigator.userAgent.includes('Chrome') && 
+                             (window.outerHeight - window.innerHeight > 100 || 
+                              window.outerWidth - window.innerWidth > 100);
+        
+        if (isDevToolsOpen || window.navigator.userAgent.includes('Chrome')) {
             const mobileControlsDiv = document.querySelector('.mobile-controls');
             if (mobileControlsDiv) {
                 console.log("Forcing mobile controls visibility for Chrome DevTools");
@@ -427,6 +435,13 @@ export class Game {
                 if (joystickZone) {
                     (joystickZone as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
                     console.log("Joystick zone visibility enhanced");
+                }
+                
+                // Also make camera control area visible
+                const cameraArea = document.querySelector('.camera-control-area');
+                if (cameraArea) {
+                    (cameraArea as HTMLElement).style.backgroundColor = 'rgba(255, 0, 255, 0.1)';
+                    console.log("Camera control area visibility enhanced");
                 }
             }
         }
