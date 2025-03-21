@@ -4,17 +4,19 @@ export class Verlet {
     public position: THREE.Vector3;
     public previousPosition: THREE.Vector3;
     public radius: number;
+    private tempVector: THREE.Vector3; // Reusable vector
 
     constructor(position: THREE.Vector3, radius: number = 0.1) {
-        this.position = position.clone();
-        this.previousPosition = position.clone();
+        this.position = position.clone(); // One-time allocation
+        this.previousPosition = position.clone(); // One-time allocation
+        this.tempVector = new THREE.Vector3(); // One-time allocation
         this.radius = radius;
     }
 
     public update(): void {
-        const temp = this.position.clone();
+        this.tempVector.copy(this.position);
         this.position.multiplyScalar(2).sub(this.previousPosition);
-        this.previousPosition.copy(temp);
+        this.previousPosition.copy(this.tempVector);
     }
 
     public applyImpulse(impulse: THREE.Vector3): void {
@@ -28,10 +30,18 @@ export class VerletBody {
     public airFriction: number = 0.98; // Air resistance (0-1)
     public groundFriction: number = 0.6; // Ground friction (0-1)
     public gravity: number = 0.04; // Increased gravity
+    private tempVec1: THREE.Vector3;
+    private tempVec2: THREE.Vector3;
+    private tempVec3: THREE.Vector3;
+    private gravityVec: THREE.Vector3;
 
     constructor() {
         this.particles = [];
         this.constraints = [];
+        this.tempVec1 = new THREE.Vector3();
+        this.tempVec2 = new THREE.Vector3();
+        this.tempVec3 = new THREE.Vector3();
+        this.gravityVec = new THREE.Vector3(0, -this.gravity, 0);
     }
 
     public addParticle(position: THREE.Vector3, radius: number = 0.1): Verlet {
@@ -48,14 +58,13 @@ export class VerletBody {
     public update(): void {
         // Apply gravity and air friction
         this.particles.forEach(particle => {
-            // Apply gravity
-            particle.applyImpulse(new THREE.Vector3(0, -this.gravity, 0));
+            particle.applyImpulse(this.gravityVec);
             
-            // Apply air friction
-            const velocity = particle.position.clone().sub(particle.previousPosition);
-            velocity.multiplyScalar(this.airFriction);
+            // Apply air friction using tempVec1
+            this.tempVec1.copy(particle.position).sub(particle.previousPosition);
+            this.tempVec1.multiplyScalar(this.airFriction);
             particle.previousPosition.copy(particle.position);
-            particle.position.add(velocity);
+            particle.position.add(this.tempVec1);
         });
 
         // Solve constraints
@@ -65,18 +74,16 @@ export class VerletBody {
 
         // Apply bounds and ground friction
         this.particles.forEach(particle => {
-            // Apply ground friction when particle is near the ground
             if (particle.position.y - particle.radius < 0.0) {
                 particle.position.y = particle.radius;
-                const velocity = particle.position.clone().sub(particle.previousPosition);
+                
+                // Use tempVec1 for velocity calculation
+                this.tempVec1.copy(particle.position).sub(particle.previousPosition);
+                this.tempVec2.set(this.tempVec1.x, 0, this.tempVec1.z)
+                    .multiplyScalar(this.groundFriction);
 
-                // Project velocity onto the xz-plane
-                const velocityXZ = new THREE.Vector3(velocity.x, 0, velocity.z);
-                velocityXZ.multiplyScalar(this.groundFriction);
-
-                // Update previous position with the projected velocity
                 particle.previousPosition.copy(particle.position);
-                particle.position.add(velocityXZ);
+                particle.position.add(this.tempVec2);
             }
         });
     }
@@ -87,33 +94,32 @@ export class VerletBody {
                 const particle1 = this.particles[i];
                 const particle2 = this.particles[j];
                 
-                const diff = particle2.position.clone().sub(particle1.position);
-                const distance = diff.length();
+                this.tempVec1.copy(particle2.position).sub(particle1.position);
+                const distance = this.tempVec1.length();
                 const minDistance = particle1.radius + particle2.radius;
 
                 if (distance < minDistance) {
-                    // Calculate collision response
                     const overlap = minDistance - distance;
-                    const direction = diff.normalize();
+                    this.tempVec1.normalize();
                     const moveAmount = overlap * 0.5;
 
-                    // Move particles apart
-                    particle1.position.sub(direction.clone().multiplyScalar(moveAmount));
-                    particle2.position.add(direction.clone().multiplyScalar(moveAmount));
+                    this.tempVec2.copy(this.tempVec1).multiplyScalar(moveAmount);
+                    particle1.position.sub(this.tempVec2);
+                    particle2.position.add(this.tempVec2);
 
                     // Reflect velocities
-                    const relativeVelocity = particle2.position.clone()
-                        .sub(particle2.previousPosition)
-                        .sub(particle1.position.clone().sub(particle1.previousPosition));
+                    this.tempVec2.copy(particle2.position).sub(particle2.previousPosition);
+                    this.tempVec3.copy(particle1.position).sub(particle1.previousPosition);
+                    this.tempVec2.sub(this.tempVec3);
                     
-                    const velocityAlongNormal = relativeVelocity.dot(direction);
+                    const velocityAlongNormal = this.tempVec2.dot(this.tempVec1);
                     if (velocityAlongNormal < 0) continue;
 
-                    const restitution = 0.5; // Bounciness factor
-                    const impulse = direction.multiplyScalar(velocityAlongNormal * restitution);
+                    const restitution = 0.5;
+                    this.tempVec1.multiplyScalar(velocityAlongNormal * restitution * 0.5);
                     
-                    particle1.previousPosition.sub(impulse.clone().multiplyScalar(0.5));
-                    particle2.previousPosition.add(impulse.clone().multiplyScalar(0.5));
+                    particle1.previousPosition.sub(this.tempVec1);
+                    particle2.previousPosition.add(this.tempVec1);
                 }
             }
         }
@@ -121,12 +127,13 @@ export class VerletBody {
 
     public solveConstraints(): void {
         this.constraints.forEach(({ a, b, restLength }) => {
-            const currentLength = a.position.distanceTo(b.position);
+            this.tempVec1.copy(b.position).sub(a.position);
+            const currentLength = this.tempVec1.length();
             const correction = (currentLength - restLength) / currentLength;
             
-            const correctionVector = b.position.clone().sub(a.position).multiplyScalar(correction * 0.5);
-            a.position.add(correctionVector);
-            b.position.sub(correctionVector);
+            this.tempVec1.multiplyScalar(correction * 0.5);
+            a.position.add(this.tempVec1);
+            b.position.sub(this.tempVec1);
         });
     }
 
