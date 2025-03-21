@@ -134,7 +134,7 @@ export class Game {
         }
         
         // Set performance mode based on device - default to high performance on desktop
-        this.highPerformanceMode = !this.isMobile;
+        //this.highPerformanceMode = !this.isMobile;
         
         console.log(`Device detected as ${this.isMobile ? 'mobile' : 'desktop'}, using ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
         console.log(`Screen dimensions: ${window.innerWidth}x${window.innerHeight}, devicePixelRatio: ${window.devicePixelRatio}`);
