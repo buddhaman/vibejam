@@ -1593,8 +1593,7 @@ export class Game {
                     // Spawn particles at the contact point
                     this.spawnSawCollisionParticles(
                         contactPoint,
-                        angularComponent.normalize(),
-                        saw.body.angularVelocity.clone()
+                        bodyVelocity
                     );
                 }
             }
@@ -1612,21 +1611,21 @@ export class Game {
     }
 
     // Add method to spawn particles when a saw collision occurs
-    private spawnSawCollisionParticles(position: THREE.Vector3, normal: THREE.Vector3, sawVelocity: THREE.Vector3): void {
-        // Create a burst of particles in the saw impact
+    private spawnSawCollisionParticles(position: THREE.Vector3, sawVelocity: THREE.Vector3): void {
         this.particleSystem.spawnParticleBurst(
-            15, // Number of particles
+            30,  // Lots of particles
             {
                 position: position.clone(),
-                velocity: normal.clone().multiplyScalar(2).add(sawVelocity),
-                radius: 0.1,
-                color: 0xff3333, // Red spark color
-                lifetime: 0.5,
-                gravity: true
+                velocity: sawVelocity.clone().multiplyScalar(10), // High velocity
+                radius: 0.3,
+                color: 0x00ff55,
+                lifetime: 3.0,
+                gravity: true,
+                elongationFactor: 0.2  // Much lower elongation (was 1.5) for less stretching at high speeds
             },
-            1.0,  // Randomize velocity
-            0.05, // Randomize radius
-            0.2   // Randomize lifetime
+            4.0,  // Velocity randomization
+            0.2,  // Radius variation
+            1.0   // Lifetime variation
         );
     }
 } 

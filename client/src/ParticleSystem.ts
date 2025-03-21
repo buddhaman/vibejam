@@ -13,6 +13,7 @@ interface Particle {
     lifetime: number;
     maxLifetime: number;
     gravity: boolean;
+    elongationFactor: number; // Add control over elongation amount
 }
 
 /**
@@ -25,6 +26,7 @@ interface ParticleOptions {
     color?: THREE.Color | number;
     lifetime?: number;
     gravity?: boolean;
+    elongationFactor?: number; // Add control over elongation amount
 }
 
 /**
@@ -52,7 +54,8 @@ export class ParticleSystem {
     public spawnParticle(options: ParticleOptions): void {
         // Set default values for optional parameters
         const velocity = options.velocity ?? new THREE.Vector3(0, 0, 0);
-        const radius = options.radius ?? 0.1;
+        // EXTREME: Much larger default radius (5x bigger)
+        const radius = options.radius ?? 0.5;
         let color: THREE.Color;
         
         if (options.color instanceof THREE.Color) {
@@ -63,8 +66,11 @@ export class ParticleSystem {
             color = new THREE.Color(0xffffff);
         }
         
-        const lifetime = options.lifetime ?? 1.0;
+        // EXTREME: Much longer default lifetime (4x longer)
+        const lifetime = options.lifetime ?? 4.0;
         const gravity = options.gravity ?? false;
+        // EXTREME: Higher default elongation factor
+        const elongationFactor = options.elongationFactor ?? 4.0;
         
         // Create the particle
         this.particles.push({
@@ -75,7 +81,8 @@ export class ParticleSystem {
             color: color,
             lifetime: lifetime,
             maxLifetime: lifetime,
-            gravity: gravity
+            gravity: gravity,
+            elongationFactor: elongationFactor
         });
     }
     
@@ -99,24 +106,27 @@ export class ParticleSystem {
             const options: ParticleOptions = {
                 position: baseOptions.position.clone(),
                 velocity: baseOptions.velocity?.clone() ?? new THREE.Vector3(0, 0, 0),
-                radius: baseOptions.radius ?? 0.1,
+                // EXTREME: Much larger default radius
+                radius: baseOptions.radius ?? 0.5,
                 color: baseOptions.color ?? 0xffffff,
-                lifetime: baseOptions.lifetime ?? 1.0,
-                gravity: baseOptions.gravity ?? false
+                // EXTREME: Much longer default lifetime
+                lifetime: baseOptions.lifetime ?? 4.0,
+                gravity: baseOptions.gravity ?? false,
+                elongationFactor: baseOptions.elongationFactor ?? 4.0
             };
             
-            // Randomize velocity
+            // EXTREME: More random velocity variation
             if (options.velocity) {
-                options.velocity.x += (Math.random() - 0.5) * randomizeVelocity * 2;
-                options.velocity.y += (Math.random() - 0.5) * randomizeVelocity * 2;
-                options.velocity.z += (Math.random() - 0.5) * randomizeVelocity * 2;
+                options.velocity.x += (Math.random() - 0.5) * randomizeVelocity * 4;
+                options.velocity.y += (Math.random() - 0.5) * randomizeVelocity * 4;
+                options.velocity.z += (Math.random() - 0.5) * randomizeVelocity * 4;
             }
             
-            // Randomize radius
+            // EXTREME: More random radius variation
             if (options.radius) {
-                options.radius += (Math.random() - 0.5) * randomizeRadius * 2;
+                options.radius += (Math.random() - 0.5) * randomizeRadius * 4;
                 // Make sure radius doesn't go negative
-                options.radius = Math.max(0.01, options.radius);
+                options.radius = Math.max(0.05, options.radius);
             }
             
             // Randomize lifetime
@@ -166,21 +176,28 @@ export class ParticleSystem {
     public render(): void {
         for (const particle of this.particles) {
             // Calculate current radius based on remaining lifetime
+            // EXTREME: Use a non-linear falloff for more dramatic effect
             const lifeRatio = particle.lifetime / particle.maxLifetime;
-            const currentRadius = particle.startRadius * lifeRatio;
+            // Particles stay big longer, then shrink rapidly at the end
+            const sizeCurve = Math.pow(lifeRatio, 0.3); // Slower decay
+            const currentRadius = particle.startRadius * sizeCurve;
             
             // Fade alpha based on lifetime
             const alpha = lifeRatio;
             
-            // Scale elongation factor inversely with lifeRatio - more elongated when faster and newer
-            const elongationFactor = 0.5 * (1 + lifeRatio);
+            // EXTREME: Longer streaks for faster particles
+            const speed = particle.velocity.length();
+            const speedFactor = Math.min(1.0, speed / 10); // Normalize speed effect
+            
+            // Calculate elongation - more dramatic based on speed and custom factor
+            const elongation = particle.elongationFactor * speedFactor;
             
             // Render the particle as an elongated sphere
             this.renderer.renderElongatedSphere(
                 particle.position,
                 particle.velocity,
                 currentRadius,
-                elongationFactor,
+                elongation,
                 particle.color
             );
         }
