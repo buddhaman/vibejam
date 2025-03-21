@@ -1559,12 +1559,6 @@ export class Game {
                 if (translation) {
                     // Move the particle out of collision
                     particlePosition.add(translation);
-                    
-                    // Compute velocity vector
-                    const velocity = new THREE.Vector3().subVectors(
-                        particlePosition,
-                        particle.previousPosition
-                    );
 
                     // Calculate dynamic body velocity at the contact point
                     const bodyVelocity = new THREE.Vector3().copy(saw.body.velocity);
@@ -1578,7 +1572,7 @@ export class Game {
                     );
                     bodyVelocity.add(angularComponent);
                     
-                    const newVelocity = bodyVelocity.multiplyScalar(10);
+                    const newVelocity = bodyVelocity.multiplyScalar(15);
                     
                     // Update the previous position to create this new velocity
                     particle.previousPosition.copy(particlePosition).sub(newVelocity);

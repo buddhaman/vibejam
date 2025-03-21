@@ -82,7 +82,7 @@ export class Saw {
         
         // Create material for the saw
         const material = new THREE.MeshStandardMaterial({
-            color: 0xff3333, // Red color for danger
+            color: 0xeeeeee, // Red color for danger
             roughness: 0.3,
             metalness: 0.8,
             emissive: 0x441111,
