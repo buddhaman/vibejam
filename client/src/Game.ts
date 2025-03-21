@@ -499,6 +499,7 @@ export class Game {
             // High performance mode: multiple lights with shadows
             const directionalLight = new THREE.DirectionalLight(0xfff0e6, 0.7);
             directionalLight.position.set(5, 20, 7.5);
+            directionalLight.name = 'mainDirectionalLight'; // Add name for reference
             
             // Setup shadow details for high performance mode
             directionalLight.castShadow = true;
@@ -542,6 +543,47 @@ export class Game {
             finalPlatformLight.position.set(0, 100, 0);
             this.scene.add(finalPlatformLight);
         }
+    }
+
+    /**
+     * Update the directional light's shadow camera to follow the player
+     */
+    private updateShadowCamera(): void {
+        if (!this.highPerformanceMode || !this.localPlayer) return;
+        
+        // Find the main directional light
+        const directionalLight = this.scene.getObjectByName('mainDirectionalLight') as THREE.DirectionalLight;
+        if (!directionalLight || !directionalLight.shadow) return;
+        
+        // Get player position
+        const playerPos = this.localPlayer.getPosition();
+        
+        // Set the shadow camera target to the player position, but keep the light position relative
+        const lightOffsetX = 5;
+        const lightOffsetY = 20;
+        const lightOffsetZ = 7.5;
+        
+        // Round to the nearest larger unit to reduce shadow flickering 
+        // (we don't need pixel-perfect positioning for the shadow camera)
+        const targetX = Math.floor(playerPos.x / 5) * 5;
+        const targetY = Math.floor(playerPos.y / 5) * 5;
+        const targetZ = Math.floor(playerPos.z / 5) * 5;
+        
+        // Update directional light position to maintain same angle but follow player
+        directionalLight.position.set(
+            targetX + lightOffsetX,
+            targetY + lightOffsetY,
+            targetZ + lightOffsetZ
+        );
+        
+        // Update the directional light target
+        if (!directionalLight.target.parent) {
+            this.scene.add(directionalLight.target);
+        }
+        directionalLight.target.position.set(targetX, targetY, targetZ);
+        
+        // Update shadow camera projection
+        directionalLight.shadow.camera.updateProjectionMatrix();
     }
 
     public initComposer(): void {
@@ -892,6 +934,9 @@ export class Game {
             // Check collisions with static bodies after player movement
             this.checkPlayerCollisions(player);
         });
+        
+        // Update shadow map camera to follow player
+        this.updateShadowCamera();
         
         this.players.forEach(player => player.setDebugMode(true));
         
