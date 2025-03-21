@@ -6,6 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Safari fullscreen hint -->
+    <meta name="apple-mobile-web-app-title" content="Fullscreen Game">
     <title>3D Multiplayer Game</title>
     <style>
       body {
@@ -18,6 +20,7 @@
         position: fixed;
         width: 100%;
         height: 100%;
+        background-color: #000;
       }
       canvas {
         width: 100vw;
@@ -25,9 +28,69 @@
         display: block;
         touch-action: none;
       }
+      /* Add iOS home screen instruction for Safari */
+      #ios-prompt {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 10000;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+      #ios-prompt img {
+        width: 80%;
+        max-width: 300px;
+        margin: 20px auto;
+      }
+      #ios-prompt button {
+        padding: 10px 20px;
+        background: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        margin-top: 20px;
+      }
     </style>
   </head>
   <body>
+    <!-- iOS Safari "Add to Home Screen" prompt -->
+    <div id="ios-prompt">
+      <h2>For best fullscreen experience:</h2>
+      <p>Tap <strong>Share</strong> icon below</p>
+      <p>Then select <strong>"Add to Home Screen"</strong></p>
+      <p>Launch the game from your home screen icon</p>
+      <button id="close-prompt">Continue anyway</button>
+    </div>
+    
+    <script>
+      // Check if we're on iOS Safari but not in standalone mode
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent) && 
+          !window.navigator.standalone && 
+          /Safari/.test(navigator.userAgent)) {
+        document.getElementById('ios-prompt').style.display = 'block';
+      }
+      
+      // Close prompt when button is clicked
+      document.getElementById('close-prompt').addEventListener('click', function() {
+        document.getElementById('ios-prompt').style.display = 'none';
+      });
+      
+      // Try to scroll to hide the address bar on load
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          window.scrollTo(0, 1);
+        }, 0);
+      });
+    </script>
+    
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html> 

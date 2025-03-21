@@ -497,9 +497,9 @@ export class MobileControls {
         fullscreenButton.style.position = 'absolute';
         fullscreenButton.style.top = '10px';
         fullscreenButton.style.right = '10px';
-        fullscreenButton.style.width = '40px';
-        fullscreenButton.style.height = '40px';
-        fullscreenButton.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+        fullscreenButton.style.width = '44px'; // Slightly larger for iOS touch targets
+        fullscreenButton.style.height = '44px';
+        fullscreenButton.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; // Darker background for better visibility
         fullscreenButton.style.borderRadius = '5px';
         fullscreenButton.style.display = 'flex';
         fullscreenButton.style.justifyContent = 'center';
@@ -507,7 +507,8 @@ export class MobileControls {
         fullscreenButton.style.zIndex = '9999';
         fullscreenButton.style.pointerEvents = 'auto';
         fullscreenButton.style.cursor = 'pointer';
-        fullscreenButton.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+        fullscreenButton.style.border = '1px solid rgba(255, 255, 255, 0.5)';
+        fullscreenButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)'; // Add shadow for depth
         
         // Create an SVG icon for fullscreen
         fullscreenButton.innerHTML = `
@@ -520,12 +521,63 @@ export class MobileControls {
         
         // Add to container
         this.container.appendChild(fullscreenButton);
+        
+        // Add iOS-specific instructions button next to fullscreen
+        if (this.isIOS()) {
+            const iosHelpButton = document.createElement('div');
+            iosHelpButton.className = 'ios-help-button';
+            iosHelpButton.style.position = 'absolute';
+            iosHelpButton.style.top = '10px';
+            iosHelpButton.style.right = '64px';
+            iosHelpButton.style.width = '44px';
+            iosHelpButton.style.height = '44px';
+            iosHelpButton.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            iosHelpButton.style.borderRadius = '5px';
+            iosHelpButton.style.display = 'flex';
+            iosHelpButton.style.justifyContent = 'center';
+            iosHelpButton.style.alignItems = 'center';
+            iosHelpButton.style.zIndex = '9999';
+            iosHelpButton.style.pointerEvents = 'auto';
+            iosHelpButton.style.cursor = 'pointer';
+            iosHelpButton.style.border = '1px solid rgba(255, 255, 255, 0.5)';
+            iosHelpButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            iosHelpButton.innerHTML = `<span style="color:white; font-weight:bold; font-size:20px;">?</span>`;
+            
+            iosHelpButton.addEventListener('click', () => {
+                this.showIOSInstructions();
+            });
+            
+            this.container.appendChild(iosHelpButton);
+        }
+    }
+    
+    /**
+     * Check if running on iOS
+     */
+    private isIOS(): boolean {
+        return /iPhone|iPad|iPod/.test(navigator.userAgent);
+    }
+    
+    /**
+     * Show iOS-specific fullscreen instructions
+     */
+    private showIOSInstructions(): void {
+        const iosPrompt = document.getElementById('ios-prompt');
+        if (iosPrompt) {
+            iosPrompt.style.display = 'block';
+        }
     }
     
     /**
      * Toggle fullscreen mode
      */
     private toggleFullscreen(): void {
+        // Special handling for iOS
+        if (this.isIOS()) {
+            this.showIOSInstructions();
+            return;
+        }
+        
         const doc = window.document;
         const docEl = doc.documentElement;
         
@@ -553,7 +605,7 @@ export class MobileControls {
             
             // Try to hide navigation bar on mobile
             setTimeout(() => {
-                // iOS Safari trick to hide toolbars
+                // Scroll trick to hide toolbars
                 if ('scrollTo' in window) {
                     window.scrollTo(0, 1);
                 }
