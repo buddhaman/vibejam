@@ -1037,8 +1037,8 @@ export class Game {
     public createTestRopes(): void {
         // Create a few test ropes at different locations
         this.addRope(
-            new THREE.Vector3(5, 25, 0),    // Higher fixed point
-            20,                             // More segments
+            new THREE.Vector3(5, 30, 0),    // Higher fixed point
+            15,                             // More segments
             20,                             // Longer length
             0.2,                            // Thicker radius
             0xff2222                        // Red color

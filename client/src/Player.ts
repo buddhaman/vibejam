@@ -166,7 +166,7 @@ export class Player {
                 const distance = toRope.length();
                 
                 // Apply spring-like force to hands
-                const springStrength = 0.3;
+                const springStrength = 0.15;
                 const handForce = toRope.normalize().multiplyScalar(distance * springStrength);
                 
                 // Apply force to hands
@@ -174,17 +174,17 @@ export class Player {
                 rightHand.applyImpulse(handForce);
                 
                 // Apply opposite force to rope end
-                const ropeForce = handForce.clone().multiplyScalar(-1);
+                const ropeForce = handForce.clone().multiplyScalar(-0.5);
                 this.rope.applyForceToEnd(ropeForce);
                 
                 // Add player's movement influence to rope
                 if (this.isMoving && this.inputDirection.lengthSq() > 0) {
-                    const moveForce = this.inputDirection.clone().multiplyScalar(this.moveSpeed * 0.5);
+                    const moveForce = this.inputDirection.clone().multiplyScalar(this.moveSpeed * 0.8);
                     this.rope.applyForceToEnd(moveForce);
                 }
                 
                 // Add gravity influence from player to rope
-                const playerMass = 1.0;
+                const playerMass = 0.3;
                 const gravityForce = new THREE.Vector3(0, -0.1 * playerMass, 0);
                 this.rope.applyForceToEnd(gravityForce);
                 
