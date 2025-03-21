@@ -470,6 +470,12 @@ export class Game {
 
         // Set up event listeners
         this.setupControls();
+        
+        // Add fullscreen button for desktop users
+        if (!this.isMobile) {
+            this.addDesktopFullscreenButton();
+        }
+        
         window.addEventListener('resize', this.onWindowResize.bind(this));
         
         // Ensure mobile controls are set up immediately after initialization if on mobile
@@ -584,7 +590,10 @@ export class Game {
         }
     }
     
-    public setupControls(): void {
+    /**
+     * Set up keyboard input tracking (only track state, don't update player here)
+     */
+    private setupControls(): void {
         // Mouse controls for camera rotation
         this.renderer.domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
@@ -592,27 +601,50 @@ export class Game {
                 x: event.clientX,
                 y: event.clientY
             };
+            
+            // Request pointer lock on mouse down for desktop fullscreen
+            if (document.fullscreenElement && !document.pointerLockElement) {
+                this.renderer.domElement.requestPointerLock();
+            }
         });
 
         this.renderer.domElement.addEventListener('mousemove', (event) => {
-            if (!this.isDragging) return;
+            // If pointer is locked (fullscreen mode)
+            if (document.pointerLockElement === this.renderer.domElement) {
+                // Use movement instead of absolute position
+                const deltaMove = {
+                    x: event.movementX,
+                    y: event.movementY
+                };
+                
+                this.cameraTheta += deltaMove.x * 0.002; // Adjusted sensitivity
+                this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.002));
+            }
+            // Regular dragging (outside fullscreen)
+            else if (this.isDragging) {
+                const deltaMove = {
+                    x: event.clientX - this.previousMousePosition.x,
+                    y: event.clientY - this.previousMousePosition.y
+                };
 
-            const deltaMove = {
-                x: event.clientX - this.previousMousePosition.x,
-                y: event.clientY - this.previousMousePosition.y
-            };
+                this.cameraTheta += deltaMove.x * 0.01;
+                this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.01));
 
-            this.cameraTheta += deltaMove.x * 0.01;
-            this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.01));
-
-            this.previousMousePosition = {
-                x: event.clientX,
-                y: event.clientY
-            };
+                this.previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
         });
 
         this.renderer.domElement.addEventListener('mouseup', () => {
             this.isDragging = false;
+        });
+
+        // Add pointer lock change and error event listeners
+        document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
+        document.addEventListener('pointerlockerror', () => {
+            console.error('Pointer lock error');
         });
 
         // Wheel for zoom
@@ -641,6 +673,51 @@ export class Game {
                 }
             }
         });
+    }
+
+    /**
+     * Handle pointer lock change
+     */
+    private onPointerLockChange(): void {
+        if (document.pointerLockElement === this.renderer.domElement) {
+            console.log('Pointer locked - fullscreen game mode active');
+            // Show escape message for desktop fullscreen
+            this.showEscapeMessage(true);
+        } else {
+            console.log('Pointer lock released');
+            // Hide escape message
+            this.showEscapeMessage(false);
+        }
+    }
+
+    /**
+     * Show/hide escape fullscreen message
+     */
+    private showEscapeMessage(show: boolean): void {
+        let escapeMsg = document.getElementById('escape-message');
+        
+        if (show) {
+            if (!escapeMsg) {
+                escapeMsg = document.createElement('div');
+                escapeMsg.id = 'escape-message';
+                escapeMsg.style.position = 'fixed';
+                escapeMsg.style.top = '10px';
+                escapeMsg.style.right = '10px';
+                escapeMsg.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                escapeMsg.style.color = 'white';
+                escapeMsg.style.padding = '5px 10px';
+                escapeMsg.style.borderRadius = '5px';
+                escapeMsg.style.fontFamily = 'Arial, sans-serif';
+                escapeMsg.style.fontSize = '12px';
+                escapeMsg.style.zIndex = '9999';
+                escapeMsg.textContent = 'Press ESC to exit fullscreen';
+                document.body.appendChild(escapeMsg);
+            } else {
+                escapeMsg.style.display = 'block';
+            }
+        } else if (escapeMsg) {
+            escapeMsg.style.display = 'none';
+        }
     }
 
     public updateCamera(): void {
@@ -1232,7 +1309,18 @@ export class Game {
         if (player.rope) return;
         
         // Only check for rope interaction if space key is pressed
-        if (!player.isJumping) return;
+        // Check using the input system instead of directly accessing the private isJumping property
+        const spacePressed = this.inputKeys[' '] || false;
+        
+        // For mobile, get the status from mobile controls
+        let mobileJumping = false;
+        if (this.isMobile && this.mobileControls) {
+            const buttonState = this.mobileControls.getInputState();
+            mobileJumping = buttonState.space;
+        }
+        
+        // Only continue if space is pressed (either keyboard or mobile)
+        if (!spacePressed && !mobileJumping) return;
         
         // Check each rope's end position against player position
         for (const rope of this.ropes) {
@@ -1241,8 +1329,81 @@ export class Game {
             
             if (distanceToRope < interactionRadius) {
                 player.rope = rope;
+                console.log("Player grabbed rope with spacebar!");
                 break;
             }
         }
+    }
+
+    /**
+     * Add a fullscreen button for desktop users
+     */
+    private addDesktopFullscreenButton(): void {
+        const fullscreenBtn = document.createElement('div');
+        fullscreenBtn.className = 'desktop-fullscreen-button';
+        fullscreenBtn.style.position = 'fixed';
+        fullscreenBtn.style.top = '10px';
+        fullscreenBtn.style.right = '10px';
+        fullscreenBtn.style.width = '44px';
+        fullscreenBtn.style.height = '44px';
+        fullscreenBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        fullscreenBtn.style.borderRadius = '5px';
+        fullscreenBtn.style.display = 'flex';
+        fullscreenBtn.style.justifyContent = 'center';
+        fullscreenBtn.style.alignItems = 'center';
+        fullscreenBtn.style.zIndex = '9999';
+        fullscreenBtn.style.cursor = 'pointer';
+        fullscreenBtn.style.border = '1px solid rgba(255, 255, 255, 0.5)';
+        fullscreenBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        
+        // Create an SVG icon for fullscreen
+        fullscreenBtn.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>`;
+        
+        // Add click event to toggle fullscreen and pointer lock
+        fullscreenBtn.addEventListener('click', () => {
+            const docEl = document.documentElement;
+            
+            if (!document.fullscreenElement) {
+                // Enter fullscreen
+                docEl.requestFullscreen().then(() => {
+                    // Request pointer lock after fullscreen
+                    setTimeout(() => {
+                        if (this.renderer.domElement && !document.pointerLockElement) {
+                            this.renderer.domElement.requestPointerLock();
+                        }
+                    }, 100);
+                }).catch(err => {
+                    console.error('Fullscreen error:', err);
+                });
+            } else {
+                // Exit fullscreen
+                document.exitFullscreen().catch(err => {
+                    console.error('Exit fullscreen error:', err);
+                });
+                
+                // Exit pointer lock if active
+                if (document.pointerLockElement) {
+                    document.exitPointerLock();
+                }
+            }
+        });
+        
+        document.body.appendChild(fullscreenBtn);
+        
+        // Update button visibility based on fullscreen state
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenBtn.style.opacity = '0';
+                setTimeout(() => {
+                    fullscreenBtn.style.display = 'none';
+                }, 1000);
+            } else {
+                fullscreenBtn.style.display = 'flex';
+                fullscreenBtn.style.opacity = '1';
+            }
+        });
     }
 } 

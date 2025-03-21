@@ -522,7 +522,7 @@ export class MobileControls {
         // Add to container
         this.container.appendChild(fullscreenButton);
         
-        // Add iOS-specific instructions button next to fullscreen
+        // Add iOS-specific help button if on iOS
         if (this.isIOS()) {
             const iosHelpButton = document.createElement('div');
             iosHelpButton.className = 'ios-help-button';
@@ -601,6 +601,16 @@ export class MobileControls {
             // Enter fullscreen
             if (requestFullScreen) {
                 requestFullScreen.call(docEl);
+                
+                // For desktop: request pointer lock after fullscreen
+                if (!this.isMobile()) {
+                    setTimeout(() => {
+                        const canvas = document.querySelector('canvas');
+                        if (canvas && !document.pointerLockElement) {
+                            canvas.requestPointerLock();
+                        }
+                    }, 100);
+                }
             }
             
             // Try to hide navigation bar on mobile
@@ -626,6 +636,19 @@ export class MobileControls {
             if (exitFullScreen) {
                 exitFullScreen.call(doc);
             }
+            
+            // Exit pointer lock if active
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
         }
+    }
+    
+    /**
+     * Check if running on a mobile device
+     */
+    private isMobile(): boolean {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+               window.innerWidth <= 900;
     }
 } 
