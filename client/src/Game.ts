@@ -413,6 +413,13 @@ export class Game {
             console.log(`Camera rotation: theta=${this.cameraTheta.toFixed(2)}, phi=${this.cameraPhi.toFixed(2)}`);
         });
         
+        // Set the zoom callback
+        this.mobileControls.setZoomCallback((zoomDelta) => {
+            // Adjust camera distance based on pinch gesture
+            this.cameraDistance = Math.max(2, Math.min(20, this.cameraDistance - zoomDelta));
+            console.log(`Camera zoom: distance=${this.cameraDistance.toFixed(2)}`);
+        });
+        
         // Attach the controls to the DOM
         this.mobileControls.attach();
         
