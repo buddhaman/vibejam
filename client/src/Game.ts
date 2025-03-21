@@ -618,7 +618,8 @@ export class Game {
                 };
                 
                 this.cameraTheta += deltaMove.x * 0.002; // Adjusted sensitivity
-                this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.002));
+                // Invert Y movement in fullscreen mode for more intuitive control
+                this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi - deltaMove.y * 0.002));
             }
             // Regular dragging (outside fullscreen)
             else if (this.isDragging) {
@@ -628,6 +629,7 @@ export class Game {
                 };
 
                 this.cameraTheta += deltaMove.x * 0.01;
+                // Keep Y movement non-inverted for regular dragging
                 this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi + deltaMove.y * 0.01));
 
                 this.previousMousePosition = {
@@ -1339,11 +1341,20 @@ export class Game {
      * Add a fullscreen button for desktop users
      */
     private addDesktopFullscreenButton(): void {
+        // Create container for fullscreen button and controls
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.top = '10px';
+        container.style.right = '10px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-end'; // Align items to the right
+        container.style.gap = '10px';
+        container.style.zIndex = '9999';
+        
+        // Create fullscreen button
         const fullscreenBtn = document.createElement('div');
         fullscreenBtn.className = 'desktop-fullscreen-button';
-        fullscreenBtn.style.position = 'fixed';
-        fullscreenBtn.style.top = '10px';
-        fullscreenBtn.style.right = '10px';
         fullscreenBtn.style.width = '44px';
         fullscreenBtn.style.height = '44px';
         fullscreenBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
@@ -1351,7 +1362,6 @@ export class Game {
         fullscreenBtn.style.display = 'flex';
         fullscreenBtn.style.justifyContent = 'center';
         fullscreenBtn.style.alignItems = 'center';
-        fullscreenBtn.style.zIndex = '9999';
         fullscreenBtn.style.cursor = 'pointer';
         fullscreenBtn.style.border = '1px solid rgba(255, 255, 255, 0.5)';
         fullscreenBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
@@ -1361,6 +1371,35 @@ export class Game {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
         </svg>`;
+        
+        // Create controls hint panel
+        const controlsHint = document.createElement('div');
+        controlsHint.className = 'controls-hint';
+        controlsHint.style.width = '200px'; // Set a fixed width for the controls hint
+        controlsHint.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        controlsHint.style.color = 'white';
+        controlsHint.style.padding = '10px';
+        controlsHint.style.borderRadius = '5px';
+        controlsHint.style.fontSize = '12px';
+        controlsHint.style.fontFamily = 'Arial, sans-serif';
+        controlsHint.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+        controlsHint.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        controlsHint.style.lineHeight = '1.5';
+        controlsHint.style.transition = 'opacity 0.3s';
+        
+        // Add control instructions
+        controlsHint.innerHTML = `
+            <div style="margin-bottom: 5px; font-weight: bold;">Controls:</div>
+            <div>WASD - Move</div>
+            <div>SPACE - Jump/Grab rope</div>
+            <div>SHIFT - Crouch/Release rope</div>
+            <div>Mouse - Look around</div>
+            <div>Mouse wheel - Zoom</div>
+        `;
+        
+        // Add elements to container
+        container.appendChild(fullscreenBtn);
+        container.appendChild(controlsHint);
         
         // Add click event to toggle fullscreen and pointer lock
         fullscreenBtn.addEventListener('click', () => {
@@ -1391,19 +1430,33 @@ export class Game {
             }
         });
         
-        document.body.appendChild(fullscreenBtn);
+        document.body.appendChild(container);
         
-        // Update button visibility based on fullscreen state
+        // Update visibility based on fullscreen state
         document.addEventListener('fullscreenchange', () => {
             if (document.fullscreenElement) {
-                fullscreenBtn.style.opacity = '0';
+                container.style.opacity = '0';
                 setTimeout(() => {
-                    fullscreenBtn.style.display = 'none';
+                    container.style.display = 'none';
                 }, 1000);
             } else {
-                fullscreenBtn.style.display = 'flex';
-                fullscreenBtn.style.opacity = '1';
+                container.style.display = 'flex';
+                container.style.opacity = '1';
             }
         });
+        
+        // Add hover effect to show/hide controls hint
+        container.addEventListener('mouseenter', () => {
+            controlsHint.style.opacity = '1';
+        });
+        
+        container.addEventListener('mouseleave', () => {
+            if (!document.fullscreenElement) {
+                controlsHint.style.opacity = '0.3';
+            }
+        });
+        
+        // Initially set controls hint to semi-transparent
+        controlsHint.style.opacity = '0.3';
     }
 } 
