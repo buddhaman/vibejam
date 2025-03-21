@@ -1190,7 +1190,7 @@ export class Game {
     public createTestRopes(): void {
         // Create a few test ropes at different locations
         this.addRope(
-            new THREE.Vector3(5, 30, 0),    // Higher fixed point
+            new THREE.Vector3(5, 25, 0),    // Higher fixed point
             15,                             // More segments
             20,                             // Longer length
             0.2,                            // Thicker radius
@@ -1230,6 +1230,9 @@ export class Game {
         
         // If player already has a rope, don't check for new ones
         if (player.rope) return;
+        
+        // Only check for rope interaction if space key is pressed
+        if (!player.isJumping) return;
         
         // Check each rope's end position against player position
         for (const rope of this.ropes) {
