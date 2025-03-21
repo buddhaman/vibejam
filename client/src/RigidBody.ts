@@ -19,7 +19,7 @@ export class RigidBody {
     invInertia: THREE.Vector3;
     
     // Visual representation
-    mesh: THREE.Mesh;
+    mesh: THREE.Mesh = new THREE.Mesh();
     
     /**
      * Create a rigid body
