@@ -1039,7 +1039,7 @@ export class Game {
                     const tangentComponent = velocity.clone().sub(normalComponent);
                     
                     // Apply friction to tangential component
-                    const friction = 0.5; // Friction coefficient (1 = no friction, 0 = full friction)
+                    const friction = 0.2; // Friction coefficient (1 = no friction, 0 = full friction)
                     tangentComponent.multiplyScalar(friction);
                     
                     // New velocity is just the tangential component (no bounce)
