@@ -1521,7 +1521,7 @@ export class Game {
         const testSaw = new Saw(
             new THREE.Vector3(10, 8, 0),  // Position
             4.0,                          // Radius
-            8.0,                          // Thickness
+            0.8,                          // Thickness
             0.05                           // Spin speed
         );
         this.addSaw(testSaw);
@@ -1565,21 +1565,20 @@ export class Game {
                         particlePosition,
                         particle.previousPosition
                     );
+
+                    // Calculate dynamic body velocity at the contact point
+                    const bodyVelocity = new THREE.Vector3().copy(saw.body.velocity);
                     
-                    // Get the normal from the translation vector
-                    const normal = translation.clone().normalize();
+                    // Add angular velocity contribution
+                    const contactPoint = particlePosition.clone().sub(translation);
+                    const relativePos = contactPoint.clone().sub(saw.body.shape.position);
+                    const angularComponent = new THREE.Vector3().crossVectors(
+                        saw.body.angularVelocity,
+                        relativePos
+                    );
+                    bodyVelocity.add(angularComponent);
                     
-                    // Project velocity onto normal and tangent planes
-                    const velAlongNormal = velocity.dot(normal);
-                    const normalComponent = normal.clone().multiplyScalar(velAlongNormal);
-                    const tangentComponent = velocity.clone().sub(normalComponent);
-                    
-                    // Cool hack to make the saw work, extreme negative friction
-                    const friction = -10; // Friction coefficient
-                    tangentComponent.multiplyScalar(friction);
-                    
-                    // New velocity is just the tangential component (no bounce)
-                    const newVelocity = tangentComponent;
+                    const newVelocity = bodyVelocity.multiplyScalar(10);
                     
                     // Update the previous position to create this new velocity
                     particle.previousPosition.copy(particlePosition).sub(newVelocity);
