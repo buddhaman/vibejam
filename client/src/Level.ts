@@ -2,14 +2,13 @@
 
 import * as THREE from 'three';
 import { LevelRenderer } from "./LevelRenderer";
-import { ParticleSystem } from "./ParticleSystem";
 import { Player } from "./Player";
 import { RigidBody } from "./RigidBody";
 import { Rope } from "./Rope";
 import { Saw } from "./Saw";
 import { StaticBody } from "./StaticBody";
-import { TestLevels } from "./TestLevels";
 import { ActionArea } from "./ActionArea";
+import { SimpleText } from "./SimpleText";
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
@@ -26,9 +25,6 @@ export class Level {
     // Saw blades collection
     public saws: Saw[] = [];
 
-    // Add particle system
-    public particleSystem: ParticleSystem;
-
     public levelRenderer: LevelRenderer | null = null;
 
     // Players collection
@@ -42,7 +38,6 @@ export class Level {
 
     constructor() {
         // Initialize particle system
-        this.particleSystem = new ParticleSystem();
         this.players = new Map();
         this.localPlayer = null;
     }
@@ -138,9 +133,6 @@ export class Level {
 
         // Update the circular path for moving saws
         this.updateSawPaths();
-
-        // Update particles with fixed timestep (convert milliseconds to seconds)
-        this.particleSystem.update(0.016);
 
         // Check action areas
         if (this.localPlayer) {
@@ -479,7 +471,7 @@ export class Level {
                     particle.previousPosition.copy(particlePosition).sub(newVelocity);
 
                     // Spawn particles at the contact point
-                    this.spawnSawCollisionParticles(
+                    this.levelRenderer?.spawnSawCollisionParticles(
                         contactPoint,
                         bodyVelocity
                     );
@@ -498,25 +490,6 @@ export class Level {
         }
     }
 
-    // Add method to spawn particles when a saw collision occurs
-    private spawnSawCollisionParticles(position: THREE.Vector3, sawVelocity: THREE.Vector3): void {
-        this.particleSystem.spawnParticleBurst(
-            30,  // Lots of particles
-            {
-                position: position.clone(),
-                velocity: sawVelocity.clone().multiplyScalar(10), // High velocity
-                radius: 0.3,
-                color: 0x00ff55,
-                lifetime: 3.0,
-                gravity: true,
-                elongationFactor: 0.2  // Much lower elongation (was 1.5) for less stretching at high speeds
-            },
-            4.0,  // Velocity randomization
-            0.2,  // Radius variation
-            1.0   // Lifetime variation
-        );
-    }
-
     /**
      * Add an action area to the level
      * @param position Position of the action area
@@ -531,8 +504,18 @@ export class Level {
     ): ActionArea {
         const actionArea = new ActionArea(position, size, callback);
         this.actionAreas.push(actionArea);
-        this.levelRenderer?.scene.add(actionArea.mesh);
         return actionArea;
+    }
+
+    public addSimpleText(
+        text: string, 
+        position: THREE.Vector3,
+        textColor: string = 'white',
+        outlineColor: string = 'black'
+    ): void {
+        if (!this.levelRenderer) return;
+        
+        new SimpleText(text, position, this.levelRenderer.scene, textColor, outlineColor);
     }
 }
 

@@ -245,6 +245,13 @@ export class TestLevels {
         // Set fast rotation on X axis to create the flipping effect
         flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
         level.addDynamicBody(flippingPlatform);
+
+        level.levelRenderer?.addSimpleText(
+            "Hello World!",
+            new THREE.Vector3(0, 10, 0),
+            "white",
+            "black"
+        );
     }
     
     /**
@@ -330,6 +337,12 @@ export class TestLevels {
             new THREE.Vector3(10, 4, 10),  // Size of the trigger area
             () => {
                 console.log("Congratulations! You made it to platform 2!");
+                level.levelRenderer?.addSimpleText(
+                    "Congratulations! You made it to platform 2!",
+                    new THREE.Vector3(55, 49, 0),
+                    "white",
+                    "black"
+                );
             }
         );
 

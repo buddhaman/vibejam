@@ -3,6 +3,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { InstancedRenderer } from './Render';
 import { Level } from './Level';
+import { ParticleSystem } from './ParticleSystem';
+import { SimpleText } from './SimpleText';
 
 export class LevelRenderer {
     public scene: THREE.Scene;
@@ -20,11 +22,16 @@ export class LevelRenderer {
 
     public highPerformanceMode: boolean = false;    
 
+    // Add particle system
+    public particleSystem: ParticleSystem | null = null;
+
     constructor(level: Level, highPerformance: boolean) {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.level = level;
         this.scene = new THREE.Scene();
         this.highPerformanceMode = highPerformance;
+
+        this.particleSystem = new ParticleSystem();
 
         // Configure renderer
         this.renderer = new THREE.WebGLRenderer({ 
@@ -310,7 +317,9 @@ export class LevelRenderer {
         });
 
         // Render particles
-        this.level.particleSystem.render(this.instancedRenderer);
+        // Update particles with fixed timestep (convert milliseconds to seconds)
+        this.particleSystem?.update(0.016);
+        this.particleSystem?.render(this.instancedRenderer);
 
         // Render action areas
         this.level.actionAreas?.forEach(actionArea => {
@@ -319,6 +328,34 @@ export class LevelRenderer {
 
         // Update the instanced renderer after all rendering is done
         this.instancedRenderer.update();
+    }
+
+    // Add method to spawn particles when a saw collision occurs
+    public spawnSawCollisionParticles(position: THREE.Vector3, sawVelocity: THREE.Vector3): void {
+        this.particleSystem?.spawnParticleBurst(
+            30,  // Lots of particles
+            {
+                position: position.clone(),
+                velocity: sawVelocity.clone().multiplyScalar(10), // High velocity
+                radius: 0.3,
+                color: 0x00ff55,
+                lifetime: 3.0,
+                gravity: true,
+                elongationFactor: 0.2  // Much lower elongation (was 1.5) for less stretching at high speeds
+            },
+            4.0,  // Velocity randomization
+            0.2,  // Radius variation
+            1.0   // Lifetime variation
+        );
+    }
+
+    public addSimpleText(
+        text: string, 
+        position: THREE.Vector3,
+        textColor: string = 'white',
+        outlineColor: string = 'black'
+    ): void {
+        new SimpleText(text, position, this.scene, textColor, outlineColor);
     }
 
     public handleResize(width: number, height: number): void {
