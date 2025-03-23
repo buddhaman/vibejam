@@ -292,4 +292,49 @@ export class TestLevels {
         );
         level.addSaw(testSaw);
     }
+
+    /**
+     * Creates a simple test level with just two platforms and a rope for swinging
+     * @param level The Level instance to add level elements to
+     */
+    public static createSimpleTestLevel(level: Level): void {
+        // Create two platforms with a rope between them
+        
+        // Create a solid material (no transparency)
+        const platformMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3366cc, // Blue color
+            roughness: 0.4,
+            metalness: 0.3,
+            emissive: 0x3366cc,
+            emissiveIntensity: 0.2,
+            transparent: false // Explicitly not transparent
+        });
+        
+        // Platform 1 - Starting platform (raised higher)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-15, 50, -15),
+            new THREE.Vector3(15, 52, 15),
+            platformMaterial,
+            "platform-1"
+        ));
+        
+        // Platform 2 - Distant platform (also higher and further away)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(45, 50, -15),
+            new THREE.Vector3(75, 52, 15),
+            platformMaterial,
+            "platform-2"
+        ));
+        
+        // Add a rope exactly between the two platforms for optimal swinging
+        level.addRope(
+            new THREE.Vector3(15.5, 85, 0),    // Anchor point right between platforms
+            20,                             // More segments for smoother swinging
+            25,                             // Longer length so it reaches down
+            0.3,                            // Thicker radius for visibility
+            0xffdd22                        // Yellow-orange color
+        );
+        
+        console.log("Simple test level created with two high platforms and a rope for swinging");
+    }
 }

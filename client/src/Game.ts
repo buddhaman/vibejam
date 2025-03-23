@@ -37,9 +37,10 @@ export class Game {
         // Initialize AFTER renderer is set up
         this.init();
         
-        // Add a single test box for collision
-        TestLevels.createJungleGymTest(this.level);
-
+        // Load the default level (Jungle Gym)
+        this.switchLevel(0);
+        
+        // Setup controls
         this.setupControls();
         
         // Start the game loop
@@ -160,6 +161,17 @@ export class Game {
                     this.togglePerformanceMode();
                     console.log(`Toggled to ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
                 }
+            }
+        });
+
+        // Add number key listeners for level switching
+        window.addEventListener('keydown', (event) => {
+            if (event.key === '1') {
+                console.log("Switching to Jungle Gym level");
+                this.switchLevel(0);
+            } else if (event.key === '2') {
+                console.log("Switching to Simple Test level");
+                this.switchLevel(1);
             }
         });
     }
@@ -550,5 +562,53 @@ export class Game {
                 this.levelRenderer.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
             }
         }
+    }
+
+    /**
+     * Switch to a different level
+     * @param levelIndex The index of the level to switch to
+     */
+    public switchLevel(levelIndex: number): void {
+        // Remove the old renderer from DOM first if it exists
+        if (this.levelRenderer) {
+            document.body.removeChild(this.levelRenderer.renderer.domElement);
+        }
+        
+        // Create a brand new Level and LevelRenderer
+        this.level = new Level();
+        this.levelRenderer = new LevelRenderer(this.level);
+        this.level.levelRenderer = this.levelRenderer;
+        
+        // Add the new renderer's canvas to the DOM
+        document.body.appendChild(this.levelRenderer.renderer.domElement);
+        
+        // Apply current performance settings
+        this.levelRenderer.detectDeviceCapabilities(this.highPerformanceMode);
+        
+        // Create a player
+        const player = this.level.addPlayer('local', true);
+        
+        // Load the appropriate level
+        switch (levelIndex) {
+            case 0:
+                TestLevels.createJungleGymTest(this.level);
+                // Position player on starting platform
+                player.move(new THREE.Vector3(0, 5, 0));
+                break;
+            case 1:
+                TestLevels.createSimpleTestLevel(this.level);
+                // Position player on the first platform
+                player.move(new THREE.Vector3(0, 55, 0));
+                break;
+            default:
+                console.error(`Unknown level index: ${levelIndex}`);
+                TestLevels.createJungleGymTest(this.level);
+                player.move(new THREE.Vector3(0, 5, 0));
+        }
+        
+        // Re-initialize any DOM-related controls and events
+        this.setupControls();
+        
+        console.log(`Switched to level ${levelIndex}`);
     }
 } 
