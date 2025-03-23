@@ -55,17 +55,10 @@ class GameClient {
 
     public animate(): void {
         const currentTime = performance.now();
-        const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
         this.lastTime = currentTime;
 
         // Update game with delta time
         this.game.update();
-
-        // Handle input for local player
-        const player = this.game.getPlayer(this.localPlayerId);
-        if (player) {
-            player.handleInput(this.input);
-        }
 
         requestAnimationFrame(() => this.animate());
     }
