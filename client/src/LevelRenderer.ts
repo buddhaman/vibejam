@@ -311,9 +311,14 @@ export class LevelRenderer {
         // Update shadow map camera to follow player
         this.updateShadowCamera(this.level.localPlayer!.getPosition());
 
-        // Update and render all ropes
+        // Render all ropes
         this.level.ropes.forEach(rope => {
             rope.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
+        });
+
+        // Render all updrafts
+        this.level.updrafts.forEach(updraft => {
+            updraft.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
         });
 
         // Render particles

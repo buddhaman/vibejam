@@ -235,16 +235,16 @@ export class TestLevels {
         level.addDynamicBody(verticalPlatform);
 
         // 3. Fast X-axis rotating platform (to flip the player)
-        const flippingPlatform = RigidBody.createBox(
-            new THREE.Vector3(0, 3.5, 8), // Position it on the positive Z side
-            new THREE.Vector3(6, 2, 25), // Long but narrow platform for better flipping
-            12.0,
-            purpleMaterial
-        );
+        // const flippingPlatform = RigidBody.createBox(
+        //     new THREE.Vector3(0, 3.5, 8), // Position it on the positive Z side
+        //     new THREE.Vector3(6, 2, 25), // Long but narrow platform for better flipping
+        //     12.0,
+        //     purpleMaterial
+        // );
         
-        // Set fast rotation on X axis to create the flipping effect
-        flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
-        level.addDynamicBody(flippingPlatform);
+        // // Set fast rotation on X axis to create the flipping effect
+        // flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
+        // level.addDynamicBody(aflippingPlatform);
 
         level.levelRenderer?.addSimpleText(
             "Hello World!",
@@ -317,7 +317,7 @@ export class TestLevels {
         
         // Platform 1 - Starting platform (higher up)
         const platform1 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 50, -15),
+            new THREE.Vector3(-15, 49, -15),
             new THREE.Vector3(15, 52, 15),
             platformMaterial,
             "platform-1"
@@ -325,7 +325,7 @@ export class TestLevels {
         
         // Platform 2 - Distant platform (also higher up)
         const platform2 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(35, 45, -15),
+            new THREE.Vector3(35, 44, -15),
             new THREE.Vector3(75, 47, 15),
             platformMaterial,
             "platform-2"
@@ -354,9 +354,16 @@ export class TestLevels {
             0.2,                          // Thicker radius for better visibility
             0xffdd22                      // Yellow-orange color
         );
+        
+        // Add an updraft between the platforms to allow alternative approach
+        level.addUpdraft(
+            new THREE.Vector3(25, 30, 0),    // Position between platforms but lower
+            new THREE.Vector3(8, 30, 8),     // Size (width, height, depth)
+            0.12                            // Strength - strong enough to lift the player
+        );
 
         level.localPlayer?.move(new THREE.Vector3(0, 52, 0));
         
-        console.log("Simple test level created with swinging rope between platforms");
+        console.log("Simple test level created with swinging rope between platforms and an updraft");
     }
 }

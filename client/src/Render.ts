@@ -14,7 +14,7 @@ export class InstancedRenderer {
     
     // Instance counts
     private maxBeams: number = 1000;
-    private maxSpheres: number = 1000;
+    private maxSpheres: number = 10000;
     private maxLightBeams: number = 1000;  // New count
     private beamCount: number = 0;
     private sphereCount: number = 0;

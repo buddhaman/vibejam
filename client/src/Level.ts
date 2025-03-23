@@ -9,6 +9,7 @@ import { Saw } from "./Saw";
 import { StaticBody } from "./StaticBody";
 import { ActionArea } from "./ActionArea";
 import { SimpleText } from "./SimpleText";
+import { Updraft } from "./Updraft";
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
@@ -35,6 +36,9 @@ export class Level {
 
     // Add to existing properties
     public actionAreas: ActionArea[] = [];
+
+    // Add updrafts collection
+    public updrafts: Updraft[] = [];
 
     constructor() {
         // Initialize particle system
@@ -126,7 +130,7 @@ export class Level {
             this.checkPlayerSawCollisions(player);
         });
 
-        // Update and render all ropes
+        // Update all ropes
         this.ropes.forEach(rope => {
             rope.update();
         });
@@ -142,7 +146,17 @@ export class Level {
                     actionArea.trigger();
                 }
             }
+            
+            // Check updrafts for local player
+            this.checkPlayerUpdraftCollisions(this.localPlayer);
         }
+        
+        // Check updrafts for all non-local players too
+        this.players.forEach(player => {
+            if (player !== this.localPlayer) {
+                this.checkPlayerUpdraftCollisions(player);
+            }
+        });
     }
 
     /**
@@ -165,6 +179,7 @@ export class Level {
                 
                 // If collision detected, resolve it
                 if (translation) {
+                    player.hitPlatform(translation);
                     // Move the particle out of collision using the MTV
                     particlePosition.add(translation);
                     
@@ -285,6 +300,7 @@ export class Level {
                 
                 // If collision detected, resolve it
                 if (translation) {
+                    player.hitPlatform(translation);
                     // Move the particle out of collision using the translation vector
                     particlePosition.add(translation);
                     
@@ -507,16 +523,55 @@ export class Level {
         return actionArea;
     }
 
-    public addSimpleText(
-        text: string, 
+    /**
+     * Add an updraft to the level
+     * @param position Position of the updraft
+     * @param size Size of the updraft
+     * @param strength Upward force strength
+     * @returns The created updraft
+     */
+    public addUpdraft(
         position: THREE.Vector3,
-        textColor: string = 'white',
-        outlineColor: string = 'black'
-    ): void {
+        size: THREE.Vector3,
+        strength: number = 0.08
+    ): Updraft {
+        const updraft = new Updraft(position, size, strength);
+        this.updrafts.push(updraft);
+        return updraft;
+    }
+
+    /**
+     * Check if a player is within any updraft and apply effects
+     * @param player The player to check
+     */
+    private checkPlayerUpdraftCollisions(player: Player): void {
+        for (const updraft of this.updrafts) {
+            if (updraft.isActiveState()) {
+                // Use the update method to check and apply updraft physics
+                updraft.update(player);
+            }
+        }
+    }
+    
+    /**
+     * Render the level using the provided renderer
+     * @param deltaTime Time since last frame
+     */
+    public render(deltaTime: number = 0.016): void {
         if (!this.levelRenderer) return;
         
-        new SimpleText(text, position, this.levelRenderer.scene, textColor, outlineColor);
+        
+        // Render updrafts
+        for (const updraft of this.updrafts) {
+            updraft.render(this.levelRenderer.instancedRenderer, deltaTime);
+        }
+        
+        // Render action areas
+        for (const actionArea of this.actionAreas) {
+            actionArea.render(this.levelRenderer.instancedRenderer, deltaTime);
+        }
     }
+
 }
 
 

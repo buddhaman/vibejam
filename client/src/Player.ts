@@ -3,6 +3,12 @@ import { Verlet, VerletBody } from '../../shared/Verlet';
 import { InstancedRenderer } from './Render';
 import { Rope } from './Rope';
 
+export enum MovementState {
+    OnGround,
+    InAir,
+    OnRope,
+}
+
 export class Player {
     public id: string;
     public verletBody: VerletBody;
@@ -19,13 +25,15 @@ export class Player {
     private rendererInitialized: boolean = false;
     // Current rope the player is holding
     public rope: Rope | null = null;
+    public notOnGroundTimer: number = 0;
+    public movementState: MovementState = MovementState.OnGround;
 
     // New properties to store input state
     private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
     private isJumping: boolean = false;
     private isSqueezing: boolean = false;
 
-    constructor(id: string, toonTexture?: THREE.Texture, enableDebug: boolean = false) {
+    constructor(id: string, enableDebug: boolean = false) {
         this.id = id;
         this.verletBody = new VerletBody();
         this.debugMode = enableDebug;
@@ -132,8 +140,21 @@ export class Player {
         }
     }
 
+    public hitPlatform(normal: THREE.Vector3): void {
+        if(normal.y > 0){
+            this.notOnGroundTimer = 0;
+            this.movementState = MovementState.OnGround;
+        }
+    }
+
     public fixedUpdate(): void {
         const particles = this.verletBody.getParticles();
+
+        this.notOnGroundTimer++;
+        if(this.movementState != MovementState.OnRope && this.notOnGroundTimer > 10){
+            this.movementState = MovementState.InAir;
+        }
+        console.log(MovementState[this.movementState]);
         
         // Find relevant particles for applying forces
         let highestParticle = particles[0];
@@ -154,12 +175,14 @@ export class Player {
         
         // Handle rope interaction
         if (this.rope) {
+            this.movementState = MovementState.OnRope;
             const ropeEndPos = this.rope.getEndPosition();
             const handMidpoint = new THREE.Vector3().addVectors(leftHand.position, rightHand.position).multiplyScalar(0.5);
             
             // If shift is pressed, release the rope
             if (this.isSqueezing) {
                 this.rope = null;
+                this.movementState = MovementState.InAir;
             } else {
                 // Calculate the force needed to move hands to rope
                 const toRope = new THREE.Vector3().subVectors(ropeEndPos, handMidpoint);
@@ -242,11 +265,16 @@ export class Player {
         
         // Standing force - always applied in fixedUpdate
         let standingForce: number = 0.2;
-        if (!this.isMoving) {
-            standingForce = 0.3;
-        }
-        if(this.rope){
-            standingForce = 0.0;
+        switch(this.movementState){
+            case MovementState.OnGround:
+                standingForce = this.isMoving ? 0.2 : 0.3;
+                break;
+            case MovementState.OnRope:
+                standingForce = 0.0;
+                break;
+            case MovementState.InAir:
+                standingForce = 0.0;
+                break;
         }
         headParticle.applyImpulse(new THREE.Vector3(0, standingForce, 0));
         
@@ -274,6 +302,31 @@ export class Player {
 
         // Update blinking animation
         this.updateBlinking();
+
+        // Update the friction based on the movement state
+        switch(this.movementState){
+            case MovementState.OnGround:
+                this.verletBody.airFriction = 0.99;
+                break;
+            case MovementState.OnRope:
+                this.verletBody.airFriction = 0.99;
+                break;
+            case MovementState.InAir:
+                this.verletBody.airFriction = 0.94;
+                
+                // Apply aerial movement - only when in air
+                if (this.isMoving && this.inputDirection.lengthSq() > 0) {
+                    // Apply a gentler force to all particles when in air
+                    const airMoveStrength = this.moveSpeed * 0.2;
+                    const airMoveImpulse = this.inputDirection.clone().multiplyScalar(airMoveStrength);
+                    
+                    // Apply to all particles for consistent aerial movement
+                    particles.forEach(particle => {
+                        particle.applyImpulse(airMoveImpulse.clone());
+                    });
+                }
+                break;
+        }
     }
 
     /**
