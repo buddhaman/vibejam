@@ -310,28 +310,39 @@ export class TestLevels {
         
         // Platform 1 - Starting platform (higher up)
         const platform1 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 10, -15),
-            new THREE.Vector3(15, 12, 15),
+            new THREE.Vector3(-15, 50, -15),
+            new THREE.Vector3(15, 52, 15),
             platformMaterial,
             "platform-1"
         ));
         
         // Platform 2 - Distant platform (also higher up)
         const platform2 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(45, 10, -15),
-            new THREE.Vector3(75, 12, 15),
+            new THREE.Vector3(35, 45, -15),
+            new THREE.Vector3(75, 47, 15),
             platformMaterial,
             "platform-2"
         ));
         
+        // Add an action area on platform 2
+        level.addActionArea(
+            new THREE.Vector3(55, 49, 0),  // Center of platform 2, slightly above it
+            new THREE.Vector3(10, 4, 10),  // Size of the trigger area
+            () => {
+                console.log("Congratulations! You made it to platform 2!");
+            }
+        );
+
         // Add rope for swinging between platforms
         const rope = level.addRope(
-            new THREE.Vector3(30, 40, 0),  // Anchor high above middle point
-            20,                           // More segments for smoother swinging
-            32,                           // Long enough to reach the player
-            0.4,                          // Thicker radius for better visibility
+            new THREE.Vector3(20, 70, 0),  // Anchor high above middle point
+            10,                           // More segments for smoother swinging
+            20,                           // Long enough to reach the player
+            0.2,                          // Thicker radius for better visibility
             0xffdd22                      // Yellow-orange color
         );
+
+        level.localPlayer?.move(new THREE.Vector3(0, 52, 0));
         
         console.log("Simple test level created with swinging rope between platforms");
     }

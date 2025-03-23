@@ -10,12 +10,15 @@ export class InstancedRenderer {
     // Instanced meshes
     private beamMesh: THREE.InstancedMesh;
     private sphereMesh: THREE.InstancedMesh;
+    private lightBeamMesh: THREE.InstancedMesh;  // New mesh for light beams
     
     // Instance counts
     private maxBeams: number = 1000;
     private maxSpheres: number = 1000;
+    private maxLightBeams: number = 1000;  // New count
     private beamCount: number = 0;
     private sphereCount: number = 0;
+    private lightBeamCount: number = 0;  // New counter
     
     // Reusable objects to avoid garbage collection
     private tempMatrix: THREE.Matrix4 = new THREE.Matrix4();
@@ -51,6 +54,23 @@ export class InstancedRenderer {
         this.sphereMesh.castShadow = true;
         this.sphereMesh.receiveShadow = true;
         this.scene.add(this.sphereMesh);
+        
+        // Create light beam mesh - using same geometry but different material
+        const lightBeamGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const lightBeamMaterial = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false  // Important for transparency sorting
+        });
+        
+        this.lightBeamMesh = new THREE.InstancedMesh(lightBeamGeometry, lightBeamMaterial, this.maxLightBeams);
+        this.lightBeamMesh.count = 0;
+        this.lightBeamMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        // No shadows for light beams
+        this.lightBeamMesh.castShadow = false;
+        this.lightBeamMesh.receiveShadow = false;
+        this.scene.add(this.lightBeamMesh);
     }
     
     /**
@@ -59,8 +79,10 @@ export class InstancedRenderer {
     public reset(): void {
         this.beamCount = 0;
         this.sphereCount = 0;
+        this.lightBeamCount = 0;
         this.beamMesh.count = 0;
         this.sphereMesh.count = 0;
+        this.lightBeamMesh.count = 0;
     }
     
     /**
@@ -267,6 +289,71 @@ export class InstancedRenderer {
     }
     
     /**
+     * Render a light beam between two points - optimized for glowing effects
+     * @param from Start position
+     * @param to End position
+     * @param width Width of the beam
+     * @param height Height of the beam
+     * @param up Up vector for orienting the beam (default is Y-up)
+     * @param color Color of the beam
+     * @param opacity Opacity of the beam (0-1)
+     */
+    public renderLightBeam(
+        from: THREE.Vector3, 
+        to: THREE.Vector3, 
+        width: number = 0.2, 
+        height: number = 0.2, 
+        up: THREE.Vector3 = this.upVector,
+        color: THREE.Color | number = 0xffffff,
+        opacity: number = 0.5
+    ): void {
+        if (this.lightBeamCount >= this.maxLightBeams) {
+            console.warn('Maximum number of light beams reached');
+            return;
+        }
+        
+        // Calculate the midpoint between the two positions
+        this.tempPosition.copy(from).add(to).multiplyScalar(0.5);
+        
+        // Calculate the direction vector and length
+        this.tempScale.copy(to).sub(from);
+        const length = this.tempScale.length();
+        this.tempScale.normalize();
+        
+        // Calculate rotation
+        this.tempQuaternion.setFromUnitVectors(this.upVector, this.tempScale);
+        
+        // Set the scale for the beam
+        this.tempScale.set(width, length, height);
+        
+        // Compose the transformation matrix
+        this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        
+        // Set the instance matrix
+        this.lightBeamMesh.setMatrixAt(this.lightBeamCount, this.tempMatrix);
+        
+        // Set the color with opacity
+        if (typeof color === 'number') {
+            this.tempColor.set(color);
+        } else {
+            this.tempColor.copy(color);
+        }
+        // Adjust material opacity
+        if (this.lightBeamMesh.material instanceof THREE.MeshBasicMaterial) {
+            this.lightBeamMesh.material.opacity = opacity;
+        }
+        this.lightBeamMesh.setColorAt(this.lightBeamCount, this.tempColor);
+        
+        // Increment the count
+        this.lightBeamCount++;
+        this.lightBeamMesh.count = this.lightBeamCount;
+        
+        // Mark for update
+        this.lightBeamMesh.instanceMatrix.needsUpdate = true;
+        if (this.lightBeamMesh.instanceColor) this.lightBeamMesh.instanceColor.needsUpdate = true;
+    }
+    
+    /**
      * Update the meshes after all instances have been added
      * This must be called after rendering all beams and spheres for a frame
      */
@@ -274,19 +361,24 @@ export class InstancedRenderer {
         // Update the instance counts
         this.beamMesh.count = this.beamCount;
         this.sphereMesh.count = this.sphereCount;
+        this.lightBeamMesh.count = this.lightBeamCount;
 
         this.beamMesh.computeBoundingSphere();
         this.beamMesh.computeBoundingBox();
 
         this.sphereMesh.computeBoundingSphere();
         this.sphereMesh.computeBoundingBox();
+        this.lightBeamMesh.computeBoundingSphere();
+        this.lightBeamMesh.computeBoundingBox();
         
         // Update the instance matrices and colors
         this.beamMesh.instanceMatrix.needsUpdate = true;
         this.sphereMesh.instanceMatrix.needsUpdate = true;
+        this.lightBeamMesh.instanceMatrix.needsUpdate = true;
         
         if (this.beamMesh.instanceColor) this.beamMesh.instanceColor.needsUpdate = true;
         if (this.sphereMesh.instanceColor) this.sphereMesh.instanceColor.needsUpdate = true;
+        if (this.lightBeamMesh.instanceColor) this.lightBeamMesh.instanceColor.needsUpdate = true;
     }
 
     /**
@@ -305,5 +397,11 @@ export class InstancedRenderer {
             this.sphereMesh.material.dispose();
         }
         this.scene.remove(this.sphereMesh);
+        
+        this.lightBeamMesh.geometry.dispose();
+        if (this.lightBeamMesh.material instanceof THREE.Material) {
+            this.lightBeamMesh.material.dispose();
+        }
+        this.scene.remove(this.lightBeamMesh);
     }
 }

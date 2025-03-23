@@ -25,6 +25,10 @@ export class Game {
     private mobileControls: MobileControls | null = null;
     private isMobile: boolean = false;
 
+    // Add a property to track our event listeners
+    private keydownListener: ((event: KeyboardEvent) => void) | null = null;
+    private keyupListener: ((event: KeyboardEvent) => void) | null = null;
+
     constructor() {
         // Detect device capabilities first
         this.detectDeviceCapabilities();
@@ -80,6 +84,34 @@ export class Game {
     public setupControls(): void {
         // Mouse controls for camera rotation
         let domElement = this.getDomElement();
+        
+        // First, remove any existing keyboard listeners
+        this.removeKeyListeners();
+        
+        // Set up keyboard input tracking
+        this.inputKeys = {};
+        
+        // Create the event listeners and store references to them
+        this.keydownListener = (event) => {
+            this.inputKeys[event.key.toLowerCase()] = true;
+            
+            // Handle level switching separately (not in the listener)
+            if (event.key === '1') {
+                this.switchLevel(0);
+            } else if (event.key === '2') {
+                this.switchLevel(1);
+            }
+        };
+        
+        this.keyupListener = (event) => {
+            this.inputKeys[event.key.toLowerCase()] = false;
+        };
+        
+        // Add the listeners
+        window.addEventListener('keydown', this.keydownListener);
+        window.addEventListener('keyup', this.keyupListener);
+        
+        // Mouse controls for camera rotation
         domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
             this.previousMousePosition = {
@@ -139,17 +171,6 @@ export class Game {
             this.levelRenderer!.cameraDistance = Math.max(4, Math.min(20, this.levelRenderer!.cameraDistance + event.deltaY * 0.01));
         });
 
-        // Set up keyboard input tracking (only track state, don't update player here)
-        this.inputKeys = {};
-        
-        window.addEventListener('keydown', (event) => {
-            this.inputKeys[event.key.toLowerCase()] = true;
-        });
-        
-        window.addEventListener('keyup', (event) => {
-            this.inputKeys[event.key.toLowerCase()] = false;
-        });
-
         // Use 'T' key to toggle performance mode instead of just toon shadows
         window.addEventListener('keydown', (event) => {
             if (event.key === 't' || event.key === 'T') {
@@ -160,19 +181,20 @@ export class Game {
                 }
             }
         });
-
-        // Add number key listeners for level switching
-        window.addEventListener('keydown', (event) => {
-            if (event.key === '1') {
-                console.log("Switching to Jungle Gym level");
-                this.switchLevel(0);
-            } else if (event.key === '2') {
-                console.log("Switching to Simple Test level");
-                this.switchLevel(1);
-            }
-        });
     }
 
+    // Method to remove key listeners
+    private removeKeyListeners(): void {
+        if (this.keydownListener) {
+            window.removeEventListener('keydown', this.keydownListener);
+            this.keydownListener = null;
+        }
+        
+        if (this.keyupListener) {
+            window.removeEventListener('keyup', this.keyupListener);
+            this.keyupListener = null;
+        }
+    }
 
     /**
      * Toggle between high and low performance modes
@@ -566,15 +588,25 @@ export class Game {
      * @param levelIndex The index of the level to switch to
      */
     public switchLevel(levelIndex: number): void {
-        // Remove the old renderer from DOM first if it exists
+        console.log(`Starting switch to level ${levelIndex}`);
+        
+        // Remove all event listeners to prevent loops
+        this.removeKeyListeners();
+        
+        // Remove the old renderer's DOM element if it exists
         if (this.levelRenderer) {
             document.body.removeChild(this.levelRenderer.renderer.domElement);
+            
+            // Dispose of THREE.js resources to prevent memory leaks
+            this.levelRenderer.renderer.dispose();
+            if (this.levelRenderer.composer) {
+                this.levelRenderer.composer.renderTarget1.dispose();
+                this.levelRenderer.composer.renderTarget2.dispose();
+            }
         }
         
-        // Create a brand new Level
+        // Create completely new Level and LevelRenderer instances
         this.level = new Level();
-        
-        // Create LevelRenderer with predetermined performance mode
         this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
         this.level.levelRenderer = this.levelRenderer;
         
@@ -600,9 +632,15 @@ export class Game {
                 player.move(new THREE.Vector3(0, 5, 0));
         }
         
-        // Re-initialize any DOM-related controls and events
+        // Re-initialize controls
         this.setupControls();
         
-        console.log(`Switched to level ${levelIndex}`);
+        console.log(`Completed switch to level ${levelIndex}`);
+    }
+
+    // Make sure to clean up on destroy
+    public destroy(): void {
+        this.removeKeyListeners();
+        // Clean up other event listeners and resources
     }
 } 

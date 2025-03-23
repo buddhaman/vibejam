@@ -311,6 +311,12 @@ export class LevelRenderer {
 
         // Render particles
         this.level.particleSystem.render(this.instancedRenderer);
+
+        // Render action areas
+        this.level.actionAreas?.forEach(actionArea => {
+            actionArea.render(this.instancedRenderer, 0.016);
+        });
+
         // Update the instanced renderer after all rendering is done
         this.instancedRenderer.update();
     }

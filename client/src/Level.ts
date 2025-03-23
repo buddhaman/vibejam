@@ -9,6 +9,7 @@ import { Rope } from "./Rope";
 import { Saw } from "./Saw";
 import { StaticBody } from "./StaticBody";
 import { TestLevels } from "./TestLevels";
+import { ActionArea } from "./ActionArea";
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
@@ -36,10 +37,12 @@ export class Level {
     // Local player
     public localPlayer: Player | null;
 
+    // Add to existing properties
+    public actionAreas: ActionArea[] = [];
+
     constructor() {
         // Initialize particle system
         this.particleSystem = new ParticleSystem();
-
         this.players = new Map();
         this.localPlayer = null;
     }
@@ -138,6 +141,16 @@ export class Level {
 
         // Update particles with fixed timestep (convert milliseconds to seconds)
         this.particleSystem.update(0.016);
+
+        // Check action areas
+        if (this.localPlayer) {
+            const playerPos = this.localPlayer.getPosition();
+            for (const actionArea of this.actionAreas) {
+                if (actionArea.checkCollision(playerPos)) {
+                    actionArea.trigger();
+                }
+            }
+        }
     }
 
     /**
@@ -502,6 +515,24 @@ export class Level {
             0.2,  // Radius variation
             1.0   // Lifetime variation
         );
+    }
+
+    /**
+     * Add an action area to the level
+     * @param position Position of the action area
+     * @param size Size of the action area
+     * @param callback Function to call when triggered
+     * @returns The created action area
+     */
+    public addActionArea(
+        position: THREE.Vector3,
+        size: THREE.Vector3,
+        callback: () => void
+    ): ActionArea {
+        const actionArea = new ActionArea(position, size, callback);
+        this.actionAreas.push(actionArea);
+        this.levelRenderer?.scene.add(actionArea.mesh);
+        return actionArea;
     }
 }
 
