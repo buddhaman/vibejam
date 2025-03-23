@@ -9,6 +9,7 @@ import { Rope } from './Rope';
 import { MobileControls } from './MobileControls';
 import { Saw } from './Saw';
 import { ParticleSystem } from './ParticleSystem';
+import { TestLevels } from './TestLevels';
 
 export class Game {
     public scene: THREE.Scene;
@@ -95,19 +96,19 @@ export class Game {
         }
         
         // Add a single test box for collision
-        this.createTestBox();
+        TestLevels.createJungleGymTest(this);
 
         // Initialize the instanced renderer
         this.instancedRenderer = new InstancedRenderer(this.scene);
         
         // Create dynamic platforms
-        this.createDynamicPlatforms();
+        // this.createDynamicPlatforms();
         
-        // Create saws
-        this.createSaws();
+        // // Create saws
+        // this.createSaws();
         
-        // Create test ropes
-        this.createTestRopes();
+        // // Create test ropes
+        // this.createTestRopes();
 
         // Initialize particle system
         this.particleSystem = new ParticleSystem(this.instancedRenderer);
@@ -963,38 +964,6 @@ export class Game {
         // Draw test ring after player rendering
         this.testTime += 0.016; // Consistent time increment (roughly 60fps)
         
-        // Draw a simple animated structure
-        const center = new THREE.Vector3(0, 5, 0);
-        const radius = 2;
-        const segments = 12;
-        
-        // Reuse these vectors outside the loop
-        const pos1 = new THREE.Vector3();
-        const pos2 = new THREE.Vector3();
-
-        for (let i = 0; i < segments; i++) {
-            const angle1 = (i / segments) * Math.PI * 2 + this.testTime;
-            const angle2 = ((i + 1) / segments) * Math.PI * 2 + this.testTime;
-            
-            pos1.set(
-                center.x + Math.cos(angle1) * radius,
-                center.y + Math.sin(this.testTime * 2) * 0.5,
-                center.z + Math.sin(angle1) * radius
-            );
-            
-            pos2.set(
-                center.x + Math.cos(angle2) * radius,
-                center.y + Math.sin(this.testTime * 2) * 0.5,
-                center.z + Math.sin(angle2) * radius
-            );
-            
-            // Use the reused vectors
-            this.instancedRenderer.renderBeam(pos1, pos2, 0.1, 0.1, undefined, 0x44aa88);
-            this.instancedRenderer.renderSphere(pos1, 0.2, 0x88ccaa);
-        }
-        
-        // Update the instanced renderer after all rendering is done
-        this.instancedRenderer.update();
         
         // Update all dynamic bodies with fixed timestep
         this.updateDynamicBodies();
@@ -1019,6 +988,9 @@ export class Game {
 
         // Update the circular path for moving saws
         this.updateSawPaths();
+
+        // Update the instanced renderer after all rendering is done
+        this.instancedRenderer.update();
 
         // Update particles with fixed timestep (convert milliseconds to seconds)
         this.particleSystem.update(this.timestep / 1000);
@@ -1249,67 +1221,6 @@ export class Game {
     /**
      * Create several dynamic platforms
      */
-    public createDynamicPlatforms(): void {
-        // Create materials for different platforms
-        const redMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff3366, emissive: 0xff3366, emissiveIntensity: 0.2,
-            roughness: 0.4, metalness: 0.6
-        });
-        
-        const blueMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3366ff, emissive: 0x3366ff, emissiveIntensity: 0.2,
-            roughness: 0.4, metalness: 0.6
-        });
-        
-        const greenMaterial = new THREE.MeshStandardMaterial({
-            color: 0x33ff66, emissive: 0x33ff66, emissiveIntensity: 0.2,
-            roughness: 0.4, metalness: 0.6
-        });
-        
-        const purpleMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff33ff, emissive: 0xff33ff, emissiveIntensity: 0.3,
-            roughness: 0.3, metalness: 0.7
-        });
-        
-        // Constants for fixed physics behavior (never scaled by deltaTime)
-        const HORIZONTAL_VELOCITY = 0.05;
-        const VERTICAL_VELOCITY = 0.04;
-        const ROTATION_VELOCITY = 0.02;
-        const FAST_ROTATION_VELOCITY = 0.02; // Faster rotation for the flipping platform
-        
-        // 1. Horizontal moving platform - BIGGER
-        const horizontalPlatform = RigidBody.createBox(
-            new THREE.Vector3(-8, 2.2, 0),
-            new THREE.Vector3(8, 1.2, 8), // Increased size
-            15.0, // Increased mass
-            redMaterial
-        );
-        horizontalPlatform.velocity.set(HORIZONTAL_VELOCITY, 0, 0);
-        this.addDynamicBody(horizontalPlatform);
-        
-        // 2. Vertical moving platform - BIGGER
-        const verticalPlatform = RigidBody.createBox(
-            new THREE.Vector3(0, 2.7, -8),
-            new THREE.Vector3(8, 0.8, 8), // Increased size
-            15.0, // Increased mass
-            blueMaterial
-        );
-        verticalPlatform.velocity.set(0, VERTICAL_VELOCITY, 0);
-        this.addDynamicBody(verticalPlatform);
-
-        // 4. NEW: Fast X-axis rotating platform (to flip the player)
-        const flippingPlatform = RigidBody.createBox(
-            new THREE.Vector3(0, 3.5, 8), // Position it on the positive Z side
-            new THREE.Vector3(6, 2, 25), // Long but narrow platform for better flipping
-            12.0,
-            purpleMaterial
-        );
-        
-        // Set fast rotation on X axis to create the flipping effect
-        flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
-        this.addDynamicBody(flippingPlatform);
-    }
-
     /**
      * Add a rope to the game
      * @param fixedPoint The point where the rope is attached
