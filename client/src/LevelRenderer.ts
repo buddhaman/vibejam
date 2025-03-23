@@ -293,8 +293,14 @@ export class LevelRenderer {
             this.renderer.render(this.scene, this.camera);
         }
 
-        // Update shadow map camera to follow player
         this.instancedRenderer.reset();
+
+        // Reset the instanced renderer and render all players
+        this.level.players.forEach(player => {
+            player.render(this.instancedRenderer);
+        });
+
+        // Update shadow map camera to follow player
         this.updateShadowCamera(this.level.localPlayer!.getPosition());
 
         // Update and render all ropes

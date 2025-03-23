@@ -39,6 +39,8 @@ export class Game {
         
         // Add a single test box for collision
         TestLevels.createJungleGymTest(this.level);
+
+        this.setupControls();
         
         // Start the game loop
         this.lastUpdateTime = performance.now();

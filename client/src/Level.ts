@@ -42,8 +42,6 @@ export class Level {
 
         this.players = new Map();
         this.localPlayer = null;
-
-        TestLevels.createJungleGymTest(this);
     }
 
     /**
