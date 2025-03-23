@@ -312,7 +312,7 @@ export class Player {
                 this.verletBody.airFriction = 0.99;
                 break;
             case MovementState.InAir:
-                this.verletBody.airFriction = 0.94;
+                this.verletBody.airFriction = 0.97;
                 
                 // Apply aerial movement - only when in air
                 if (this.isMoving && this.inputDirection.lengthSq() > 0) {

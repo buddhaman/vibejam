@@ -47,18 +47,30 @@ export class Updraft {
         const particles = player.verletBody.getParticles();
         let particlesInside = false;
         
+        // Get bounds for height-based force calculation
+        const minY = this.position.y - this.size.y/2;
+        const maxY = this.position.y + this.size.y/2;
+        const fullHeight = this.size.y;
+        
         // Check each particle individually and only apply force to those inside
         particles.forEach(particle => {
             if (this.bounds.containsPoint(particle.position)) {
                 particlesInside = true;
                 
-                // Apply gentler updraft force
-                const upwardForce = new THREE.Vector3(0, this.strength * 0.8, 0);
+                // Calculate height percentage (0 at bottom, 1 at top)
+                const heightPercent = Math.min(1, Math.max(0, (particle.position.y - minY) / fullHeight));
+                
+                // Scale force based on height - stronger at bottom, weaker at top
+                const forceScale = 1.0 - (heightPercent * 0.7); // Scales from 1.0 at bottom to 0.3 at top
+                
+                // Apply variable updraft force
+                const upwardForce = new THREE.Vector3(0, this.strength * forceScale, 0);
                 particle.applyImpulse(upwardForce);
                 
-                // Add subtle turbulence
-                const turbulenceX = (Math.random() - 0.5) * this.strength * 0.15;
-                const turbulenceZ = (Math.random() - 0.5) * this.strength * 0.15;
+                // Add subtle turbulence - stronger at bottom
+                const turbulenceScale = forceScale * 0.15;
+                const turbulenceX = (Math.random() - 0.5) * this.strength * turbulenceScale;
+                const turbulenceZ = (Math.random() - 0.5) * this.strength * turbulenceScale;
                 particle.applyImpulse(new THREE.Vector3(turbulenceX, 0, turbulenceZ));
             }
         });
@@ -84,10 +96,10 @@ export class Updraft {
         const minZ = this.position.z - this.size.z/2;
         const maxZ = this.position.z + this.size.z/2;
         
-        // --------- VERTICAL STREAMS ---------
+        // --------- VERTICAL STREAMS ONLY ---------
         // Create evenly distributed vertical streams across the entire area
-        const streamCountX = 4; // Horizontal grid of streams
-        const streamCountZ = 4;
+        const streamCountX = 5; // Increased number for more coverage
+        const streamCountZ = 5;
         
         for (let ix = 0; ix < streamCountX; ix++) {
             for (let iz = 0; iz < streamCountZ; iz++) {
@@ -99,7 +111,7 @@ export class Updraft {
                 const startPos = new THREE.Vector3(xPos, minY, zPos);
                 
                 // Divide the height into segments
-                const segments = 5;
+                const segments = 8; // More segments for smoother curves
                 let lastPoint = startPos.clone();
                 
                 // Create a zigzag line going up through the entire height
@@ -110,18 +122,23 @@ export class Updraft {
                     const height = minY + t * this.size.y;
                     
                     // Add horizontal displacement that increases with height
-                    const wavePhase = this.time * 3 + ix * 1.1 + iz * 0.9 + i * 0.2;
-                    const waveAmplitude = 0.5 * (1 - Math.pow(t, 2)); // Less movement near the top
+                    const wavePhase = this.time * 2.5 + ix * 1.1 + iz * 0.9 + i * 0.2;
+                    const waveAmplitude = 0.5 * (1 - Math.pow(t, 2.5)); // Stronger curve near bottom
+                    
+                    // Vertical displacement slightly increases with height to show air slowing down
+                    const vertOffset = t * 0.7; // Slight offset to make top segments more spaced out
                     
                     const nextPoint = new THREE.Vector3(
                         xPos + Math.sin(wavePhase) * waveAmplitude,
-                        height,
+                        height + vertOffset,
                         zPos + Math.cos(wavePhase * 0.7) * waveAmplitude
                     );
                     
-                    // Width and opacity vary with height
-                    const lineWidth = 0.25 * (1 - t * 0.6); // Thinner at top
-                    const opacity = 0.3 + t * 0.3; // More visible at top
+                    // Width decreases more aggressively with height to show dissipation
+                    const lineWidth = 0.3 * Math.pow(1 - t, 1.2); // Thinner at top
+                    
+                    // Opacity varies with height - strong at bottom, fades at top
+                    const opacity = 0.5 - t * 0.3;
                     
                     // Draw line segment
                     instancedRenderer.renderLightBeam(
@@ -136,53 +153,6 @@ export class Updraft {
                     
                     lastPoint = nextPoint;
                 }
-            }
-        }
-        
-        // --------- HORIZONTAL WIND LAYERS ---------
-        // Add horizontal wind layers at different heights
-        const layerCount = 4;
-        for (let i = 0; i < layerCount; i++) {
-            // Calculate layer height - distribute throughout the volume
-            const layerHeight = minY + (i + 0.5) * (this.size.y / layerCount);
-            
-            // Direction alternates between layers
-            const direction = i % 2 === 0 ? 1 : -1;
-            
-            // Create horizontal streaks in each layer
-            const streakCount = 6;
-            for (let j = 0; j < streakCount; j++) {
-                // Distribute across the width and length + time-based offset
-                const streakPhase = this.time * 2 + j * 1.3 + i * 0.7;
-                
-                // Calculate start position with time-based movement
-                const startX = direction > 0 ? 
-                    minX + (Math.sin(streakPhase) * 0.5 + 0.5) * this.size.x : 
-                    maxX - (Math.sin(streakPhase) * 0.5 + 0.5) * this.size.x;
-                    
-                const streakZ = minZ + (Math.cos(streakPhase * 0.7) * 0.4 + 0.5) * this.size.z;
-                
-                // Create start and end points for the streak
-                const startPoint = new THREE.Vector3(startX, layerHeight, streakZ);
-                const endPoint = new THREE.Vector3(
-                    startX + direction * (1.0 + Math.sin(streakPhase * 1.5) * 0.5) * 2,
-                    layerHeight + Math.sin(streakPhase * 2) * 0.2,
-                    streakZ + Math.cos(streakPhase * 2) * 0.2
-                );
-                
-                // Width and opacity vary with time
-                const pulseFactor = 0.7 + Math.sin(this.time * 3 + j + i * 2) * 0.3;
-                
-                // Draw the streak
-                instancedRenderer.renderLightBeam(
-                    startPoint,
-                    endPoint,
-                    0.15 * pulseFactor,
-                    0.05 * pulseFactor,
-                    undefined,
-                    baseColor,
-                    0.3 * pulseFactor
-                );
             }
         }
         
@@ -229,48 +199,8 @@ export class Updraft {
             }
         }
         
-        // --------- GROUND EFFECT ---------
-        // Improved ground effect covering the entire bottom face
-        const groundEffectSize = Math.max(this.size.x, this.size.z) * 0.65;
-        const groundPos = this.position.clone();
-        groundPos.y = minY + 0.05;
-        
-        // Main ground glow
-        instancedRenderer.renderLightBeam(
-            groundPos,
-            groundPos.clone().add(new THREE.Vector3(0, 0.3, 0)),
-            groundEffectSize,
-            groundEffectSize,
-            undefined,
-            baseColor,
-            0.4
-        );
-        
-        // Add circular wind patterns at the base
-        const patternCount = 3;
-        for (let i = 0; i < patternCount; i++) {
-            const patternPhase = this.time * 1.5 + i * Math.PI * 2 / patternCount;
-            const patternSize = 0.5 + Math.sin(patternPhase) * 0.2;
-            
-            // Place patterns in different locations on the base
-            const patternX = this.position.x + Math.sin(patternPhase) * this.size.x * 0.3;
-            const patternZ = this.position.z + Math.cos(patternPhase) * this.size.z * 0.3;
-            
-            const patternPos = new THREE.Vector3(patternX, minY + 0.1, patternZ);
-            
-            instancedRenderer.renderLightBeam(
-                patternPos,
-                patternPos.clone().add(new THREE.Vector3(0, 0.2, 0)),
-                this.size.x * 0.2 * patternSize,
-                this.size.z * 0.2 * patternSize,
-                undefined,
-                baseColor,
-                0.3
-            );
-        }
-        
-        // Keep debug lines if needed (can be toggled)
-        // this.renderDebugBoundary(instancedRenderer);
+        // Debug boundary can be toggled if needed
+        this.renderDebugBoundary(instancedRenderer);
     }
     
     /**

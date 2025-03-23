@@ -357,8 +357,8 @@ export class TestLevels {
         
         // Add an updraft between the platforms to allow alternative approach
         level.addUpdraft(
-            new THREE.Vector3(25, 30, 0),    // Position between platforms but lower
-            new THREE.Vector3(8, 30, 8),     // Size (width, height, depth)
+            new THREE.Vector3(25, 25, 0),    // Position between platforms but lower
+            new THREE.Vector3(10, 50, 10),     // Size (width, height, depth)
             0.12                            // Strength - strong enough to lift the player
         );
 
