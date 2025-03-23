@@ -44,10 +44,11 @@ export class ActionArea {
         if (!this.isActive) return;
         
         this.time += deltaTime;
-        const beamColor = new THREE.Color(0x00ff88);
+        const baseColor = new THREE.Color(0x00ff88);
+        const glowColor = new THREE.Color(0x88ffaa);
         
-        // Number of beams per side
-        const beamsPerSide = 6;
+        // Reduced number of beams per side
+        const beamsPerSide = 5;
         
         // Calculate spacing between beams
         const spacingX = this.size.x / (beamsPerSide - 1);
@@ -56,10 +57,10 @@ export class ActionArea {
         // Draw beams along the perimeter
         for (let i = 0; i < beamsPerSide; i++) {
             const t = this.time * 2 + i * 0.2;
-            const heightScale = 1.0 + Math.sin(t) * 0.3; // Beam height variation
-            const widthScale = 0.5 + Math.sin(t * 2) * 0.2; // Beam width pulsing
-            const beamHeight = this.size.y * 2 * heightScale; // Make beams taller than the box
-            const beamWidth = 0.1 * widthScale;
+            const heightScale = 1.0 + Math.sin(t) * 0.4; // Increased height variation
+            const widthScale = 0.6 + Math.sin(t * 2) * 0.3; // Increased width pulsing
+            const beamHeight = this.size.y * 3 * heightScale; // Made beams even taller
+            const beamWidth = 0.15 * widthScale; // Increased base width
 
             // Calculate positions for beams on each side
             const positions = [
@@ -89,22 +90,84 @@ export class ActionArea {
                 )
             ];
 
-            // Render each beam
+            // Render each beam set
             positions.forEach((pos, index) => {
                 const phaseOffset = index * 0.25 + i * 0.1;
-                const colorIntensity = 0.5 + Math.sin(this.time * 3 + phaseOffset) * 0.5;
-                const currentColor = beamColor.clone().multiplyScalar(colorIntensity);
+                const colorIntensity = 0.6 + Math.sin(this.time * 3 + phaseOffset) * 0.4;
+                const currentColor = baseColor.clone().multiplyScalar(colorIntensity);
                 
+                // Inner solid beam
                 instancedRenderer.renderBeam(
-                    pos, // Start from ground
-                    pos.clone().add(new THREE.Vector3(0, beamHeight, 0)), // Go straight up
-                    beamWidth,
-                    beamWidth,
+                    pos,
+                    pos.clone().add(new THREE.Vector3(0, beamHeight * 0.8, 0)),
+                    beamWidth * 0.4,
+                    beamWidth * 0.4,
                     undefined,
                     currentColor
                 );
+
+                // Outer glowing beam (made wider)
+                const glowOpacity = 0.4 + Math.sin(this.time * 2 + phaseOffset) * 0.2;
+                instancedRenderer.renderLightBeam(
+                    pos,
+                    pos.clone().add(new THREE.Vector3(0, beamHeight, 0)),
+                    beamWidth * 3,
+                    beamWidth * 3,
+                    undefined,
+                    glowColor,
+                    glowOpacity
+                );
+
+                // Larger ground glow effect
+                const groundGlowSize = 0.5 + Math.sin(this.time * 4 + phaseOffset) * 0.2;
+                instancedRenderer.renderLightBeam(
+                    pos.clone().add(new THREE.Vector3(0, 0.05, 0)),
+                    pos.clone().add(new THREE.Vector3(0, 0.2, 0)),
+                    groundGlowSize * 2,
+                    groundGlowSize * 2,
+                    undefined,
+                    glowColor,
+                    0.3
+                );
+
+                // Fewer but larger floating particles
+                const particleCount = 2;
+                for (let p = 0; p < particleCount; p++) {
+                    const particlePhase = this.time * 3 + p * Math.PI * 2 / particleCount + phaseOffset;
+                    const particleHeight = (Math.sin(particlePhase) * 0.5 + 0.5) * beamHeight;
+                    const particleOffset = new THREE.Vector3(
+                        Math.sin(particlePhase * 1.5) * beamWidth * 2,
+                        particleHeight,
+                        Math.cos(particlePhase * 1.5) * beamWidth * 2
+                    );
+                    
+                    const particlePos = pos.clone().add(particleOffset);
+                    instancedRenderer.renderLightBeam(
+                        particlePos,
+                        particlePos.clone().add(new THREE.Vector3(0, 0.2, 0)),
+                        0.1,
+                        0.1,
+                        undefined,
+                        glowColor,
+                        0.7
+                    );
+                }
             });
         }
+
+        // Larger central area effect
+        const centerPos = this.position.clone();
+        centerPos.y = this.position.y - this.size.y/2 + 0.1;
+        const centerScale = 1.2 + Math.sin(this.time * 1.5) * 0.3;
+        instancedRenderer.renderLightBeam(
+            centerPos,
+            centerPos.clone().add(new THREE.Vector3(0, 0.3, 0)),
+            this.size.x * 0.6 * centerScale,
+            this.size.z * 0.6 * centerScale,
+            undefined,
+            glowColor,
+            0.25
+        );
     }
 
     public checkCollision(point: THREE.Vector3): boolean {
