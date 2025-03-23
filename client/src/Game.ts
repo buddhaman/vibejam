@@ -122,7 +122,6 @@ export class Game {
         
         // Chrome DevTools mobile emulation often has small screen size
         const sizeMobile = window.innerWidth <= 900;
-        
         // Set mobile detection flag
         this.isMobile = userAgentMobile || sizeMobile;
         
