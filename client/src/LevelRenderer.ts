@@ -3,7 +3,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { InstancedRenderer } from './Render';
 import { Level } from './Level';
-import { Player } from './Player';
 
 export class LevelRenderer {
     public scene: THREE.Scene;
@@ -12,7 +11,7 @@ export class LevelRenderer {
     public toonShadowsEnabled: boolean = false;
     public toonTextureGradient: THREE.Texture | null = null;
     public instancedRenderer: InstancedRenderer;
-
+    public level: Level;
     public camera: THREE.PerspectiveCamera;
     public cameraDistance: number = 8;
     public cameraTheta: number = 0; // Horizontal angle
@@ -21,7 +20,7 @@ export class LevelRenderer {
 
     public highPerformanceMode: boolean = false;    
 
-    constructor(private level: Level) {
+    constructor(level: Level) {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.level = level;
         this.scene = new THREE.Scene();
@@ -36,6 +35,7 @@ export class LevelRenderer {
 
         // Initialize the instanced renderer
         this.instancedRenderer = new InstancedRenderer(this.scene);
+        this.init();
     }
 
     /**
@@ -282,8 +282,6 @@ export class LevelRenderer {
 
         // Add lighting based on performance mode
         this.setupLighting();
-
-        window.addEventListener('resize', this.onWindowResize.bind(this));
     }
 
     public render(): void {
@@ -314,19 +312,13 @@ export class LevelRenderer {
         this.instancedRenderer.update();
     }
 
-    public onWindowResize(): void {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
+    public handleResize(width: number, height: number): void {
+        // Update camera aspect ratio
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
         
-        // Update renderer
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        // Set appropriate pixel ratio based on performance mode
-        if (this.highPerformanceMode) {
-            this.renderer.setPixelRatio(window.devicePixelRatio);
-        } else {
-            this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
-        }
+        // Update renderer size
+        this.renderer.setSize(width, height);
         
         // Recreate the composer only in high performance mode
         if (this.highPerformanceMode) {

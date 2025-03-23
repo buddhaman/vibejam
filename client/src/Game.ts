@@ -253,7 +253,8 @@ export class Game {
             this.addDesktopFullscreenButton();
         }
         
-        window.addEventListener('resize', this.levelRenderer!.onWindowResize.bind(this));
+        // Register window resize handler in Game class (not in LevelRenderer)
+        window.addEventListener('resize', this.onWindowResize.bind(this));
         
         // Ensure mobile controls are set up immediately after initialization if on mobile
         if (this.isMobile && !this.mobileControls) {
@@ -534,5 +535,20 @@ export class Game {
     public setTargetFPS(fps: number): void {
         this.targetFPS = fps;
         this.timestep = 1000 / fps;
+    }
+
+    public onWindowResize(): void {
+        // Handle DOM-related resize operations
+        if (this.levelRenderer) {
+            // Notify the LevelRenderer about the resize
+            this.levelRenderer.handleResize(window.innerWidth, window.innerHeight);
+            
+            // Set appropriate pixel ratio based on performance mode
+            if (this.highPerformanceMode) {
+                this.levelRenderer.renderer.setPixelRatio(window.devicePixelRatio);
+            } else {
+                this.levelRenderer.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+            }
+        }
     }
 } 
