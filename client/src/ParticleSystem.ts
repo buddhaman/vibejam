@@ -34,17 +34,15 @@ interface ParticleOptions {
  */
 export class ParticleSystem {
     private particles: Particle[] = [];
-    private renderer: InstancedRenderer;
     private tempVector: THREE.Vector3 = new THREE.Vector3();
     private tempColor: THREE.Color = new THREE.Color();
     private gravity: THREE.Vector3 = new THREE.Vector3(0, -9.8, 0);
     
     /**
      * Create a new particle system
-     * @param renderer The instanced renderer to use for rendering
      */
-    constructor(renderer: InstancedRenderer) {
-        this.renderer = renderer;
+    constructor() {
+        // No longer storing renderer
     }
     
     /**
@@ -172,8 +170,9 @@ export class ParticleSystem {
     
     /**
      * Render all particles
+     * @param renderer The instanced renderer to use for rendering
      */
-    public render(): void {
+    public render(renderer: InstancedRenderer): void {
         for (const particle of this.particles) {
             // Calculate current radius based on remaining lifetime
             // EXTREME: Use a non-linear falloff for more dramatic effect
@@ -193,7 +192,7 @@ export class ParticleSystem {
             const elongation = particle.elongationFactor * speedFactor;
             
             // Render the particle as an elongated sphere
-            this.renderer.renderElongatedSphere(
+            renderer.renderElongatedSphere(
                 particle.position,
                 particle.velocity,
                 currentRadius,

@@ -26,7 +26,7 @@ class GameClient {
     }
 
     public setupLocalPlayer(): void {
-        this.game.addPlayer(this.localPlayerId, true);
+        this.game.level!.addPlayer(this.localPlayerId, true);
     }
 
     public setupControls(): void {

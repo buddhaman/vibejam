@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Game } from './Game';
+import { Level } from './Level';
 import { StaticBody } from './StaticBody';
 import { RigidBody } from './RigidBody';
 import { Saw } from './Saw';
@@ -7,20 +7,20 @@ import { Saw } from './Saw';
 export class TestLevels {
     /**
      * Creates the Jungle Gym test level with all platforms, ropes, and obstacles
-     * @param game The game instance to add level elements to
+     * @param Level The Level instance to add level elements to
      */
-    public static createJungleGymTest(game: Game): void {
+    public static createJungleGymTest(level: Level): void {
         // Create static platforms and obstacles
-        TestLevels.createStaticPlatforms(game);
+        TestLevels.createStaticPlatforms(level);
         
         // Create dynamic moving platforms
-        TestLevels.createDynamicPlatforms(game);
+        TestLevels.createDynamicPlatforms(level);
         
         // Create test ropes
-        TestLevels.createRopes(game);
+        TestLevels.createRopes(level);
         
         // Create saws
-        TestLevels.createSaws(game);
+        TestLevels.createSaws(level);
         
         console.log("Jungle Gym test level created with platforms, ropes, and obstacles");
     }
@@ -28,15 +28,9 @@ export class TestLevels {
     /**
      * Create all static platforms and structures
      */
-    private static createStaticPlatforms(game: Game): void {
-        // Create various materials for different structures with more distinct colors
-        const baseMaterial = new THREE.MeshStandardMaterial({
-            color: 0xd4a5bd, // Base pink color for the floor
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        
-        // Use a darker reddish color for platforms that's still bright
+    private static createStaticPlatforms(level: Level): void {
+       // Create various materials for different structures with more distinct colors
+       // Use a darker reddish color for platforms that's still bright
         const platformMaterial = new THREE.MeshStandardMaterial({
             color: 0xff4b81, // Brighter, more saturated pink
             roughness: 0.3,
@@ -54,7 +48,7 @@ export class TestLevels {
         // STARTING AREA
         // =============
         // Starting platform at y=2 with stairs
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, 0, -15),
             new THREE.Vector3(15, 2, 15),
             platformMaterial,
@@ -63,7 +57,7 @@ export class TestLevels {
         
         // Staircase down from starting platform (4 steps)
         for (let i = 0; i < 4; i++) {
-            game.addStaticBody(StaticBody.createBox(
+            level.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(15 + i*2, 0, -4),
                 new THREE.Vector3(17 + i*2, 2 - i*0.5, 4),
                 platformMaterial,
@@ -82,7 +76,7 @@ export class TestLevels {
             const platformSize = 4 - i * 0.5; // Platforms get smaller
             const gap = 3 + i * 0.7; // Gaps get larger
             
-            game.addStaticBody(StaticBody.createBox(
+            level.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(lastX, 0, -platformSize),
                 new THREE.Vector3(lastX + platformSize, 1, platformSize),
                 platformMaterial,
@@ -102,7 +96,7 @@ export class TestLevels {
         const totalSpirals = 24
         
         // Create central column
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-3, 0, -30),
             new THREE.Vector3(3, towerHeight, -24),
             obstacleMaterial,
@@ -118,7 +112,7 @@ export class TestLevels {
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius - 27; // Center at z=-27
             
-            game.addStaticBody(StaticBody.createBox(
+            level.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(x - 2.5, height, z - 2.5),
                 new THREE.Vector3(x + 2.5, height + 1.0, z + 2.5),
                 platformMaterial,
@@ -130,7 +124,7 @@ export class TestLevels {
         // ==================
         
         // Bridge to elevated challenge area
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-2, towerHeight, -40),
             new THREE.Vector3(2, towerHeight + 1, -34),
             platformMaterial,
@@ -138,7 +132,7 @@ export class TestLevels {
         ));
         
         // Elevated challenge area with moving platforms (visual only, not actually moving)
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, towerHeight, -60),
             new THREE.Vector3(15, towerHeight + 1, -40),
             platformMaterial,
@@ -151,7 +145,7 @@ export class TestLevels {
             const z = Math.random() * 15 - 55;
             const size = Math.random() * 2 + 1;
             
-            game.addStaticBody(StaticBody.createBox(
+            level.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(x - size/2, towerHeight + 3, z - size/2),
                 new THREE.Vector3(x + size/2, towerHeight + 3 + size, z + size/2),
                 obstacleMaterial,
@@ -163,7 +157,7 @@ export class TestLevels {
         // =========================
         
         // Keep the high platform at y=100 as the final challenge/destination
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, 100, -15),
             new THREE.Vector3(15, 102, 15),
             new THREE.MeshStandardMaterial({
@@ -175,7 +169,7 @@ export class TestLevels {
         ));
         
         // Add a teleporter visual hint to reach the final platform (not functional, just visual)
-        game.addStaticBody(StaticBody.createBox(
+        level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-1, towerHeight + 1, -50),
             new THREE.Vector3(1, towerHeight + 5, -48),
             new THREE.MeshStandardMaterial({
@@ -192,7 +186,7 @@ export class TestLevels {
     /**
      * Create dynamic moving platforms
      */
-    private static createDynamicPlatforms(game: Game): void {
+    private static createDynamicPlatforms(level: Level): void {
         // Create materials for different platforms
         const redMaterial = new THREE.MeshStandardMaterial({
             color: 0xff3366, emissive: 0xff3366, emissiveIntensity: 0.2,
@@ -228,7 +222,7 @@ export class TestLevels {
             redMaterial
         );
         horizontalPlatform.velocity.set(HORIZONTAL_VELOCITY, 0, 0);
-        game.addDynamicBody(horizontalPlatform);
+        level.addDynamicBody(horizontalPlatform);
         
         // 2. Vertical moving platform - BIGGER
         const verticalPlatform = RigidBody.createBox(
@@ -238,7 +232,7 @@ export class TestLevels {
             blueMaterial
         );
         verticalPlatform.velocity.set(0, VERTICAL_VELOCITY, 0);
-        game.addDynamicBody(verticalPlatform);
+        level.addDynamicBody(verticalPlatform);
 
         // 3. Fast X-axis rotating platform (to flip the player)
         const flippingPlatform = RigidBody.createBox(
@@ -250,15 +244,15 @@ export class TestLevels {
         
         // Set fast rotation on X axis to create the flipping effect
         flippingPlatform.angularVelocity.set(FAST_ROTATION_VELOCITY, 0, 0);
-        game.addDynamicBody(flippingPlatform);
+        level.addDynamicBody(flippingPlatform);
     }
     
     /**
      * Create ropes for the player to climb
      */
-    private static createRopes(game: Game): void {
+    private static createRopes(level: Level): void {
         // Create a few test ropes at different locations
-        game.addRope(
+        level.addRope(
             new THREE.Vector3(5, 25, 0),    // Higher fixed point
             15,                             // More segments
             20,                             // Longer length
@@ -266,7 +260,7 @@ export class TestLevels {
             0xff2222                        // Red color
         );
         
-        let rope = game.addRope(
+        let rope = level.addRope(
             new THREE.Vector3(-5, 30, 3),   // Higher fixed point
             15,                             // More segments
             20,                             // Longer length
@@ -276,7 +270,7 @@ export class TestLevels {
         rope.endParticle.applyImpulse(new THREE.Vector3(0, 0, 10));
         
         // Add a rope from the final platform
-        game.addRope(
+        level.addRope(
             new THREE.Vector3(0, 102, 0),   // From top of the gold platform
             30,                             // More segments for longer rope
             30,                             // Much longer length
@@ -288,7 +282,7 @@ export class TestLevels {
     /**
      * Create dangerous saw obstacles
      */
-    private static createSaws(game: Game): void {
+    private static createSaws(level: Level): void {
         // Create a single test saw
         const testSaw = new Saw(
             new THREE.Vector3(10, 8, 0),  // Position
@@ -296,6 +290,6 @@ export class TestLevels {
             0.8,                          // Thickness
             0.05                          // Spin speed
         );
-        game.addSaw(testSaw);
+        level.addSaw(testSaw);
     }
 }
