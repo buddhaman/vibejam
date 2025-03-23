@@ -26,18 +26,21 @@ export class Game {
     private isMobile: boolean = false;
 
     constructor() {
-        // Initialize levelRenderer first
-        this.level = new Level();
-        this.levelRenderer = new LevelRenderer(this.level);
-        this.level.levelRenderer = this.levelRenderer;
-        
-        // Detect mobile devices and set performance mode accordingly
+        // Detect device capabilities first
         this.detectDeviceCapabilities();
         
-        // Initialize AFTER renderer is set up
+        // Always use high performance mode for now (can be adjusted based on detection)
+        this.highPerformanceMode = true;
+        
+        // Create Level and LevelRenderer with predetermined performance mode
+        this.level = new Level();
+        this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
+        this.level.levelRenderer = this.levelRenderer;
+        
+        // Initialize after renderer is set up
         this.init();
         
-        // Load the default level (Jungle Gym)
+        // Load the default level
         this.switchLevel(0);
         
         // Setup controls
@@ -49,33 +52,27 @@ export class Game {
     }
 
     /**
-     * Detect device capabilities and set performance mode
+     * Detect device capabilities and set flags
      */
     private detectDeviceCapabilities(): void {
         // Enhanced mobile detection - check both user agent and screen size
         const userAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        // Chrome DevTools mobile emulation often has small screen size
         const sizeMobile = window.innerWidth <= 900;
+        
         // Set mobile detection flag
         this.isMobile = userAgentMobile || sizeMobile;
         
-        // Force mobile mode for debugging
+        // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('forceMobile')) {
             this.isMobile = true;
             console.log("Forcing mobile mode via URL parameter");
         }
         
-        // Set performance mode based on device - default to high performance on desktop
-        //this.highPerformanceMode = !this.isMobile;
-        
-        console.log(`Device detected as ${this.isMobile ? 'mobile' : 'desktop'}, using ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
+        // Log device information
+        console.log(`Device detected as ${this.isMobile ? 'mobile' : 'desktop'}`);
         console.log(`Screen dimensions: ${window.innerWidth}x${window.innerHeight}, devicePixelRatio: ${window.devicePixelRatio}`);
-
-        this.levelRenderer?.detectDeviceCapabilities(this.highPerformanceMode);
     }
-
 
     /**
      * Set up keyboard input tracking (only track state, don't update player here)
@@ -574,16 +571,15 @@ export class Game {
             document.body.removeChild(this.levelRenderer.renderer.domElement);
         }
         
-        // Create a brand new Level and LevelRenderer
+        // Create a brand new Level
         this.level = new Level();
-        this.levelRenderer = new LevelRenderer(this.level);
+        
+        // Create LevelRenderer with predetermined performance mode
+        this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
         this.level.levelRenderer = this.levelRenderer;
         
         // Add the new renderer's canvas to the DOM
         document.body.appendChild(this.levelRenderer.renderer.domElement);
-        
-        // Apply current performance settings
-        this.levelRenderer.detectDeviceCapabilities(this.highPerformanceMode);
         
         // Create a player
         const player = this.level.addPlayer('local', true);
@@ -592,13 +588,11 @@ export class Game {
         switch (levelIndex) {
             case 0:
                 TestLevels.createJungleGymTest(this.level);
-                // Position player on starting platform
                 player.move(new THREE.Vector3(0, 5, 0));
                 break;
             case 1:
                 TestLevels.createSimpleTestLevel(this.level);
-                // Position player on the first platform
-                player.move(new THREE.Vector3(0, 55, 0));
+                player.move(new THREE.Vector3(0, 15, 0));
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);
