@@ -152,6 +152,9 @@ export class TestLevels {
             "portal-level1"
         ));
         
+        // Add Vibeverse portal
+        this.createVibeVersePortal(level, game);
+        
         // Make action areas bigger (doubled size)
         level.addActionArea(
             new THREE.Vector3(-9, 4, 1),    // Center of the portal
@@ -200,7 +203,214 @@ export class TestLevels {
         // Position player in the center of the overworld
         level.localPlayer?.setPosition(new THREE.Vector3(0, 5, 0));
         
+        // Check for incoming portal traffic and position player appropriately
+        this.handleIncomingPortalTraffic(level, game);
+        
         console.log("Overworld hub created with portals to different levels");
+    }
+    
+    /**
+     * Creates a Vibeverse portal that connects to other games
+     * @param level The Level instance to add the portal to
+     * @param game The Game instance for handling portal interactions
+     */
+    private static createVibeVersePortal(level: Level, game: Game): void {
+        // Create a special material for the Vibeverse portal
+        const vibeverseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x00ffff,          // Cyan color
+            roughness: 0.2,
+            metalness: 0.9,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.8,   // Brighter glow
+        });
+        
+        // Create the portal structure (slightly bigger than regular portals)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(0, 2, -10),
+            new THREE.Vector3(4, 8, -8),
+            vibeverseMaterial,
+            "vibeverse-portal"
+        ));
+        
+        // Add action area for the Vibeverse portal
+        level.addActionArea(
+            new THREE.Vector3(2, 5, -9),    // Center of the portal
+            new THREE.Vector3(8, 10, 8),    // Large interaction area
+            () => {
+                console.log("Entering Vibeverse Portal");
+                
+                // Get actual player information for the portal URL
+                const player = level.localPlayer;
+                let username = "player" + Math.floor(Math.random() * 1000); // Default random username
+                let color = "pink"; // Default color
+                let speed = "5"; // Default movement speed
+                let playerPos = new THREE.Vector3(0, 0, 0);
+                let playerDir = new THREE.Vector3(0, 0, 1);
+                let playerVel = new THREE.Vector3(0, 0, 0);
+                
+                if (player) {
+                    // If player has a username, use it
+                    if (player.username) {
+                        username = player.username;
+                    }
+                    
+                    // Use player's color
+                    color = player.color.getHexString();
+                    
+                    // Convert internal movement speed to portal speed
+                    speed = (player.moveSpeed * 40).toFixed(1);
+                    
+                    // Get player position and forward vector
+                    playerPos = player.getPosition();
+                    playerDir = player.forward.clone().normalize();
+                    
+                    // Create velocity based on player's current movement direction and speed
+                    playerVel = player.lastMovementDir.clone().multiplyScalar(parseFloat(speed));
+                }
+                
+                // Current URL as reference for return journey
+                const ref = encodeURIComponent(window.location.href);
+                
+                // Calculate rotations from forward vector
+                const yRotation = Math.atan2(playerDir.x, playerDir.z);
+                
+                // Build portal URL with all parameters
+                const params = new URLSearchParams();
+                params.append('username', username);
+                params.append('color', color);
+                params.append('speed', speed);
+                params.append('ref', ref);
+                
+                // Include position
+                params.append('position_x', playerPos.x.toFixed(2));
+                params.append('position_y', playerPos.y.toFixed(2));
+                params.append('position_z', playerPos.z.toFixed(2));
+                
+                // Include velocity components
+                params.append('speed_x', playerVel.x.toFixed(2));
+                params.append('speed_y', playerVel.y.toFixed(2));
+                params.append('speed_z', playerVel.z.toFixed(2));
+                
+                // Include rotation
+                params.append('rotation_y', yRotation.toFixed(2));
+                
+                // Include team (our game's theme color)
+                params.append('team', 'pink');
+                
+                // Add avatar info if we have it
+                if (player && player.username) {
+                    params.append('avatar_url', `https://avatars.dicebear.com/api/bottts/${player.username}.svg`);
+                }
+                
+                // Build the final URL
+                const portalUrl = `http://portal.pieter.com/?${params.toString()}`;
+                
+                console.log("Redirecting to Vibeverse: " + portalUrl);
+                
+                // Redirect to the portal
+                window.location.href = portalUrl;
+            }
+        );
+        
+        // Add descriptive text
+        level.levelRenderer?.addSimpleText(
+            "VIBEVERSE PORTAL",
+            new THREE.Vector3(2, 9, -9),
+            "white",
+            "#000000"
+        );
+    }
+    
+    /**
+     * Handles incoming traffic from other games via the portal system
+     * @param level The Level instance
+     * @param game The Game instance
+     */
+    private static handleIncomingPortalTraffic(level: Level, game: Game): void {
+        // Check if player arrived via portal using Game's stored data
+        if (game.isPlayerFromPortal()) {
+            console.log("Player is coming from a portal!");
+            
+            // Get the referring game URL from Game
+            const refUrl = game.getPortalReferrer();
+            
+            if (refUrl) {
+                // Create a special material for the return portal
+                const returnPortalMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xff00ff,        // Magenta color
+                    roughness: 0.2,
+                    metalness: 0.9,
+                    emissive: 0xff00ff,
+                    emissiveIntensity: 0.8,  // Brighter glow
+                });
+                
+                // Create the return portal structure
+                level.addStaticBody(StaticBody.createBox(
+                    new THREE.Vector3(-5, 2, -10),
+                    new THREE.Vector3(-1, 8, -8),
+                    returnPortalMaterial,
+                    "return-portal"
+                ));
+                
+                // Add action area for the return portal
+                level.addActionArea(
+                    new THREE.Vector3(-3, 5, -9),  // Center of the portal
+                    new THREE.Vector3(8, 10, 8),   // Large interaction area
+                    () => {
+                        console.log("Returning to previous game");
+                        
+                        // Use Game's method to build the proper return URL with all parameters
+                        const returnUrl = game.buildPortalReturnUrl();
+                        
+                        if (returnUrl) {
+                            // Redirect to the return URL with all parameters
+                            window.location.href = returnUrl;
+                        } else {
+                            console.error("Failed to build return URL");
+                            // Fallback to direct referrer if URL building failed
+                            window.location.href = refUrl;
+                        }
+                    }
+                );
+                
+                // Add descriptive text
+                level.levelRenderer?.addSimpleText(
+                    "RETURN PORTAL",
+                    new THREE.Vector3(-3, 9, -9),
+                    "white",
+                    "#000000"
+                );
+                
+                // Position player in front of the return portal
+                if (level.localPlayer) {
+                    level.localPlayer.setPosition(new THREE.Vector3(-3, 5, -6));
+                    
+                    // Extract player information from Game's portal parameters
+                    const username = game.getPortalParameter('username') || "unknown";
+                    const color = game.getPortalParameter('color') || "pink";
+                    const speed = game.getPortalParameter('speed') || "5";
+                    const team = game.getPortalParameter('team') || "";
+                    
+                    // Apply customization to the player
+                    level.localPlayer.setCustomization({
+                        username: username,
+                        color: color,
+                        team: team,
+                        moveSpeed: parseFloat(speed)
+                    });
+                    
+                    console.log(`Applied portal customization to player: ${username}, ${color}, ${speed}`);
+                }
+                
+                // Additional welcome message
+                level.levelRenderer?.addSimpleText(
+                    `WELCOME ${game.getPortalParameter('username') || 'PLAYER'}!`,
+                    new THREE.Vector3(0, 12, 0),
+                    "white",
+                    "#000000"
+                );
+            }
+        }
     }
 
     /**

@@ -31,6 +31,11 @@ export class Game {
     
     // Add screen transition
     private screenTransition: ScreenTransition = new ScreenTransition();
+    
+    // Portal-related properties
+    private portalParams: {[key: string]: string} = {};
+    private isFromPortal: boolean = false;
+    private fromPortalRef: string | null = null;
 
     // Add a property to track our event listeners
     private keydownListener: ((event: KeyboardEvent) => void) | null = null;
@@ -45,6 +50,9 @@ export class Game {
         
         // Always use high performance mode for now (can be adjusted based on detection)
         this.highPerformanceMode = true;
+        
+        // Check for portal parameters (do this before creating level)
+        this.checkPortalParameters();
         
         // Create Level and LevelRenderer with predetermined performance mode
         try {
@@ -948,5 +956,120 @@ export class Game {
         this.removeKeyListeners();
         // Clean up other event listeners and resources
         this.screenTransition.destroy();
+    }
+
+    /**
+     * Check for portal parameters in the URL and handle them
+     */
+    private checkPortalParameters(): void {
+        const urlParams = new URLSearchParams(window.location.search);
+        this.isFromPortal = urlParams.get('portal') === 'true';
+        
+        if (this.isFromPortal) {
+            console.log("Player has arrived via a portal!");
+            
+            // Store all URL parameters for potential return journey
+            urlParams.forEach((value, key) => {
+                this.portalParams[key] = value;
+            });
+            
+            // Store referrer URL separately for quick access
+            this.fromPortalRef = urlParams.get('ref');
+            
+            // Extract common player parameters for logging
+            const username = urlParams.get('username');
+            const color = urlParams.get('color');
+            const speed = urlParams.get('speed');
+            const team = urlParams.get('team');
+            
+            // Additional parameters
+            const avatarUrl = urlParams.get('avatar_url');
+            const speedX = urlParams.get('speed_x');
+            const speedY = urlParams.get('speed_y');
+            const speedZ = urlParams.get('speed_z');
+            const rotationX = urlParams.get('rotation_x');
+            const rotationY = urlParams.get('rotation_y');
+            const rotationZ = urlParams.get('rotation_z');
+            
+            // Log the incoming player information
+            console.log(`Portal player: ${username || 'unknown'}, from: ${this.fromPortalRef || 'unknown'}`);
+            console.log(`Player properties: color=${color}, speed=${speed}, team=${team || 'none'}`);
+            console.log(`Additional properties: speed_xyz=[${speedX || '0'},${speedY || '0'},${speedZ || '0'}], rotation_xyz=[${rotationX || '0'},${rotationY || '0'},${rotationZ || '0'}]`);
+        } else {
+            // Clear portal parameters if not from portal
+            this.portalParams = {};
+            this.fromPortalRef = null;
+        }
+    }
+
+    /**
+     * Check if the player arrived via a portal
+     * @returns True if the player came from a portal
+     */
+    public isPlayerFromPortal(): boolean {
+        return this.isFromPortal;
+    }
+    
+    /**
+     * Get the referrer URL that the player came from
+     * @returns The referrer URL or null if not from portal
+     */
+    public getPortalReferrer(): string | null {
+        return this.fromPortalRef;
+    }
+    
+    /**
+     * Get a specific portal parameter
+     * @param key The parameter key to get
+     * @returns The parameter value or null if not found
+     */
+    public getPortalParameter(key: string): string | null {
+        return this.portalParams[key] || null;
+    }
+    
+    /**
+     * Get all portal parameters
+     * @returns All portal parameters
+     */
+    public getAllPortalParameters(): {[key: string]: string} {
+        return {...this.portalParams}; // Return a copy to prevent modification
+    }
+    
+    /**
+     * Build a return URL to the portal referrer with all original parameters
+     * @returns URL to return to the original portal
+     */
+    public buildPortalReturnUrl(): string | null {
+        if (!this.fromPortalRef) {
+            return null;
+        }
+        
+        // Start with the referrer URL
+        let url = this.fromPortalRef;
+        
+        // Add parameters (except 'ref' to avoid circular references)
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(this.portalParams)) {
+            if (key !== 'ref') {
+                params.append(key, value);
+            }
+        }
+        
+        // Add portal=true parameter to indicate this is a portal return
+        params.append('portal', 'true');
+        
+        // Add our URL as the new referrer
+        params.append('ref', window.location.href);
+        
+        // Combine URL and parameters
+        if (url.includes('?')) {
+            // URL already has parameters
+            url += '&' + params.toString();
+        } else {
+            // URL has no parameters yet
+            url += '?' + params.toString();
+        }
+        
+        return url;
     }
 } 

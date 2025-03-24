@@ -27,6 +27,11 @@ export class Player {
     public rope: Rope | null = null;
     public notOnGroundTimer: number = 0;
     public movementState: MovementState = MovementState.OnGround;
+    
+    // Customization properties
+    public color: THREE.Color = new THREE.Color(0x77dd77); // Default player color
+    public username: string = ""; // Player username
+    public team: string = ""; // Player team
 
     // New properties to store input state
     private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -421,9 +426,9 @@ export class Player {
         const constraints = this.verletBody.getConstraints();
         const headParticle = particles[0]; // First particle is the head
         
-        // Use different colors for local vs remote players
-        const particleColor = this.id === 'local' ? 0x77dd77 : 0x6495ed;  // Green for local, blue for others
-        const constraintColor = this.id === 'local' ? 0x99eebb : 0x88aaff;
+        // Use custom color or different colors for local vs remote players
+        const particleColor = this.id === 'local' ? this.color.getHex() : 0x6495ed;  // Custom color for local, blue for others
+        const constraintColor = this.id === 'local' ? new THREE.Color(this.color).multiplyScalar(1.2).getHex() : 0x88aaff;
         
         // Draw particles as spheres
         particles.forEach(particle => {
@@ -534,5 +539,86 @@ export class Player {
                 0x00ff00
             );
         }
+    }
+
+    /**
+     * Set player customization based on portal parameters
+     * @param options Customization options
+     */
+    public setCustomization(options: {
+        username?: string,
+        color?: string,
+        team?: string,
+        moveSpeed?: number | string
+    }): void {
+        // Set username if provided
+        if (options.username) {
+            this.username = options.username;
+        }
+        
+        // Set team if provided
+        if (options.team) {
+            this.team = options.team;
+        }
+        
+        // Set movement speed if provided
+        if (options.moveSpeed !== undefined) {
+            // Handle both number and string types
+            const speedValue = typeof options.moveSpeed === 'string' 
+                ? parseFloat(options.moveSpeed) 
+                : options.moveSpeed;
+                
+            if (!isNaN(speedValue)) {
+                this.moveSpeed = speedValue * 0.025; // Scale appropriately
+            }
+        }
+        
+        // Set color if provided
+        if (options.color) {
+            try {
+                // Check if it's a hex color
+                if (options.color.startsWith('#')) {
+                    this.color = new THREE.Color(options.color);
+                } 
+                // Check if it's a named color
+                else {
+                    // Handle common color names
+                    switch (options.color.toLowerCase()) {
+                        case 'red':
+                            this.color = new THREE.Color(0xff0000);
+                            break;
+                        case 'green':
+                            this.color = new THREE.Color(0x00ff00);
+                            break;
+                        case 'blue':
+                            this.color = new THREE.Color(0x0000ff);
+                            break;
+                        case 'yellow':
+                            this.color = new THREE.Color(0xffff00);
+                            break;
+                        case 'purple':
+                            this.color = new THREE.Color(0x800080);
+                            break;
+                        case 'pink':
+                            this.color = new THREE.Color(0xff69b4);
+                            break;
+                        case 'orange':
+                            this.color = new THREE.Color(0xffa500);
+                            break;
+                        case 'white':
+                            this.color = new THREE.Color(0xffffff);
+                            break;
+                        default:
+                            // Try to parse as a CSS color
+                            this.color = new THREE.Color(options.color);
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to parse color: ${options.color}`);
+                // Keep default color
+            }
+        }
+        
+        console.log(`Player customized: ${this.username}, color: ${this.color.getHexString()}, speed: ${this.moveSpeed}`);
     }
 } 
