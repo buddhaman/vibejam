@@ -5,6 +5,13 @@ import { Level } from './Level';
 import { LevelRenderer } from './LevelRenderer';
 import { ScreenTransition } from './ScreenTransition';
 
+/**
+ * Add an interface to define the custom properties on the window object
+ */
+interface CustomWindow extends Window {
+    showIOSFullscreenPrompt?: () => boolean;
+}
+
 export class Game {
 
     public level: Level | null = null;
@@ -775,6 +782,13 @@ export class Game {
             const docEl = document.documentElement;
             
             if (!document.fullscreenElement) {
+                // Check if we need to show iOS prompt instead
+                const customWindow = window as CustomWindow;
+                if (customWindow.showIOSFullscreenPrompt && customWindow.showIOSFullscreenPrompt()) {
+                    // iOS prompt will be shown, don't try to enter fullscreen
+                    return;
+                }
+                
                 // Enter fullscreen
                 docEl.requestFullscreen().then(() => {
                     // Request pointer lock after fullscreen
@@ -1102,5 +1116,28 @@ export class Game {
             console.log(`External portal transition complete, redirecting to: ${url}`);
             window.location.href = url;
         });
+    }
+
+    /**
+     * Add a player with the given ID
+     * @param id The ID of the player to add
+     * @param isLocal Whether this is the local player
+     * @returns The created player
+     */
+    public addPlayer(id: string, isLocal: boolean = false): any {
+        if (this.level) {
+            return this.level.addPlayer(id, isLocal);
+        }
+        return null;
+    }
+
+    /**
+     * Remove a player with the given ID
+     * @param id The ID of the player to remove
+     */
+    public removePlayer(id: string): void {
+        if (this.level) {
+            this.level.removePlayer(id);
+        }
     }
 } 

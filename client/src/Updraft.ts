@@ -245,13 +245,14 @@ export class Updraft {
             // Use a pulsing effect for the debug lines
             const pulseOpacity = 0.3 + Math.sin(this.time * 2) * 0.15;
             
-            instancedRenderer.renderBeam(
+            instancedRenderer.renderLightBeam(
                 startCorner,
                 endCorner,
                 lineWidth,
                 lineWidth,
                 undefined,
-                debugColor.getHex(),
+                debugColor,
+                pulseOpacity
             );
         });
         

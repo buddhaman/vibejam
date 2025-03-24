@@ -101,12 +101,8 @@
     </div>
     
     <script>
-      // Check if we're on iOS Safari but not in standalone mode
-      if (/iPhone|iPad|iPod/.test(navigator.userAgent) && 
-          !window.navigator.standalone && 
-          /Safari/.test(navigator.userAgent)) {
-        document.getElementById('ios-prompt').style.display = 'block';
-      }
+      // Hide prompt by default - we'll only show it when the fullscreen button is clicked
+      document.getElementById('ios-prompt').style.display = 'none';
       
       // Close prompt when button is clicked
       document.getElementById('close-prompt').addEventListener('click', function() {
@@ -143,6 +139,21 @@
           forceLandscape();
         }
       });
+      
+      // Show iOS prompt only when attempting to go fullscreen on iOS
+      function showIOSFullscreenPrompt() {
+        // Only show on iOS Safari but not in standalone mode
+        if (/iPhone|iPad|iPod/.test(navigator.userAgent) && 
+            !window.navigator.standalone && 
+            /Safari/.test(navigator.userAgent)) {
+          document.getElementById('ios-prompt').style.display = 'block';
+          return true;
+        }
+        return false;
+      }
+      
+      // We'll expose this function globally so it can be called from the Game class
+      window.showIOSFullscreenPrompt = showIOSFullscreenPrompt;
     </script>
     
     <script type="module" src="/src/main.ts"></script>
