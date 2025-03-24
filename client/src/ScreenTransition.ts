@@ -288,4 +288,12 @@ export class ScreenTransition {
             this.canvas.parentNode.removeChild(this.canvas);
         }
     }
+    
+    /**
+     * Get the DOM element for the transition overlay
+     * Useful for modifying its properties
+     */
+    public getElement(): HTMLElement {
+        return this.canvas;
+    }
 } 

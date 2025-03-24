@@ -607,10 +607,24 @@ export class Game {
     public switchLevel(levelIndex: number): void {
         console.log(`Starting switch to level ${levelIndex}`);
         
+        // Save current fullscreen and pointer lock state before transition
+        const wasInFullscreen = !!document.fullscreenElement;
+        const wasPointerLocked = !!document.pointerLockElement;
+        
         // Start transition animation and execute level change when transition completes
         this.screenTransition.transitionInStart(() => {
             // This code runs when transition is complete
             this.doLevelSwitch(levelIndex);
+            
+            // After level switch is complete, restore fullscreen pointer lock if needed
+            if (wasInFullscreen && wasPointerLocked) {
+                // Wait a short moment for the new canvas to be ready
+                setTimeout(() => {
+                    if (document.fullscreenElement && !document.pointerLockElement) {
+                        this.getDomElement().requestPointerLock();
+                    }
+                }, 100);
+            }
         });
     }
     
@@ -619,6 +633,9 @@ export class Game {
      * @param levelIndex The index of the level to switch to
      */
     private doLevelSwitch(levelIndex: number): void {
+        // Save reference to whether we're in fullscreen before removing the canvas
+        const wasInFullscreen = !!document.fullscreenElement;
+        
         // Remove all event listeners to prevent loops
         this.removeKeyListeners();
         
@@ -663,6 +680,12 @@ export class Game {
         
         // Re-initialize controls
         this.setupControls();
+        
+        // After everything is set up, ensure pointer lock is maintained if in fullscreen
+        if (wasInFullscreen) {
+            // Ensure the overlay doesn't interfere with pointer lock
+            this.screenTransition.getElement().style.pointerEvents = 'none';
+        }
         
         console.log(`Completed switch to level ${levelIndex}`);
     }
