@@ -34,6 +34,9 @@ export class Game {
     private keyupListener: ((event: KeyboardEvent) => void) | null = null;
 
     constructor() {
+        // Add error logger first thing
+        this.setupErrorLogger();
+        
         // Detect device capabilities first
         this.detectDeviceCapabilities();
         
@@ -41,34 +44,202 @@ export class Game {
         this.highPerformanceMode = true;
         
         // Create Level and LevelRenderer with predetermined performance mode
-        this.level = new Level();
-        this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
-        this.level.levelRenderer = this.levelRenderer;
+        try {
+            this.level = new Level(this, 0);
+            this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
+            this.level.levelRenderer = this.levelRenderer;
+            
+            // Initialize after renderer is set up
+            this.init();
+            
+            // Load the default level (now the overworld)
+            this.switchLevel(0);
+            
+            // Setup controls - always set up mobile controls for touch devices
+            this.setupControls();
+            
+            // Start the game loop
+            this.lastUpdateTime = performance.now();
+            requestAnimationFrame(this.update.bind(this));
+        } catch (error: any) {
+            this.logError("Game initialization error: " + error.message);
+            console.error("Game initialization error:", error);
+        }
+    }
+
+    /**
+     * Set up error logging to display on screen for mobile debugging
+     */
+    private setupErrorLogger(): void {
+        // Create error display container
+        const errorContainer = document.createElement('div');
+        errorContainer.id = 'error-logger';
+        errorContainer.style.position = 'fixed';
+        errorContainer.style.top = '0';
+        errorContainer.style.left = '0';
+        errorContainer.style.width = '100%';
+        errorContainer.style.padding = '10px';
+        errorContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        errorContainer.style.color = 'red';
+        errorContainer.style.fontFamily = 'monospace';
+        errorContainer.style.fontSize = '12px';
+        errorContainer.style.zIndex = '10000';
+        errorContainer.style.overflowY = 'auto';
+        errorContainer.style.maxHeight = '50%';
+        errorContainer.style.display = 'none'; // Hidden by default
         
-        // Initialize after renderer is set up
-        this.init();
+        // Add a clear button
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear';
+        clearButton.style.position = 'absolute';
+        clearButton.style.right = '10px';
+        clearButton.style.top = '10px';
+        clearButton.style.zIndex = '10001';
+        clearButton.addEventListener('click', () => {
+            const logContainer = document.getElementById('error-log-content');
+            if (logContainer) logContainer.innerHTML = '';
+        });
+        errorContainer.appendChild(clearButton);
         
-        // Load the default level (now the overworld)
-        this.switchLevel(0);
+        // Add a content div for logs
+        const logContent = document.createElement('div');
+        logContent.id = 'error-log-content';
+        errorContainer.appendChild(logContent);
         
-        // Setup controls
-        this.setupControls();
+        // Add show/hide toggle button
+        const toggleButton = document.createElement('button');
+        toggleButton.id = 'toggle-error-log';
+        toggleButton.textContent = 'Show Logs';
+        toggleButton.style.position = 'fixed';
+        toggleButton.style.top = '10px';
+        toggleButton.style.left = '10px';
+        toggleButton.style.zIndex = '10001';
+        toggleButton.style.padding = '5px';
+        toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        toggleButton.style.color = 'white';
+        toggleButton.style.border = '1px solid red';
+        toggleButton.style.borderRadius = '5px';
         
-        // Start the game loop
-        this.lastUpdateTime = performance.now();
-        requestAnimationFrame(this.update.bind(this));
+        toggleButton.addEventListener('click', () => {
+            if (errorContainer.style.display === 'none') {
+                errorContainer.style.display = 'block';
+                toggleButton.textContent = 'Hide Logs';
+            } else {
+                errorContainer.style.display = 'none';
+                toggleButton.textContent = 'Show Logs';
+            }
+        });
+        
+        // Add elements to the DOM
+        document.body.appendChild(errorContainer);
+        document.body.appendChild(toggleButton);
+        
+        // Override console.log and console.error
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = (...args) => {
+            this.logMessage(args.map(arg => this.formatArg(arg)).join(' '));
+            originalConsoleLog.apply(console, args);
+        };
+        
+        console.error = (...args) => {
+            this.logError(args.map(arg => this.formatArg(arg)).join(' '));
+            originalConsoleError.apply(console, args);
+        };
+        
+        // Add global error handler
+        window.addEventListener('error', (event) => {
+            this.logError(`ERROR: ${event.message} at ${event.filename}:${event.lineno}`);
+            return false;
+        });
+        
+        // Add unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            this.logError(`Unhandled Promise Rejection: ${event.reason}`);
+        });
+    }
+    
+    /**
+     * Format argument for logging
+     */
+    private formatArg(arg: any): string {
+        if (arg === null) return 'null';
+        if (arg === undefined) return 'undefined';
+        if (typeof arg === 'object') {
+            try {
+                return JSON.stringify(arg);
+            } catch (e) {
+                return arg.toString();
+            }
+        }
+        return String(arg);
+    }
+    
+    /**
+     * Log a message to the on-screen display
+     */
+    private logMessage(message: string): void {
+        const logContainer = document.getElementById('error-log-content');
+        if (!logContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logEntry.style.borderBottom = '1px solid #333';
+        logEntry.style.padding = '5px 0';
+        logEntry.style.color = 'white';
+        
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Show the toggle button
+        const toggleButton = document.getElementById('toggle-error-log');
+        if (toggleButton) toggleButton.style.display = 'block';
+    }
+    
+    /**
+     * Log an error to the on-screen display
+     */
+    private logError(message: string): void {
+        const logContainer = document.getElementById('error-log-content');
+        if (!logContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logEntry.style.borderBottom = '1px solid #333';
+        logEntry.style.padding = '5px 0';
+        logEntry.style.color = 'red';
+        logEntry.style.fontWeight = 'bold';
+        
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Auto-show the error log when errors occur
+        const errorContainer = document.getElementById('error-logger');
+        if (errorContainer) errorContainer.style.display = 'block';
+        
+        // Update toggle button text
+        const toggleButton = document.getElementById('toggle-error-log');
+        if (toggleButton) {
+            toggleButton.style.display = 'block';
+            toggleButton.textContent = 'Hide Logs';
+        }
     }
 
     /**
      * Detect device capabilities and set flags
      */
     private detectDeviceCapabilities(): void {
-        // Enhanced mobile detection - check both user agent and screen size
+        // Enhanced mobile detection - check user agent, screen size, and touch capability
         const userAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const sizeMobile = window.innerWidth <= 900;
+        const hasTouchScreen = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         
-        // Set mobile detection flag
-        this.isMobile = userAgentMobile || sizeMobile;
+        // Special check for iPad that might be reporting as desktop Safari
+        const isIpadOS = /iPad|Macintosh/i.test(navigator.userAgent) && hasTouchScreen;
+        
+        // Set mobile detection flag - if any of these are true, consider it mobile
+        this.isMobile = userAgentMobile || sizeMobile || isIpadOS || hasTouchScreen;
         
         // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -77,8 +248,14 @@ export class Game {
             console.log("Forcing mobile mode via URL parameter");
         }
         
+        if (urlParams.has('forceDesktop')) {
+            this.isMobile = false;
+            console.log("Forcing desktop mode via URL parameter");
+        }
+        
         // Log device information
         console.log(`Device detected as ${this.isMobile ? 'mobile' : 'desktop'}`);
+        console.log(`Touch capabilities: ${hasTouchScreen ? 'yes' : 'no'}, iPad OS: ${isIpadOS ? 'yes' : 'no'}`);
         console.log(`Screen dimensions: ${window.innerWidth}x${window.innerHeight}, devicePixelRatio: ${window.devicePixelRatio}`);
     }
 
@@ -252,38 +429,41 @@ export class Game {
         
         console.log("Mobile controls initialized", this.mobileControls);
         
-        // Debug helper for DevTools: force mobile controls visibility
-        const isDevToolsOpen = window.navigator.userAgent.includes('Chrome') && 
-                             (window.outerHeight - window.innerHeight > 100 || 
-                              window.outerWidth - window.innerWidth > 100);
-        
-        if (isDevToolsOpen || window.navigator.userAgent.includes('Chrome')) {
-            const mobileControlsDiv = document.querySelector('.mobile-controls');
-            if (mobileControlsDiv) {
-                console.log("Forcing mobile controls visibility for Chrome DevTools");
-                (mobileControlsDiv as HTMLElement).style.display = 'block';
-                (mobileControlsDiv as HTMLElement).style.visibility = 'visible';
-                
-                // Make sure joystick is visible
-                const joystickZone = document.querySelector('.joystick-zone');
-                if (joystickZone) {
-                    (joystickZone as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-                    console.log("Joystick zone visibility enhanced");
-                }
-                
-                // Also make camera control area visible
-                const cameraArea = document.querySelector('.camera-control-area');
-                if (cameraArea) {
-                    (cameraArea as HTMLElement).style.backgroundColor = 'rgba(255, 0, 255, 0.1)';
-                    console.log("Camera control area visibility enhanced");
-                }
+        // Always increase visibility of mobile controls on touch devices
+        const mobileControlsDiv = document.querySelector('.mobile-controls');
+        if (mobileControlsDiv) {
+            console.log("Enhancing mobile controls visibility");
+            (mobileControlsDiv as HTMLElement).style.display = 'block';
+            (mobileControlsDiv as HTMLElement).style.visibility = 'visible';
+            
+            // Make sure joystick is visible with enhanced opacity
+            const joystickZone = document.querySelector('.joystick-zone');
+            if (joystickZone) {
+                (joystickZone as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                console.log("Joystick zone visibility enhanced");
             }
+            
+            // Also make camera control area visible
+            const cameraArea = document.querySelector('.camera-control-area');
+            if (cameraArea) {
+                (cameraArea as HTMLElement).style.backgroundColor = 'rgba(255, 0, 255, 0.1)';
+                console.log("Camera control area visibility enhanced");
+            }
+            
+            // Make buttons more visible with higher opacity
+            const buttons = document.querySelectorAll('.mobile-button');
+            buttons.forEach((button) => {
+                (button as HTMLElement).style.opacity = '0.8';
+            });
         }
     }
 
     public init(): void {
         // Renderer setup
         document.body.appendChild(this.getDomElement());
+        
+        // Check WebGL context and log status
+        this.checkWebGLContext();
         
         // Add fullscreen button for desktop users
         if (!this.isMobile) {
@@ -293,9 +473,56 @@ export class Game {
         // Register window resize handler in Game class (not in LevelRenderer)
         window.addEventListener('resize', this.onWindowResize.bind(this));
         
-        // Ensure mobile controls are set up immediately after initialization if on mobile
+        // Ensure mobile controls are set up if on mobile or if touch is available
         if (this.isMobile && !this.mobileControls) {
             this.setupMobileControls();
+        }
+        
+        // Make sure the screen transition overlay has the correct z-index
+        // It should be above the 3D scene but below the mobile controls
+        this.screenTransition.getElement().style.zIndex = '999';
+    }
+
+    /**
+     * Check if WebGL is supported and log detailed info about the context
+     */
+    private checkWebGLContext(): void {
+        try {
+            if (!this.levelRenderer || !this.levelRenderer.renderer) {
+                this.logError("WebGL: Renderer not initialized");
+                return;
+            }
+            
+            const gl = this.levelRenderer.renderer.getContext();
+            if (!gl) {
+                this.logError("WebGL: Failed to get WebGL context");
+                return;
+            }
+            
+            // Log WebGL info
+            this.logMessage(`WebGL Version: ${gl.getParameter(gl.VERSION)}`);
+            this.logMessage(`WebGL Vendor: ${gl.getParameter(gl.VENDOR)}`);
+            this.logMessage(`WebGL Renderer: ${gl.getParameter(gl.RENDERER)}`);
+            this.logMessage(`Max Texture Size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
+            this.logMessage(`Max Viewport Dims: ${gl.getParameter(gl.MAX_VIEWPORT_DIMS)}`);
+            
+            // Check for lost context
+            if (gl.isContextLost()) {
+                this.logError("WebGL: Context is lost!");
+            } else {
+                this.logMessage("WebGL: Context is valid");
+            }
+            
+            // Check canvas size
+            const canvas = this.levelRenderer.renderer.domElement;
+            this.logMessage(`Canvas size: ${canvas.width}x${canvas.height}`);
+            this.logMessage(`Canvas display size: ${canvas.clientWidth}x${canvas.clientHeight}`);
+            
+            // Check if the renderer has actually rendered anything
+            this.logMessage(`Renderer info - Render calls: ${this.levelRenderer.renderer.info.render.calls}`);
+            this.logMessage(`Renderer info - Triangles: ${this.levelRenderer.renderer.info.render.triangles}`);
+        } catch (error: any) {
+            this.logError(`WebGL check error: ${error.message}`);
         }
     }
 
