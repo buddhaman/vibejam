@@ -26,6 +26,7 @@ export class ScreenTransition {
     }> = [];
     private readonly bubbleCount = 100;
     private animationId: number | null = null;
+    private _autoTransitionOut: boolean = true;
     
     constructor() {
         // Create canvas element for the transition effect
@@ -131,8 +132,9 @@ export class ScreenTransition {
     /**
      * Start transition in (closing)
      * @param callback Optional callback to run when transition completes
+     * @param autoTransitionOut Whether to automatically start the transition out after callback
      */
-    public transitionInStart(callback?: () => void): void {
+    public transitionInStart(callback?: () => void, autoTransitionOut: boolean = true): void {
         if (this.transitionIn || this.transitionOut) return; // Already transitioning
         
         this.transitionIn = true;
@@ -140,6 +142,7 @@ export class ScreenTransition {
         this.progress = 0;
         this.callback = callback || null;
         this.canvas.style.display = 'block';
+        this._autoTransitionOut = autoTransitionOut;
         
         if (this.animationId === null) {
             this.animate();
@@ -165,6 +168,15 @@ export class ScreenTransition {
     }
     
     /**
+     * Start transition but only halfway (to full screen coverage)
+     * @param callback Optional callback to run when halfway transition completes
+     */
+    public transitionHalfwayStart(callback?: () => void): void {
+        // Use the regular transitionInStart but set autoTransitionOut to false
+        this.transitionInStart(callback, false);
+    }
+    
+    /**
      * Animation loop
      */
     private animate(): void {
@@ -183,16 +195,23 @@ export class ScreenTransition {
                     if (this.callback) {
                         const cb = this.callback;
                         this.callback = null;
+                        const shouldAutoTransition = this._autoTransitionOut;
+                        
                         setTimeout(() => {
                             cb();
-                            // Automatically start transition out after callback
-                            this.transitionOutStart();
+                            // Automatically start transition out after callback only if configured to do so
+                            if (shouldAutoTransition) {
+                                this.transitionOutStart();
+                            }
                         }, 300);
                     } else {
-                        // No callback, just transition out
-                        setTimeout(() => {
-                            this.transitionOutStart();
-                        }, 300);
+                        // No callback, just transition out if configured to do so
+                        const shouldAutoTransition = this._autoTransitionOut;
+                        if (shouldAutoTransition) {
+                            setTimeout(() => {
+                                this.transitionOutStart();
+                            }, 300);
+                        }
                     }
                 } else if (this.transitionOut) {
                     // When transition out completes, stop animation and hide canvas

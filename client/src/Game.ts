@@ -1087,4 +1087,20 @@ export class Game {
             window.location.href = url;
         });
     }
+    
+    /**
+     * Trigger a halfway screen transition (filling the screen) and then redirect to an external URL
+     * Used for external portals like Vibeverse that go to different domains
+     * @param url The URL to navigate to after the transition effect
+     */
+    public transitionToExternalPortal(url: string): void {
+        console.log(`Starting external portal transition to: ${url}`);
+        
+        // Use the halfway transition that only fills the screen with bubbles but doesn't clear them
+        this.screenTransition.transitionHalfwayStart(() => {
+            // This code runs when transition is complete (screen is filled)
+            console.log(`External portal transition complete, redirecting to: ${url}`);
+            window.location.href = url;
+        });
+    }
 } 

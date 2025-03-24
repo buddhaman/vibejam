@@ -391,8 +391,8 @@ export class TestLevels {
                 
                 console.log("Redirecting to Vibeverse: " + portalUrl);
                 
-                // Use the transitionToPortal method instead of direct redirection
-                game.transitionToPortal(portalUrl);
+                // Use the external portal transition since we're going to a different domain
+                game.transitionToExternalPortal(portalUrl);
             }
         );
         
@@ -457,13 +457,13 @@ export class TestLevels {
                         const returnUrl = game.buildPortalReturnUrl();
                         
                         if (returnUrl) {
-                            // Use transitionToPortal method for return journey
-                            game.transitionToPortal(returnUrl);
+                            // Use external portal transition method for return journey to a different domain
+                            game.transitionToExternalPortal(returnUrl);
                         } else {
                             console.error("Failed to build return URL");
                             // Fallback to direct referrer if URL building failed
                             if (refUrl) {
-                                game.transitionToPortal(refUrl);
+                                game.transitionToExternalPortal(refUrl);
                             }
                         }
                     }
