@@ -72,20 +72,20 @@ export class VerletBody {
             this.solveConstraints();
         }
 
-        // Apply bounds and ground friction
-        this.particles.forEach(particle => {
-            if (particle.position.y - particle.radius < 0.0) {
-                particle.position.y = particle.radius;
+        // // Apply bounds and ground friction
+        // this.particles.forEach(particle => {
+        //     if (particle.position.y - particle.radius < 0.0) {
+        //         particle.position.y = particle.radius;
                 
-                // Use tempVec1 for velocity calculation
-                this.tempVec1.copy(particle.position).sub(particle.previousPosition);
-                this.tempVec2.set(this.tempVec1.x, 0, this.tempVec1.z)
-                    .multiplyScalar(this.groundFriction);
+        //         // Use tempVec1 for velocity calculation
+        //         this.tempVec1.copy(particle.position).sub(particle.previousPosition);
+        //         this.tempVec2.set(this.tempVec1.x, 0, this.tempVec1.z)
+        //             .multiplyScalar(this.groundFriction);
 
-                particle.previousPosition.copy(particle.position);
-                particle.position.add(this.tempVec2);
-            }
-        });
+        //         particle.previousPosition.copy(particle.position);
+        //         particle.position.add(this.tempVec2);
+        //     }
+        // });
     }
 
     public handleInternalCollisions(): void {

@@ -635,7 +635,7 @@ export class Game {
         }
         
         // Create completely new Level and LevelRenderer instances
-        this.level = new Level();
+        this.level = new Level(this, levelIndex);
         this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
         this.level.levelRenderer = this.levelRenderer;
         

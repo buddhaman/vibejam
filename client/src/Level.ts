@@ -10,10 +10,13 @@ import { StaticBody } from "./StaticBody";
 import { ActionArea } from "./ActionArea";
 import { SimpleText } from "./SimpleText";
 import { Updraft } from "./Updraft";
+import { Game } from './Game';
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
 
+    public game: Game;
+    public levelIdx: number;
     // Static bodies collection for collision detection
     public staticBodies: StaticBody[] = [];
 
@@ -40,10 +43,12 @@ export class Level {
     // Add updrafts collection
     public updrafts: Updraft[] = [];
 
-    constructor() {
+    constructor(game: Game, levelIdx: number) {
         // Initialize particle system
         this.players = new Map();
         this.localPlayer = null;
+        this.game = game;
+        this.levelIdx = levelIdx;
     }
 
     /**
@@ -93,6 +98,14 @@ export class Level {
     }): void {
         // Update the local player's forward vector and handle input
         if (this.localPlayer) {
+            // Check if player has fallen below y=0
+            if (this.localPlayer.getPosition().y < 0) {
+                this.game.switchLevel(this.levelIdx);
+                this.removePlayer(this.localPlayer.id);
+                this.localPlayer = null;
+                return;
+            }
+
             this.localPlayer.forward.copy(inputs.playerForward).normalize();
             this.localPlayer.handleInput(inputs.playerInput);
         }
