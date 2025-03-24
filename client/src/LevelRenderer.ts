@@ -378,5 +378,36 @@ export class LevelRenderer {
             this.initComposer();
         }
     }
+
+    /**
+     * Simple reset method to use with a new level
+     * Keeps the WebGL context but clears the scene
+     */
+    public reset(level: Level): void {
+        console.log("Resetting LevelRenderer (keeping WebGL context)");
+        
+        // Update level reference
+        this.level = level;
+        
+        // Clear the existing scene
+        while (this.scene.children.length > 0) {
+            this.scene.remove(this.scene.children[0]);
+        }
+        
+        // Reset camera target
+        this.cameraTarget = new THREE.Vector3(0, 1, 0);
+        
+        // Create new particle system
+        this.particleSystem = new ParticleSystem();
+        
+        // Re-initialize the instanced renderer with the existing scene
+        this.instancedRenderer = new InstancedRenderer(this.scene);
+        
+        // Reset the scene background
+        this.scene.background = new THREE.Color(0xffe6f2);
+        
+        // Reset lighting
+        this.setupLighting();
+    }
 }
 

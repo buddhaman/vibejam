@@ -865,9 +865,12 @@ export class Game {
     public switchLevel(levelIndex: number): void {
         console.log(`Starting switch to level ${levelIndex}`);
         
-        // Save current fullscreen and pointer lock state before transition
+        // Save current fullscreen and pointer lock state
         const wasInFullscreen = !!document.fullscreenElement;
         const wasPointerLocked = !!document.pointerLockElement;
+        
+        // Make sure the transition overlay doesn't interfere with pointer
+        this.screenTransition.getElement().style.pointerEvents = 'none';
         
         // Start transition animation and execute level change when transition completes
         this.screenTransition.transitionInStart(() => {
@@ -891,31 +894,29 @@ export class Game {
      * @param levelIndex The index of the level to switch to
      */
     private doLevelSwitch(levelIndex: number): void {
-        // Save reference to whether we're in fullscreen before removing the canvas
-        const wasInFullscreen = !!document.fullscreenElement;
+        console.log(`Switching to level ${levelIndex}...`);
         
-        // Remove all event listeners to prevent loops
+        // Remove keyboard event listeners to prevent duplicates
         this.removeKeyListeners();
         
-        // Remove the old renderer's DOM element if it exists
-        if (this.levelRenderer) {
-            document.body.removeChild(this.levelRenderer.renderer.domElement);
-            
-            // Dispose of THREE.js resources to prevent memory leaks
-            this.levelRenderer.renderer.dispose();
-            if (this.levelRenderer.composer) {
-                this.levelRenderer.composer.renderTarget1.dispose();
-                this.levelRenderer.composer.renderTarget2.dispose();
-            }
-        }
-        
-        // Create completely new Level and LevelRenderer instances
+        // Create new Level instance
         this.level = new Level(this, levelIndex);
-        this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
-        this.level.levelRenderer = this.levelRenderer;
         
-        // Add the new renderer's canvas to the DOM
-        document.body.appendChild(this.levelRenderer.renderer.domElement);
+        // If renderer exists, just reset it with the new level
+        if (this.levelRenderer) {
+            // Simply reset the renderer with new level - keeps WebGL context
+            this.levelRenderer.reset(this.level);
+            
+            // Update level's reference to this renderer
+            this.level.levelRenderer = this.levelRenderer;
+        } else {
+            // First time - create new renderer
+            this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
+            this.level.levelRenderer = this.levelRenderer;
+            
+            // Add the renderer's canvas to the DOM
+            document.body.appendChild(this.levelRenderer.renderer.domElement);
+        }
 
         // Create a player
         const player = this.level.addPlayer('local', true);
@@ -939,13 +940,7 @@ export class Game {
         // Re-initialize controls
         this.setupControls();
         
-        // After everything is set up, ensure pointer lock is maintained if in fullscreen
-        if (wasInFullscreen) {
-            // Ensure the overlay doesn't interfere with pointer lock
-            this.screenTransition.getElement().style.pointerEvents = 'none';
-        }
-        
-        console.log(`Completed switch to level ${levelIndex}`);
+        console.log(`Level ${levelIndex} switch complete`);
     }
 
     // Make sure to clean up on destroy
