@@ -18,7 +18,8 @@ export class ScreenTransition {
         speed: number,
         delay: number,
         hueVariation?: number,
-        alpha: number
+        alpha: number,
+        greenValue?: number
     }> = [];
     private readonly bubbleCount = 100;
     private animationId: number | null = null;
@@ -69,29 +70,42 @@ export class ScreenTransition {
     private initBubbles(): void {
         this.bubbles = [];
         
-        // Create bubbles with random positions across the screen
-        for (let i = 0; i < this.bubbleCount; i++) {
-            // Create clusters of bubbles
-            const clusterX = Math.random() * this.canvas.width;
-            const clusterY = Math.random() * this.canvas.height;
-            
-            // Randomize bubble attributes
-            const size = 10 + Math.random() * 80; // Random size between 10 and 90
-            const offsetX = (Math.random() - 0.5) * size * 3;
-            const offsetY = (Math.random() - 0.5) * size * 3;
-            
-            // Randomize color variation
-            const hueVariation = Math.random() * 40 - 20; // -20 to +20 hue variation
-            
-            this.bubbles.push({
-                x: clusterX + offsetX,
-                y: clusterY + offsetY,
-                radius: size,
-                speed: 1 + Math.random() * 2,
-                delay: Math.random() * 0.3,
-                hueVariation: hueVariation,
-                alpha: 0.6 + Math.random() * 0.4 // Random alpha between 0.6 and 1.0
-            });
+        // Create bubbles to cover the entire screen with more uniform distribution
+        const gridSize = Math.ceil(Math.sqrt(this.bubbleCount));
+        const cellWidth = this.canvas.width / gridSize;
+        const cellHeight = this.canvas.height / gridSize;
+        
+        let index = 0;
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                if (index >= this.bubbleCount) break;
+                
+                // Calculate position with some randomness within each cell
+                const x = col * cellWidth + cellWidth * (0.3 + Math.random() * 0.4); // 30-70% of cell width
+                const y = row * cellHeight + cellHeight * (0.3 + Math.random() * 0.4); // 30-70% of cell height
+                
+                // Make bubbles larger to ensure coverage
+                const size = Math.max(cellWidth, cellHeight) * (1.0 + Math.random() * 0.5);
+                
+                // Simple green color variation
+                const greenValue = 120 + Math.floor(Math.random() * 80); // 120-200 green value
+                
+                // Left to right appearance based on x-position
+                const delay = (x / this.canvas.width) * 0.5; // 0-0.5 seconds delay based on x position
+                
+                this.bubbles.push({
+                    x: x,
+                    y: y,
+                    radius: size,
+                    speed: 1 + Math.random() * 0.5, // Less speed variation for more uniform look
+                    delay: delay,
+                    hueVariation: 0, // We'll use fixed green values instead
+                    alpha: 0.8 + Math.random() * 0.2, // High alpha for more solid look
+                    greenValue: greenValue
+                });
+                
+                index++;
+            }
         }
     }
     
@@ -190,74 +204,57 @@ export class ScreenTransition {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // For transition out, invert the progress
-        const effectiveProgress = this.transitionOut ? 1 - this.progress : this.progress;
+        // Base progress calculation
+        const baseProgress = this.transitionOut ? 1 - this.progress : this.progress;
         
         // Add a subtle background glow
-        if (effectiveProgress > 0.05) {
-            const bgGlow = Math.min(0.4, effectiveProgress * 0.5);
-            this.ctx.fillStyle = `rgba(0, 180, 80, ${bgGlow})`;
+        if (baseProgress > 0.05) {
+            const bgGlow = Math.min(0.5, baseProgress * 0.6);
+            this.ctx.fillStyle = `rgba(0, 160, 70, ${bgGlow})`;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
         
         // Draw each bubble
         for (const bubble of this.bubbles) {
             // Calculate the current size based on progress and delay
-            let bubbleProgress = Math.max(0, Math.min(1, (effectiveProgress - bubble.delay) / (1 - bubble.delay)));
+            let bubbleProgress;
             
-            // Apply easing function for smoother animation (ease-in-out quad)
-            if (bubbleProgress < 0.5) {
-                bubbleProgress = 2 * bubbleProgress * bubbleProgress;
+            if (this.transitionOut) {
+                // For transition out: RIGHT bubbles disappear first by inverting the x-position
+                // This makes bubbles on the left side stay visible longer
+                const rightToLeftDelay = ((this.canvas.width - bubble.x) / this.canvas.width) * 0.5;
+                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - rightToLeftDelay) / (1 - rightToLeftDelay)));
             } else {
-                bubbleProgress = -1 + (4 - 2 * bubbleProgress) * bubbleProgress;
+                // For transition in: left bubbles appear first (unchanged)
+                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - bubble.delay) / (1 - bubble.delay)));
             }
+            
+            // Apply easing function for smoother animation
+            bubbleProgress = this.easeInOutQuad(bubbleProgress);
             
             const currentRadius = bubble.radius * bubbleProgress;
             
-            // Add wobble effect
-            const time = performance.now() / 1000;
-            const wobbleX = bubble.x + Math.sin(time * bubble.speed) * 5 * bubbleProgress;
-            const wobbleY = bubble.y + Math.cos(time * bubble.speed * 0.7) * 5 * bubbleProgress;
-            
             if (currentRadius > 0) {
-                // Get hue variation for this bubble
-                const hue = 140 + (bubble.hueVariation || 0); // Default green is ~120, going more toward 140
+                // Use flat color with slight variations in green
+                const green = bubble.greenValue || 160;
+                this.ctx.fillStyle = `rgba(0, ${green}, 80, ${bubble.alpha})`;
                 
-                // Create gradient for the bubble
-                const gradient = this.ctx.createRadialGradient(
-                    wobbleX, wobbleY, 0,
-                    wobbleX, wobbleY, currentRadius
-                );
-                
-                // Use HSL for better color control
-                gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, ${bubble.alpha})`);
-                gradient.addColorStop(0.7, `hsla(${hue - 10}, 90%, 40%, ${bubble.alpha * 0.7})`);
-                gradient.addColorStop(1, `hsla(${hue - 20}, 80%, 30%, 0)`);
-                
-                // Draw the bubble
+                // Draw the bubble as a flat circle
                 this.ctx.beginPath();
-                this.ctx.arc(wobbleX, wobbleY, currentRadius, 0, Math.PI * 2);
-                this.ctx.fillStyle = gradient;
+                this.ctx.arc(bubble.x, bubble.y, currentRadius, 0, Math.PI * 2);
                 this.ctx.fill();
                 
-                // Add a highlight spot for more dimension
-                const highlightSize = currentRadius * 0.3;
-                const highlightX = wobbleX - currentRadius * 0.2;
-                const highlightY = wobbleY - currentRadius * 0.2;
-                
-                const highlightGradient = this.ctx.createRadialGradient(
-                    highlightX, highlightY, 0,
-                    highlightX, highlightY, highlightSize
-                );
-                highlightGradient.addColorStop(0, `rgba(255, 255, 255, ${bubble.alpha * 0.7})`);
-                highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                
-                this.ctx.beginPath();
-                this.ctx.arc(highlightX, highlightY, highlightSize, 0, Math.PI * 2);
-                this.ctx.fillStyle = highlightGradient;
-                this.ctx.fill();
+                // Add a subtle lighter edge for some dimension without using gradients
+                this.ctx.strokeStyle = `rgba(100, ${green + 30}, 120, ${bubble.alpha * 0.5})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
             }
         }
+    }
+    
+    // Helper function for smooth animation
+    private easeInOutQuad(t: number): number {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     }
     
     /**
