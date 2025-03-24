@@ -8,11 +8,13 @@ export class ActionArea {
     private callback: () => void;
     private isActive: boolean = true;
     private time: number = 0;
+    private triggerOnce: boolean = true;
 
     constructor(
         position: THREE.Vector3,
         size: THREE.Vector3,
-        callback: () => void
+        callback: () => void,
+        triggerOnce: boolean = false
     ) {
         this.position = position.clone();
         this.size = size.clone();
@@ -22,6 +24,7 @@ export class ActionArea {
         this.updateBounds();
 
         this.callback = callback;
+        this.triggerOnce = triggerOnce;
     }
 
     private updateBounds(): void {
@@ -178,6 +181,9 @@ export class ActionArea {
     public trigger(): void {
         if (this.isActive) {
             this.callback();
+            if (this.triggerOnce) {
+                this.isActive = false;
+            }
         }
     }
 

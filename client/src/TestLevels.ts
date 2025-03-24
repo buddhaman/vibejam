@@ -6,66 +6,56 @@ import { Saw } from './Saw';
 import { Game } from './Game';
 
 export class TestLevels {
+    // Global materials that match our pink theme
+    private static readonly MAIN_PLATFORM_MATERIAL = new THREE.MeshStandardMaterial({
+        color: 0xff3366,          // Vibrant pink-red
+        roughness: 0.4,
+        metalness: 0.3,
+        emissive: 0xff3366,
+        emissiveIntensity: 0.2,
+    });
+
+    private static readonly PORTAL_MATERIAL = new THREE.MeshStandardMaterial({
+        color: 0x9932cc,          // Dark orchid purple
+        roughness: 0.3,
+        metalness: 0.8,
+        emissive: 0x9932cc,
+        emissiveIntensity: 0.6
+    });
+
     /**
      * Creates an overworld hub with portals to different levels
      * @param level The Level instance to add level elements to
      * @param game The Game instance for level switching
      */
     public static createOverworld(level: Level, game: Game): void {
-        // Platform material with shadow support
-        const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0x44aa88,
-            roughness: 0.4,
-            metalness: 0.3,
-            emissive: 0x44aa88,
-            emissiveIntensity: 0.2,
-        });
-        
-        // Main platform in the center
+        // Main platform in the center - use main material
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, 0, -15),
             new THREE.Vector3(15, 2, 15),
-            platformMaterial,
+            this.MAIN_PLATFORM_MATERIAL,
             "overworld-platform"
         ));
         
-        // Create portal materials with glowing effects
-        const portal1Material = new THREE.MeshStandardMaterial({
-            color: 0xff6600,
-            roughness: 0.3,
-            metalness: 0.8,
-            emissive: 0xff6600,
-            emissiveIntensity: 0.6
-        });
-        
-        const portal2Material = new THREE.MeshStandardMaterial({
-            color: 0x00aaff,
-            roughness: 0.3,
-            metalness: 0.8,
-            emissive: 0x00aaff,
-            emissiveIntensity: 0.6
-        });
-        
-        // Portal to Level 0 (Jungle Gym)
+        // Both portals now use the same purple material
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-10, 2, 0),
             new THREE.Vector3(-8, 6, 2),
-            portal1Material,
+            this.PORTAL_MATERIAL,
             "portal-level0"
         ));
         
-        // Portal to Level 1 (Simple Test)
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(8, 2, 0),
             new THREE.Vector3(10, 6, 2),
-            portal2Material,
+            this.PORTAL_MATERIAL,
             "portal-level1"
         ));
         
-        // Add action area for Level 0 portal
+        // Make action areas bigger (doubled size)
         level.addActionArea(
-            new THREE.Vector3(-9, 4, 1),  // Center of the portal
-            new THREE.Vector3(3, 4, 3),   // Size of the trigger area
+            new THREE.Vector3(-9, 4, 1),    // Center of the portal
+            new THREE.Vector3(6, 8, 6),     // Doubled size from 3,4,3 to 6,8,6
             () => {
                 console.log("Switching to Level 0 (Jungle Gym)");
                 if (game) {
@@ -74,10 +64,9 @@ export class TestLevels {
             }
         );
         
-        // Add action area for Level 1 portal
         level.addActionArea(
-            new THREE.Vector3(9, 4, 1),   // Center of the portal
-            new THREE.Vector3(3, 4, 3),   // Size of the trigger area
+            new THREE.Vector3(9, 4, 1),     // Center of the portal
+            new THREE.Vector3(6, 8, 6),     // Doubled size
             () => {
                 console.log("Switching to Level 1 (Simple Test)");
                 if (game) {
@@ -119,40 +108,20 @@ export class TestLevels {
      * @param Level The Level instance to add level elements to
      */
     public static createJungleGymTest(level: Level): void {
-        // Create static platforms and obstacles
+        // Use the same materials for consistency
         TestLevels.createStaticPlatforms(level);
-        
-        // Create dynamic moving platforms
         TestLevels.createDynamicPlatforms(level);
-        
-        // Create test ropes
         TestLevels.createRopes(level);
-        
-        // Create saws
         TestLevels.createSaws(level);
-        
-        console.log("Jungle Gym test level created with platforms, ropes, and obstacles");
     }
     
     /**
      * Create all static platforms and structures
      */
     private static createStaticPlatforms(level: Level): void {
-       // Create various materials for different structures with more distinct colors
-       // Use a darker reddish color for platforms that's still bright
-        const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff4b81, // Brighter, more saturated pink
-            roughness: 0.3,
-            metalness: 0.4,
-            emissive: 0xff4b81, // Same as color for a natural glow
-            emissiveIntensity: 0.3 // Adjust as needed
-        });
-        
-        const obstacleMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8a2be2, // Brighter purple for obstacles
-            roughness: 0.5,
-            metalness: 0.5
-        });
+        // Use the global materials
+        const platformMaterial = this.MAIN_PLATFORM_MATERIAL;
+        const obstacleMaterial = this.PORTAL_MATERIAL;
 
         // STARTING AREA
         // =============
@@ -296,10 +265,13 @@ export class TestLevels {
      * Create dynamic moving platforms
      */
     private static createDynamicPlatforms(level: Level): void {
-        // Create materials for different platforms
+        // Use variations of the main colors for moving platforms
         const redMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff3366, emissive: 0xff3366, emissiveIntensity: 0.2,
-            roughness: 0.4, metalness: 0.6
+            color: 0xff3366,
+            emissive: 0xff3366,
+            emissiveIntensity: 0.2,
+            roughness: 0.4,
+            metalness: 0.6
         });
         
         const blueMaterial = new THREE.MeshStandardMaterial({
@@ -313,8 +285,11 @@ export class TestLevels {
         });
         
         const purpleMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff33ff, emissive: 0xff33ff, emissiveIntensity: 0.3,
-            roughness: 0.3, metalness: 0.7
+            color: 0x9932cc,
+            emissive: 0x9932cc,
+            emissiveIntensity: 0.3,
+            roughness: 0.3,
+            metalness: 0.7
         });
         
         // Constants for fixed physics behavior (never scaled by deltaTime)
@@ -452,7 +427,8 @@ export class TestLevels {
                     "white",
                     "black"
                 );
-            }
+            },
+            true  // Set triggerOnce to true for the congratulations message
         );
 
         // Add rope for swinging between platforms

@@ -507,14 +507,16 @@ export class Level {
      * @param position Position of the action area
      * @param size Size of the action area
      * @param callback Function to call when triggered
+     * @param triggerOnce Whether the action area should only trigger once
      * @returns The created action area
      */
     public addActionArea(
         position: THREE.Vector3,
         size: THREE.Vector3,
-        callback: () => void
+        callback: () => void,
+        triggerOnce: boolean = true
     ): ActionArea {
-        const actionArea = new ActionArea(position, size, callback);
+        const actionArea = new ActionArea(position, size, callback, triggerOnce);
         this.actionAreas.push(actionArea);
         return actionArea;
     }
