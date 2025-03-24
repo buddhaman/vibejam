@@ -21,6 +21,9 @@ export class Game {
     public inputKeys: { [key: string]: boolean } = {};
 
     public highPerformanceMode: boolean = true;
+    
+    // Add debug mode flag
+    private debugMode: boolean = false;
 
     // Add mobile controls
     private mobileControls: MobileControls | null = null;
@@ -119,6 +122,8 @@ export class Game {
         toggleButton.style.color = 'white';
         toggleButton.style.border = '1px solid red';
         toggleButton.style.borderRadius = '5px';
+        // Initially hide the toggle button unless in debug mode
+        toggleButton.style.display = this.debugMode ? 'block' : 'none';
         
         toggleButton.addEventListener('click', () => {
             if (errorContainer.style.display === 'none') {
@@ -158,6 +163,22 @@ export class Game {
         window.addEventListener('unhandledrejection', (event) => {
             this.logError(`Unhandled Promise Rejection: ${event.reason}`);
         });
+        
+        // Add keyboard shortcut to show/hide logs (Ctrl+D)
+        window.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
+                event.preventDefault(); // Prevent browser bookmark dialog
+                const toggleBtn = document.getElementById('toggle-error-log');
+                if (toggleBtn) {
+                    toggleBtn.style.display = toggleBtn.style.display === 'none' ? 'block' : 'none';
+                    
+                    // If showing the toggle, also update debug mode
+                    if (toggleBtn.style.display === 'block') {
+                        this.debugMode = true;
+                    }
+                }
+            }
+        });
     }
     
     /**
@@ -192,9 +213,11 @@ export class Game {
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
         
-        // Show the toggle button
-        const toggleButton = document.getElementById('toggle-error-log');
-        if (toggleButton) toggleButton.style.display = 'block';
+        // Only show the toggle button in debug mode
+        if (this.debugMode) {
+            const toggleButton = document.getElementById('toggle-error-log');
+            if (toggleButton) toggleButton.style.display = 'block';
+        }
     }
     
     /**
@@ -214,15 +237,17 @@ export class Game {
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
         
-        // Auto-show the error log when errors occur
-        const errorContainer = document.getElementById('error-logger');
-        if (errorContainer) errorContainer.style.display = 'block';
-        
-        // Update toggle button text
-        const toggleButton = document.getElementById('toggle-error-log');
-        if (toggleButton) {
-            toggleButton.style.display = 'block';
-            toggleButton.textContent = 'Hide Logs';
+        // Auto-show the error log only when in debug mode
+        if (this.debugMode) {
+            const errorContainer = document.getElementById('error-logger');
+            if (errorContainer) errorContainer.style.display = 'block';
+            
+            // Update toggle button text
+            const toggleButton = document.getElementById('toggle-error-log');
+            if (toggleButton) {
+                toggleButton.style.display = 'block';
+                toggleButton.textContent = 'Hide Logs';
+            }
         }
     }
 
@@ -251,6 +276,12 @@ export class Game {
         if (urlParams.has('forceDesktop')) {
             this.isMobile = false;
             console.log("Forcing desktop mode via URL parameter");
+        }
+        
+        // Check for debug mode parameter
+        if (urlParams.has('debug') || urlParams.has('debugMode')) {
+            this.debugMode = true;
+            console.log("Debug mode enabled via URL parameter");
         }
         
         // Log device information
