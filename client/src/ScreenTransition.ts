@@ -19,7 +19,10 @@ export class ScreenTransition {
         delay: number,
         hueVariation?: number,
         alpha: number,
-        greenValue?: number
+        greenValue?: number,
+        originalX: number,
+        redValue?: number,
+        blueValue?: number
     }> = [];
     private readonly bubbleCount = 100;
     private animationId: number | null = null;
@@ -81,31 +84,47 @@ export class ScreenTransition {
                 if (index >= this.bubbleCount) break;
                 
                 // Calculate position with some randomness within each cell
-                const x = col * cellWidth + cellWidth * (0.3 + Math.random() * 0.4); // 30-70% of cell width
-                const y = row * cellHeight + cellHeight * (0.3 + Math.random() * 0.4); // 30-70% of cell height
+                const x = col * cellWidth + cellWidth * (0.3 + Math.random() * 0.4);
+                const y = row * cellHeight + cellHeight * (0.3 + Math.random() * 0.4);
                 
                 // Make bubbles larger to ensure coverage
                 const size = Math.max(cellWidth, cellHeight) * (1.0 + Math.random() * 0.5);
                 
-                // Simple green color variation
-                const greenValue = 120 + Math.floor(Math.random() * 80); // 120-200 green value
+                // Pink color variation (red high, green low, blue medium)
+                const redValue = 230 + Math.floor(Math.random() * 25);    // 230-255
+                const blueValue = 180 + Math.floor(Math.random() * 40);   // 180-220
                 
                 // Left to right appearance based on x-position
-                const delay = (x / this.canvas.width) * 0.5; // 0-0.5 seconds delay based on x position
+                const delay = (x / this.canvas.width) * 0.7;
                 
                 this.bubbles.push({
                     x: x,
                     y: y,
                     radius: size,
-                    speed: 1 + Math.random() * 0.5, // Less speed variation for more uniform look
+                    speed: 1 + Math.random() * 0.5,
                     delay: delay,
-                    hueVariation: 0, // We'll use fixed green values instead
-                    alpha: 0.8 + Math.random() * 0.2, // High alpha for more solid look
-                    greenValue: greenValue
+                    alpha: 0.8 + Math.random() * 0.2,
+                    redValue: redValue,
+                    blueValue: blueValue,
+                    originalX: x
                 });
                 
                 index++;
             }
+        }
+        
+        // Now shuffle the array so the draw order is randomized
+        // This doesn't affect x/y positions, just the order they're processed
+        this.shuffleArray(this.bubbles);
+    }
+    
+    /**
+     * Utility method to shuffle an array
+     */
+    private shuffleArray<T>(array: T[]): void {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
         }
     }
     
@@ -210,7 +229,7 @@ export class ScreenTransition {
         // Add a subtle background glow
         if (baseProgress > 0.05) {
             const bgGlow = Math.min(0.5, baseProgress * 0.6);
-            this.ctx.fillStyle = `rgba(0, 160, 70, ${bgGlow})`;
+            this.ctx.fillStyle = `rgba(255, 150, 200, ${bgGlow})`; // Pink background glow
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
         
@@ -220,36 +239,31 @@ export class ScreenTransition {
             let bubbleProgress;
             
             if (this.transitionOut) {
-                // Use a reversed x-position for transition out
-                // This makes bubbles on the left side disappear first
-                const normalizedXPos = 1 - (bubble.x / this.canvas.width); // REVERSED here
+                const normalizedXPos = 1 - (bubble.x / this.canvas.width);
                 const outDelay = normalizedXPos * 0.7;
-                
                 bubbleProgress = Math.max(0, Math.min(1, (baseProgress - outDelay) / (1 - outDelay)));
             } else {
-                // For transition in: left bubbles appear first (same as before)
                 const normalizedXPos = bubble.x / this.canvas.width;
                 const inDelay = normalizedXPos * 0.7;
                 bubbleProgress = Math.max(0, Math.min(1, (baseProgress - inDelay) / (1 - inDelay)));
             }
             
-            // Apply easing function for smoother animation
             bubbleProgress = this.easeInOutQuad(bubbleProgress);
-            
             const currentRadius = bubble.radius * bubbleProgress;
             
             if (currentRadius > 0) {
-                // Use flat color with slight variations in green
-                const green = bubble.greenValue || 160;
-                this.ctx.fillStyle = `rgba(0, ${green}, 80, ${bubble.alpha})`;
+                // Use flat color with pink variations
+                const red = bubble.redValue || 255;
+                const blue = bubble.blueValue || 200;
+                this.ctx.fillStyle = `rgba(${red}, 150, ${blue}, ${bubble.alpha})`;
                 
                 // Draw the bubble as a flat circle
                 this.ctx.beginPath();
                 this.ctx.arc(bubble.x, bubble.y, currentRadius, 0, Math.PI * 2);
                 this.ctx.fill();
                 
-                // Add a subtle lighter edge for some dimension without using gradients
-                this.ctx.strokeStyle = `rgba(100, ${green + 30}, 120, ${bubble.alpha * 0.5})`;
+                // Add a subtle lighter edge
+                this.ctx.strokeStyle = `rgba(255, 200, 220, ${bubble.alpha * 0.5})`;
                 this.ctx.lineWidth = 2;
                 this.ctx.stroke();
             }
