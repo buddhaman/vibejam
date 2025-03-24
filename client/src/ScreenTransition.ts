@@ -233,6 +233,9 @@ export class ScreenTransition {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
         
+        // Enable crisp edges
+        this.ctx.imageSmoothingEnabled = false;
+        
         // Draw each bubble
         for (const bubble of this.bubbles) {
             // Calculate the current size based on progress and delay
@@ -257,15 +260,10 @@ export class ScreenTransition {
                 const blue = bubble.blueValue || 200;
                 this.ctx.fillStyle = `rgba(${red}, 150, ${blue}, ${bubble.alpha})`;
                 
-                // Draw the bubble as a flat circle
+                // Draw a simple flat circle
                 this.ctx.beginPath();
                 this.ctx.arc(bubble.x, bubble.y, currentRadius, 0, Math.PI * 2);
                 this.ctx.fill();
-                
-                // Add a subtle lighter edge
-                this.ctx.strokeStyle = `rgba(255, 200, 220, ${bubble.alpha * 0.5})`;
-                this.ctx.lineWidth = 2;
-                this.ctx.stroke();
             }
         }
     }
