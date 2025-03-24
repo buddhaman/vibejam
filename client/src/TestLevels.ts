@@ -129,36 +129,77 @@ export class TestLevels {
      * @param game The Game instance for level switching
      */
     public static createOverworld(level: Level, game: Game): void {
-        // Main platform in the center - use main material
+        // Main platform in the center - use main material and make it larger
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 0, -15),
-            new THREE.Vector3(15, 2, 15),
+            new THREE.Vector3(-25, 0, -25),
+            new THREE.Vector3(25, 2, 25),
             this.MAIN_PLATFORM_MATERIAL,
             "overworld-platform"
         ));
         
-        // Both portals now use the same purple material
+        // Regular level portals on the main platform
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-10, 2, 0),
-            new THREE.Vector3(-8, 6, 2),
-            this.PORTAL_MATERIAL,
-            "portal-level0"
-        ));
-        
-        level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(8, 2, 0),
-            new THREE.Vector3(10, 6, 2),
+            new THREE.Vector3(-15, 2, 0),
+            new THREE.Vector3(-12, 6, 3),
             this.PORTAL_MATERIAL,
             "portal-level1"
         ));
         
-        // Add Vibeverse portal
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(15, 2, 0),
+            new THREE.Vector3(18, 6, 3),
+            this.PORTAL_MATERIAL,
+            "portal-level2"
+        ));
+        
+        // Create a separate island for the Vibeverse portal
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-5, 0, -60),
+            new THREE.Vector3(15, 2, -40),
+            new THREE.MeshStandardMaterial({
+                color: 0x6699ff,          // Light blue for Vibeverse island
+                roughness: 0.4,
+                metalness: 0.5,
+                emissive: 0x6699ff,
+                emissiveIntensity: 0.1,
+            }),
+            "vibeverse-island"
+        ));
+        
+        // Create a bridge connecting main platform to Vibeverse island
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(0, 0, -40),
+            new THREE.Vector3(5, 2, -25),
+            this.MAIN_PLATFORM_MATERIAL,
+            "vibeverse-bridge"
+        ));
+        
+        // Add some decorative elements to the bridge
+        for (let i = 0; i < 5; i++) {
+            // Left side railings
+            level.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(0, 2, -39 + i * 3),
+                new THREE.Vector3(0.5, 4, -38 + i * 3),
+                this.PORTAL_MATERIAL,
+                `bridge-rail-left-${i}`
+            ));
+            
+            // Right side railings
+            level.addStaticBody(StaticBody.createBox(
+                new THREE.Vector3(4.5, 2, -39 + i * 3),
+                new THREE.Vector3(5, 4, -38 + i * 3),
+                this.PORTAL_MATERIAL,
+                `bridge-rail-right-${i}`
+            ));
+        }
+        
+        // Add Vibeverse portal on the separate island
         this.createVibeVersePortal(level, game);
         
-        // Make action areas bigger (doubled size)
+        // Make action areas for regular level portals
         level.addActionArea(
-            new THREE.Vector3(-9, 4, 1),    // Center of the portal
-            new THREE.Vector3(6, 8, 6),     // Doubled size from 3,4,3 to 6,8,6
+            new THREE.Vector3(-13.5, 4, 1.5),    // Center of the portal
+            new THREE.Vector3(6, 8, 6),          // Interaction area
             () => {
                 console.log("Switching to Level 1 (Jungle Gym)");
                 if (game) {
@@ -168,31 +209,47 @@ export class TestLevels {
         );
         
         level.addActionArea(
-            new THREE.Vector3(9, 4, 1),     // Center of the portal
-            new THREE.Vector3(6, 8, 6),     // Doubled size
+            new THREE.Vector3(16.5, 4, 1.5),     // Center of the portal
+            new THREE.Vector3(6, 8, 6),          // Interaction area
             () => {
-                console.log("Switching to Level 1 (Simple Test)");
+                console.log("Switching to Level 2 (Skydiving Challenge)");
                 if (game) {
                     game.switchLevel(2);
                 }
             }
         );
         
-        // Add descriptive text
+        // Add descriptive text for regular level portals
         level.levelRenderer?.addSimpleText(
             "JUNGLE GYM",
-            new THREE.Vector3(-9, 7, 1),
+            new THREE.Vector3(-13.5, 7, 1.5),
             "white",
             "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
-            "SWING & UPDRAFT",
-            new THREE.Vector3(9, 7, 1),
+            "SKYDIVING",
+            new THREE.Vector3(16.5, 7, 1.5),
             "white",
             "#000000"
         );
         
+        // Add bridge signage
+        level.levelRenderer?.addSimpleText(
+            "TO VIBEVERSE",
+            new THREE.Vector3(2.5, 5, -30),
+            "#ffff00",
+            "#000000"
+        );
+        
+        level.levelRenderer?.addSimpleText(
+            "→",
+            new THREE.Vector3(2.5, 4, -33),
+            "#ffff00",
+            "#000000"
+        );
+        
+        // Main overworld text
         level.levelRenderer?.addSimpleText(
             "OVERWORLD HUB",
             new THREE.Vector3(0, 10, 0),
@@ -200,13 +257,13 @@ export class TestLevels {
             "#000000"
         );
         
-        // Position player in the center of the overworld
+        // Position player in the center of the main platform
         level.localPlayer?.setPosition(new THREE.Vector3(0, 5, 0));
         
         // Check for incoming portal traffic and position player appropriately
         this.handleIncomingPortalTraffic(level, game);
         
-        console.log("Overworld hub created with portals to different levels");
+        console.log("Overworld hub created with portals to different levels and Vibeverse bridge");
     }
     
     /**
@@ -224,18 +281,43 @@ export class TestLevels {
             emissiveIntensity: 0.8,   // Brighter glow
         });
         
-        // Create the portal structure (slightly bigger than regular portals)
+        // Create a more dramatic portal structure on the Vibeverse island
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(0, 2, -10),
-            new THREE.Vector3(4, 8, -8),
+            new THREE.Vector3(3, 2, -50),
+            new THREE.Vector3(7, 10, -47),
             vibeverseMaterial,
             "vibeverse-portal"
         ));
         
+        // Add some decorative elements around the portal
+        // Left pillar
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(1, 2, -48.5),
+            new THREE.Vector3(2, 12, -47.5),
+            this.PORTAL_MATERIAL,
+            "vibeverse-pillar-left"
+        ));
+        
+        // Right pillar
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(8, 2, -48.5),
+            new THREE.Vector3(9, 12, -47.5),
+            this.PORTAL_MATERIAL,
+            "vibeverse-pillar-right"
+        ));
+        
+        // Top arch
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(1, 11, -48.5),
+            new THREE.Vector3(9, 12, -47.5),
+            this.PORTAL_MATERIAL,
+            "vibeverse-arch"
+        ));
+        
         // Add action area for the Vibeverse portal
         level.addActionArea(
-            new THREE.Vector3(2, 5, -9),    // Center of the portal
-            new THREE.Vector3(8, 10, 8),    // Large interaction area
+            new THREE.Vector3(5, 6, -48.5),   // Center of the portal
+            new THREE.Vector3(8, 10, 4),      // Large interaction area
             () => {
                 console.log("Entering Vibeverse Portal");
                 
@@ -302,6 +384,9 @@ export class TestLevels {
                     params.append('avatar_url', `https://avatars.dicebear.com/api/bottts/${player.username}.svg`);
                 }
                 
+                // Add portal=true parameter
+                params.append('portal', 'true');
+                
                 // Build the final URL
                 const portalUrl = `http://portal.pieter.com/?${params.toString()}`;
                 
@@ -312,13 +397,23 @@ export class TestLevels {
             }
         );
         
-        // Add descriptive text
+        // Add descriptive text and floating elements
         level.levelRenderer?.addSimpleText(
             "VIBEVERSE PORTAL",
-            new THREE.Vector3(2, 9, -9),
+            new THREE.Vector3(5, 13, -48.5),
+            "#00ffff", // Cyan
+            "#000000"
+        );
+        
+        level.levelRenderer?.addSimpleText(
+            "CONNECT TO THE METAVERSE",
+            new THREE.Vector3(5, 11.5, -48.5),
             "white",
             "#000000"
         );
+        
+        // Add floating arrow pointing down at the portal
+        this.createFloatingArrow(level, new THREE.Vector3(5, 14, -48.5));
     }
     
     /**
@@ -335,19 +430,19 @@ export class TestLevels {
             const refUrl = game.getPortalReferrer();
             
             if (refUrl) {
-                // Create a special material for the return portal
+                // Create a special material for the return portal - brighter and more noticeable
                 const returnPortalMaterial = new THREE.MeshStandardMaterial({
                     color: 0xff00ff,        // Magenta color
                     roughness: 0.2,
                     metalness: 0.9,
                     emissive: 0xff00ff,
-                    emissiveIntensity: 0.8,  // Brighter glow
+                    emissiveIntensity: 0.9,  // Higher emissive for more glow
                 });
                 
-                // Create the return portal structure
+                // Create the return portal structure - make it slightly larger and more noticeable
                 level.addStaticBody(StaticBody.createBox(
                     new THREE.Vector3(-5, 2, -10),
-                    new THREE.Vector3(-1, 8, -8),
+                    new THREE.Vector3(-1, 9, -8),  // Taller portal
                     returnPortalMaterial,
                     "return-portal"
                 ));
@@ -373,17 +468,46 @@ export class TestLevels {
                     }
                 );
                 
-                // Add descriptive text
+                // Get an abbreviated version of the referrer URL for display
+                let displayUrl = refUrl;
+                try {
+                    const urlObj = new URL(refUrl);
+                    displayUrl = urlObj.hostname;
+                } catch (e) {
+                    // Keep the original URL if parsing fails
+                }
+                
+                // Add multiple descriptive texts to make it very clear this is where player entered
                 level.levelRenderer?.addSimpleText(
                     "RETURN PORTAL",
-                    new THREE.Vector3(-3, 9, -9),
+                    new THREE.Vector3(-3, 9.5, -9),
                     "white",
                     "#000000"
                 );
                 
+                // Add "YOU ENTERED HERE" text
+                level.levelRenderer?.addSimpleText(
+                    "YOU ENTERED HERE",
+                    new THREE.Vector3(-3, 8.5, -9),
+                    "#ffff00", // Bright yellow
+                    "#000000"
+                );
+                
+                // Add referrer site name if available
+                level.levelRenderer?.addSimpleText(
+                    `BACK TO: ${displayUrl}`,
+                    new THREE.Vector3(-3, 7.5, -9),
+                    "#00ffff", // Cyan text
+                    "#000000"
+                );
+                
+                // Add floating arrow pointing to the portal
+                this.createFloatingArrow(level, new THREE.Vector3(-3, 11, -9));
+                
                 // Position player in front of the return portal
                 if (level.localPlayer) {
-                    level.localPlayer.setPosition(new THREE.Vector3(-3, 5, -6));
+                    // Position player at a safer distance from the portal to prevent immediate activation
+                    level.localPlayer.setPosition(new THREE.Vector3(-3, 5, -3));
                     
                     // Extract player information from Game's portal parameters
                     const username = game.getPortalParameter('username') || "unknown";
@@ -409,8 +533,78 @@ export class TestLevels {
                     "white",
                     "#000000"
                 );
+                
+                // Add another message showing origin portal details
+                if (game.getPortalParameter('ref')) {
+                    level.levelRenderer?.addSimpleText(
+                        `FROM: ${game.getPortalParameter('ref')}`,
+                        new THREE.Vector3(0, 11, 0),
+                        "#aaffaa",
+                        "#000000"
+                    );
+                }
             }
         }
+    }
+    
+    /**
+     * Create a floating arrow pointing to a location
+     * @param level The level to add the arrow to
+     * @param position The position to point to
+     */
+    private static createFloatingArrow(level: Level, position: THREE.Vector3): void {
+        // Only create if we have a renderer
+        if (!level.levelRenderer) return;
+        
+        // Create a downward pointing arrow using a triangle
+        const arrowMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 1.0,
+            side: THREE.DoubleSide
+        });
+        
+        // Create arrow geometry (simple triangle pointing down)
+        const arrowGeo = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+            -0.5, 0, 0,  // left
+             0.5, 0, 0,  // right
+             0, -1.5, 0  // bottom
+        ]);
+        
+        arrowGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        arrowGeo.computeVertexNormals();
+        
+        const arrow = new THREE.Mesh(arrowGeo, arrowMaterial);
+        arrow.position.copy(position);
+        
+        // Add to scene
+        level.levelRenderer.scene.add(arrow);
+        
+        // Setup animation for bobbing up and down
+        const startY = position.y;
+        const bobHeight = 0.5;
+        const bobSpeed = 0.02;
+        
+        // Store the animation timing
+        let time = 0;
+        
+        // Create an update function that will be called each frame
+        const updateArrow = () => {
+            time += bobSpeed;
+            
+            // Bob up and down
+            arrow.position.y = startY + Math.sin(time) * bobHeight;
+            
+            // Rotate slowly around Y axis
+            arrow.rotation.y += 0.01;
+            
+            // Request next update
+            requestAnimationFrame(updateArrow);
+        };
+        
+        // Start the animation loop
+        updateArrow();
     }
 
     /**
