@@ -648,7 +648,7 @@ export class Game {
         // Load the appropriate level
         switch (levelIndex) {
             case 0:
-                TestLevels.createJungleGymTest(this.level);
+                TestLevels.createJungleGymTest(this.level, this);
                 break;
             case 1:
                 TestLevels.createSimpleTestLevel(this.level);

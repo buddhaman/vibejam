@@ -16,7 +16,7 @@ export class LevelRenderer {
     public level: Level;
     public camera: THREE.PerspectiveCamera;
     public cameraDistance: number = 8;
-    public cameraTheta: number = 0; // Horizontal angle
+    public cameraTheta: number = -Math.PI; // Horizontal angle
     public cameraPhi: number = Math.PI / 3; // Vertical angle (0 to PI)
     public cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
 

@@ -105,14 +105,43 @@ export class TestLevels {
 
     /**
      * Creates the Jungle Gym test level with all platforms, ropes, and obstacles
-     * @param Level The Level instance to add level elements to
+     * @param level The Level instance to add level elements to
+     * @param game The Game instance for level switching
      */
-    public static createJungleGymTest(level: Level): void {
+    public static createJungleGymTest(level: Level, game: Game): void {
         // Use the same materials for consistency
         TestLevels.createStaticPlatforms(level);
         TestLevels.createDynamicPlatforms(level);
         TestLevels.createRopes(level);
         TestLevels.createSaws(level);
+
+        // Add portal back to overworld
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-12, 2, -12),
+            new THREE.Vector3(-10, 6, -10),
+            this.PORTAL_MATERIAL,
+            "portal-overworld"
+        ));
+
+        // Add action area for the portal
+        level.addActionArea(
+            new THREE.Vector3(-11, 4, -11),    // Center of the portal
+            new THREE.Vector3(6, 8, 6),        // Same size as overworld portals
+            () => {
+                console.log("Returning to Overworld");
+                if (game) {
+                    game.switchLevel(2);  // 2 represents the overworld
+                }
+            }
+        );
+
+        // Add descriptive text above portal
+        level.levelRenderer?.addSimpleText(
+            "OVERWORLD",
+            new THREE.Vector3(-11, 7, -11),
+            "white",
+            "#000000"
+        );
     }
     
     /**
@@ -391,10 +420,10 @@ export class TestLevels {
     public static createSimpleTestLevel(level: Level): void {
         // Platform material with shadow support
         const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3366cc,
+            color: 0xff3366,          // Vibrant pink-red (matching main platform color)
             roughness: 0.4,
             metalness: 0.3,
-            emissive: 0x3366cc,
+            emissive: 0xff3366,       // Matching emissive color
             emissiveIntensity: 0.2,
             transparent: false,
         });
