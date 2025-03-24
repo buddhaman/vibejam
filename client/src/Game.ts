@@ -1072,4 +1072,19 @@ export class Game {
         
         return url;
     }
+
+    /**
+     * Trigger a screen transition and then redirect to a URL
+     * @param url The URL to navigate to after the transition effect
+     */
+    public transitionToPortal(url: string): void {
+        console.log(`Starting portal transition to: ${url}`);
+        
+        // Start the transition animation and execute the URL redirect when the transition completes
+        this.screenTransition.transitionInStart(() => {
+            // This code runs when transition is complete
+            console.log(`Portal transition complete, redirecting to: ${url}`);
+            window.location.href = url;
+        });
+    }
 } 

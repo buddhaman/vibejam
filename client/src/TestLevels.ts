@@ -391,8 +391,8 @@ export class TestLevels {
                 
                 console.log("Redirecting to Vibeverse: " + portalUrl);
                 
-                // Redirect to the portal
-                window.location.href = portalUrl;
+                // Use the transitionToPortal method instead of direct redirection
+                game.transitionToPortal(portalUrl);
             }
         );
         
@@ -457,12 +457,14 @@ export class TestLevels {
                         const returnUrl = game.buildPortalReturnUrl();
                         
                         if (returnUrl) {
-                            // Redirect to the return URL with all parameters
-                            window.location.href = returnUrl;
+                            // Use transitionToPortal method for return journey
+                            game.transitionToPortal(returnUrl);
                         } else {
                             console.error("Failed to build return URL");
                             // Fallback to direct referrer if URL building failed
-                            window.location.href = refUrl;
+                            if (refUrl) {
+                                game.transitionToPortal(refUrl);
+                            }
                         }
                     }
                 );
@@ -478,7 +480,9 @@ export class TestLevels {
                 
                 // Position player at a safer distance from the portal to prevent immediate activation
                 // Also move player position to match the new portal location
-                level.localPlayer.setPosition(new THREE.Vector3(-20, 5, -10));
+                if (level.localPlayer) {
+                    level.localPlayer.setPosition(new THREE.Vector3(-20, 5, -10));
+                }
                 
                 // Update all text positions
                 level.levelRenderer?.addSimpleText(
@@ -989,6 +993,7 @@ export class TestLevels {
                     "white",
                     "black"
                 );
+                // Switch to overworld after showing the congratulations message
                 game.switchLevel(0);
             },
             true  // Set triggerOnce to true
