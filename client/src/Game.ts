@@ -44,8 +44,8 @@ export class Game {
         // Initialize after renderer is set up
         this.init();
         
-        // Load the default level
-        this.switchLevel(1);
+        // Load the default level (now the overworld)
+        this.switchLevel(2);
         
         // Setup controls
         this.setupControls();
@@ -96,10 +96,12 @@ export class Game {
             this.inputKeys[event.key.toLowerCase()] = true;
             
             // Handle level switching separately (not in the listener)
-            if (event.key === '1') {
-                this.switchLevel(0);
+            if (event.key === '0') {
+                this.switchLevel(2); // Overworld
+            } else if (event.key === '1') {
+                this.switchLevel(0); // Jungle Gym
             } else if (event.key === '2') {
-                this.switchLevel(1);
+                this.switchLevel(1); // Simple Test
             }
         };
         
@@ -438,12 +440,13 @@ export class Game {
     public addDesktopFullscreenButton(): void {
         // Create container for fullscreen button and controls
         const container = document.createElement('div');
+        container.id = 'fullscreen-controls-container'; // Add an ID for easier reference
         container.style.position = 'fixed';
         container.style.top = '10px';
         container.style.right = '10px';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
-        container.style.alignItems = 'flex-end'; // Align items to the right
+        container.style.alignItems = 'flex-end';
         container.style.gap = '10px';
         container.style.zIndex = '9999';
         
@@ -490,6 +493,7 @@ export class Game {
             <div>SHIFT - Crouch/Release rope</div>
             <div>Mouse - Look around</div>
             <div>Mouse wheel - Zoom</div>
+            <div>0,1,2 - Switch Levels</div>
         `;
         
         // Add elements to container
@@ -529,30 +533,39 @@ export class Game {
         
         // Update visibility based on fullscreen state
         document.addEventListener('fullscreenchange', () => {
+            // Get fresh reference to container each time
+            const controlsContainer = document.getElementById('fullscreen-controls-container');
+            if (!controlsContainer) return;
+
             if (document.fullscreenElement) {
-                container.style.opacity = '0';
-                setTimeout(() => {
-                    container.style.display = 'none';
-                }, 1000);
+                controlsContainer.style.display = 'none';
             } else {
-                container.style.display = 'flex';
-                container.style.opacity = '1';
+                controlsContainer.style.display = 'flex';
+                
+                // Reset the controls hint to semi-transparent state
+                const controlsHint = controlsContainer.querySelector('.controls-hint') as HTMLElement;
+                if (controlsHint) {
+                    controlsHint.style.opacity = '0.3';
+                }
             }
         });
         
         // Add hover effect to show/hide controls hint
         container.addEventListener('mouseenter', () => {
-            controlsHint.style.opacity = '1';
+            const controlsHint = container.querySelector('.controls-hint') as HTMLElement;
+            if (controlsHint) {
+                controlsHint.style.opacity = '1';
+            }
         });
         
         container.addEventListener('mouseleave', () => {
             if (!document.fullscreenElement) {
-                controlsHint.style.opacity = '0.3';
+                const controlsHint = container.querySelector('.controls-hint') as HTMLElement;
+                if (controlsHint) {
+                    controlsHint.style.opacity = '0.3';
+                }
             }
         });
-        
-        // Initially set controls hint to semi-transparent
-        controlsHint.style.opacity = '0.3';
     }
 
     public toggleToonShadows(enabled: boolean): void {
@@ -624,10 +637,12 @@ export class Game {
             case 1:
                 TestLevels.createSimpleTestLevel(this.level);
                 break;
+            case 2:
+                TestLevels.createOverworld(this.level, this);
+                break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);
-                TestLevels.createJungleGymTest(this.level);
-                player.move(new THREE.Vector3(0, 5, 0));
+                TestLevels.createOverworld(this.level, this);
         }
         
         // Re-initialize controls

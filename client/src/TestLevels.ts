@@ -3,8 +3,117 @@ import { Level } from './Level';
 import { StaticBody } from './StaticBody';
 import { RigidBody } from './RigidBody';
 import { Saw } from './Saw';
+import { Game } from './Game';
 
 export class TestLevels {
+    /**
+     * Creates an overworld hub with portals to different levels
+     * @param level The Level instance to add level elements to
+     * @param game The Game instance for level switching
+     */
+    public static createOverworld(level: Level, game: Game): void {
+        // Platform material with shadow support
+        const platformMaterial = new THREE.MeshStandardMaterial({
+            color: 0x44aa88,
+            roughness: 0.4,
+            metalness: 0.3,
+            emissive: 0x44aa88,
+            emissiveIntensity: 0.2,
+        });
+        
+        // Main platform in the center
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-15, 0, -15),
+            new THREE.Vector3(15, 2, 15),
+            platformMaterial,
+            "overworld-platform"
+        ));
+        
+        // Create portal materials with glowing effects
+        const portal1Material = new THREE.MeshStandardMaterial({
+            color: 0xff6600,
+            roughness: 0.3,
+            metalness: 0.8,
+            emissive: 0xff6600,
+            emissiveIntensity: 0.6
+        });
+        
+        const portal2Material = new THREE.MeshStandardMaterial({
+            color: 0x00aaff,
+            roughness: 0.3,
+            metalness: 0.8,
+            emissive: 0x00aaff,
+            emissiveIntensity: 0.6
+        });
+        
+        // Portal to Level 0 (Jungle Gym)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-10, 2, 0),
+            new THREE.Vector3(-8, 6, 2),
+            portal1Material,
+            "portal-level0"
+        ));
+        
+        // Portal to Level 1 (Simple Test)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(8, 2, 0),
+            new THREE.Vector3(10, 6, 2),
+            portal2Material,
+            "portal-level1"
+        ));
+        
+        // Add action area for Level 0 portal
+        level.addActionArea(
+            new THREE.Vector3(-9, 4, 1),  // Center of the portal
+            new THREE.Vector3(3, 4, 3),   // Size of the trigger area
+            () => {
+                console.log("Switching to Level 0 (Jungle Gym)");
+                if (game) {
+                    game.switchLevel(0);
+                }
+            }
+        );
+        
+        // Add action area for Level 1 portal
+        level.addActionArea(
+            new THREE.Vector3(9, 4, 1),   // Center of the portal
+            new THREE.Vector3(3, 4, 3),   // Size of the trigger area
+            () => {
+                console.log("Switching to Level 1 (Simple Test)");
+                if (game) {
+                    game.switchLevel(1);
+                }
+            }
+        );
+        
+        // Add descriptive text
+        level.levelRenderer?.addSimpleText(
+            "JUNGLE GYM",
+            new THREE.Vector3(-9, 7, 1),
+            "white",
+            "#ff6600"
+        );
+        
+        level.levelRenderer?.addSimpleText(
+            "SWING & UPDRAFT",
+            new THREE.Vector3(9, 7, 1),
+            "white",
+            "#00aaff"
+        );
+        
+        level.levelRenderer?.addSimpleText(
+            "OVERWORLD HUB",
+            new THREE.Vector3(0, 10, 0),
+            "white",
+            "#44aa88"
+        );
+        
+        // Position player in the center of the overworld
+        level.localPlayer?.setPosition(new THREE.Vector3(0, 5, 0));
+        
+        console.log("Overworld hub created with portals to different levels");
+    }
+
     /**
      * Creates the Jungle Gym test level with all platforms, ropes, and obstacles
      * @param Level The Level instance to add level elements to
