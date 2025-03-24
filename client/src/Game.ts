@@ -3,6 +3,7 @@ import { MobileControls } from './MobileControls';
 import { TestLevels } from './TestLevels';
 import { Level } from './Level';
 import { LevelRenderer } from './LevelRenderer';
+import { ScreenTransition } from './ScreenTransition';
 
 export class Game {
 
@@ -24,6 +25,9 @@ export class Game {
     // Add mobile controls
     private mobileControls: MobileControls | null = null;
     private isMobile: boolean = false;
+    
+    // Add screen transition
+    private screenTransition: ScreenTransition = new ScreenTransition();
 
     // Add a property to track our event listeners
     private keydownListener: ((event: KeyboardEvent) => void) | null = null;
@@ -603,6 +607,18 @@ export class Game {
     public switchLevel(levelIndex: number): void {
         console.log(`Starting switch to level ${levelIndex}`);
         
+        // Start transition animation and execute level change when transition completes
+        this.screenTransition.transitionInStart(() => {
+            // This code runs when transition is complete
+            this.doLevelSwitch(levelIndex);
+        });
+    }
+    
+    /**
+     * Perform the actual level switch after transition effect
+     * @param levelIndex The index of the level to switch to
+     */
+    private doLevelSwitch(levelIndex: number): void {
         // Remove all event listeners to prevent loops
         this.removeKeyListeners();
         
@@ -655,5 +671,6 @@ export class Game {
     public destroy(): void {
         this.removeKeyListeners();
         // Clean up other event listeners and resources
+        this.screenTransition.destroy();
     }
 } 
