@@ -33,11 +33,14 @@ export class SimpleText {
         const texture = new THREE.CanvasTexture(canvas);
         const material = new THREE.SpriteMaterial({ 
             map: texture,
-            transparent: true
+            transparent: true,
+            depthTest: false,    // Disable depth testing
+            depthWrite: false    // Don't write to depth buffer
         });
         this.sprite = new THREE.Sprite(material);
         this.sprite.position.copy(position);
         this.sprite.scale.set(10, 2.5, 1);
+        this.sprite.renderOrder = 999999; // Very high render order to ensure it's drawn last
 
         scene.add(this.sprite);
     }
