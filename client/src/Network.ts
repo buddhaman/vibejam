@@ -62,7 +62,7 @@ export class Network {
 
     public setupConnection(conn: DataConnection): void {
         this.connections.set(conn.peer, conn);
-        this.game.addPlayer(conn.peer);
+        //this.game.addPlayer(conn.peer);
 
         conn.on('data', (data: any) => {
             if (data.type === 'position') {
@@ -73,7 +73,7 @@ export class Network {
         conn.on('close', () => {
             console.log('Connection closed with: ' + conn.peer);
             this.connections.delete(conn.peer);
-            this.game.removePlayer(conn.peer);
+            //this.game.removePlayer(conn.peer);
         });
     }
 

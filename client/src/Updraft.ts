@@ -252,7 +252,6 @@ export class Updraft {
                 lineWidth,
                 undefined,
                 debugColor.getHex(),
-                pulseOpacity
             );
         });
         
@@ -281,7 +280,6 @@ export class Updraft {
                     lineWidth,
                     undefined,
                     debugColor.getHex(),
-                    0.2 // Fainter than the main box
                 );
             }
         }
