@@ -518,67 +518,101 @@ export class TestLevels {
      * @param level The Level instance to add level elements to
      */
     public static createSimpleTestLevel(level: Level): void {
-        // Platform material with shadow support
-        const platformMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff3366,          // Vibrant pink-red (matching main platform color)
-            roughness: 0.4,
-            metalness: 0.3,
-            emissive: 0xff3366,       // Matching emissive color
-            emissiveIntensity: 0.2,
-            transparent: false,
-        });
+        // Starting platform - high up
+        this.createHorizontalPlatform(
+            level,
+            new THREE.Vector3(0, 100, 0),    // Center position - very high up
+            30,                              // Width
+            30,                              // Depth
+            3,                               // Height
+            this.MAIN_PLATFORM_MATERIAL,
+            "platform-start"
+        );
         
-        // Platform 1 - Starting platform (higher up)
-        const platform1 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 49, -15),
-            new THREE.Vector3(15, 52, 15),
-            platformMaterial,
-            "platform-1"
-        ));
+        // First lower platform with updraft
+        this.createHorizontalPlatform(
+            level,
+            new THREE.Vector3(40, 20, 0),    // Center position - much lower
+            15,                              // Width
+            15,                              // Depth
+            2,                               // Height
+            this.MAIN_PLATFORM_MATERIAL,
+            "platform-updraft-1"
+        );
+
+        // First updraft - strong enough to boost player high
+        level.addUpdraft(
+            new THREE.Vector3(40, 50, 0),    // Position centered on first platform
+            new THREE.Vector3(12, 60, 12),   // Size - tall enough to catch falling player
+            0.15                             // Strength - stronger to lift player high
+        );
+
+        // Second lower platform with updraft
+        this.createHorizontalPlatform(
+            level,
+            new THREE.Vector3(80, 15, 0),    // Center position - even lower
+            15,                              // Width
+            15,                              // Depth
+            2,                               // Height
+            this.MAIN_PLATFORM_MATERIAL,
+            "platform-updraft-2"
+        );
+
+        // Second updraft
+        level.addUpdraft(
+            new THREE.Vector3(80, 50, 0),    // Position centered on second platform
+            new THREE.Vector3(12, 70, 12),   // Size - even taller
+            0.17                             // Strength - slightly stronger
+        );
+
+        // Rope for final swing - positioned after second updraft
+        const rope = level.addRope(
+            new THREE.Vector3(120, 70, 0),   // Anchor point high up after second updraft
+            15,                              // More segments for smoother swing
+            25,                              // Length - long enough to catch while falling
+            0.3,                             // Thicker radius for better visibility
+            0xffdd22                         // Yellow-orange color
+        );
+
+        // Rope for final swing - positioned after second updraft
+        const rope2 = level.addRope(
+            new THREE.Vector3(140, 70, 0),   // Anchor point high up after second updraft
+            15,                              // More segments for smoother swing
+            25,                              // Length - long enough to catch while falling
+            0.3,                             // Thicker radius for better visibility
+            0xffdd22                         // Yellow-orange color
+        );
+
+        // Final platform with action area
+        this.createHorizontalPlatform(
+            level,
+            new THREE.Vector3(180, 35, 0),   // Center position
+            25,                              // Width
+            25,                              // Depth
+            3,                               // Height
+            this.MAIN_PLATFORM_MATERIAL,
+            "platform-final"
+        );
         
-        // Platform 2 - Distant platform (also higher up)
-        const platform2 = level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(35, 44, -15),
-            new THREE.Vector3(75, 47, 15),
-            platformMaterial,
-            "platform-2"
-        ));
-        
-        // Add an action area on platform 2
+        // Action area on final platform
         level.addActionArea(
-            new THREE.Vector3(55, 49, 0),  // Center of platform 2, slightly above it
-            new THREE.Vector3(10, 4, 10),  // Size of the trigger area
+            new THREE.Vector3(160, 44, 0),   // Center of final platform, slightly above
+            new THREE.Vector3(10, 4, 10),    // Size of the trigger area
             () => {
-                console.log("Congratulations! You made it to platform 2!");
+                console.log("Congratulations! You completed the skydiving challenge!");
                 level.levelRenderer?.addSimpleText(
-                    "Congratulations! You made it to platform 2!",
-                    new THREE.Vector3(55, 49, 0),
+                    "Congratulations! You completed the skydiving challenge!",
+                    new THREE.Vector3(160, 44, 0),
                     "white",
                     "black"
                 );
             },
-            true  // Set triggerOnce to true for the congratulations message
+            true  // Set triggerOnce to true
         );
 
-        // Add rope for swinging between platforms
-        const rope = level.addRope(
-            new THREE.Vector3(20, 70, 0),  // Anchor high above middle point
-            10,                           // More segments for smoother swinging
-            20,                           // Long enough to reach the player
-            0.2,                          // Thicker radius for better visibility
-            0xffdd22                      // Yellow-orange color
-        );
+        // Position player on the starting platform
+        level.localPlayer?.setPosition(new THREE.Vector3(0, 104, 0));
         
-        // Add an updraft between the platforms to allow alternative approach
-        level.addUpdraft(
-            new THREE.Vector3(25, 25, 0),    // Position between platforms but lower
-            new THREE.Vector3(10, 50, 10),     // Size (width, height, depth)
-            0.12                            // Strength - strong enough to lift the player
-        );
-
-        level.localPlayer?.setPosition(new THREE.Vector3(0, 54, 0));
-        console.log(level.localPlayer);
-        
-        console.log("Simple test level created with swinging rope between platforms and an updraft");
+        console.log("Skydiving challenge level created with updrafts and rope swing");
     }
 }
