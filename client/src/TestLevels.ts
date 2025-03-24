@@ -180,7 +180,7 @@ export class TestLevels {
             level.addStaticBody(StaticBody.createBox(
                 new THREE.Vector3(0, 2, -39 + i * 3),
                 new THREE.Vector3(0.5, 4, -38 + i * 3),
-                this.PORTAL_MATERIAL,
+            this.PORTAL_MATERIAL,
                 `bridge-rail-left-${i}`
             ));
             
@@ -281,16 +281,15 @@ export class TestLevels {
             emissiveIntensity: 0.8,   // Brighter glow
         });
         
-        // Create a more dramatic portal structure on the Vibeverse island
+        // Create a smaller central portal structure on the Vibeverse island
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(3, 2, -50),
-            new THREE.Vector3(7, 10, -47),
+            new THREE.Vector3(4, 2, -49.5),     // Adjusted position
+            new THREE.Vector3(6, 8, -47.5),     // Smaller width (2 units instead of 4)
             vibeverseMaterial,
             "vibeverse-portal"
         ));
         
-        // Add some decorative elements around the portal
-        // Left pillar
+        // Left pillar - keep the same
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(1, 2, -48.5),
             new THREE.Vector3(2, 12, -47.5),
@@ -298,7 +297,7 @@ export class TestLevels {
             "vibeverse-pillar-left"
         ));
         
-        // Right pillar
+        // Right pillar - keep the same
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(8, 2, -48.5),
             new THREE.Vector3(9, 12, -47.5),
@@ -306,7 +305,7 @@ export class TestLevels {
             "vibeverse-pillar-right"
         ));
         
-        // Top arch
+        // Top arch - keep the same
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(1, 11, -48.5),
             new THREE.Vector3(9, 12, -47.5),
@@ -314,10 +313,10 @@ export class TestLevels {
             "vibeverse-arch"
         ));
         
-        // Add action area for the Vibeverse portal
+        // Make the action area larger to make it easier to enter
         level.addActionArea(
             new THREE.Vector3(5, 6, -48.5),   // Center of the portal
-            new THREE.Vector3(8, 10, 4),      // Large interaction area
+            new THREE.Vector3(10, 12, 6),     // Larger interaction area (was 8,10,4)
             () => {
                 console.log("Entering Vibeverse Portal");
                 
@@ -439,18 +438,18 @@ export class TestLevels {
                     emissiveIntensity: 0.9,  // Higher emissive for more glow
                 });
                 
-                // Create the return portal structure - make it slightly larger and more noticeable
+                // Create the return portal structure - make it slightly larger and more noticeable, place in corner
                 level.addStaticBody(StaticBody.createBox(
-                    new THREE.Vector3(-5, 2, -10),
-                    new THREE.Vector3(-1, 9, -8),  // Taller portal
+                    new THREE.Vector3(-22, 2, -22),  // Move to far corner of main platform
+                    new THREE.Vector3(-18, 9, -18),  // Taller portal
                     returnPortalMaterial,
                     "return-portal"
                 ));
                 
                 // Add action area for the return portal
                 level.addActionArea(
-                    new THREE.Vector3(-3, 5, -9),  // Center of the portal
-                    new THREE.Vector3(8, 10, 8),   // Large interaction area
+                    new THREE.Vector3(-20, 5, -20),  // Center of the portal
+                    new THREE.Vector3(8, 10, 8),     // Large interaction area
                     () => {
                         console.log("Returning to previous game");
                         
@@ -477,54 +476,34 @@ export class TestLevels {
                     // Keep the original URL if parsing fails
                 }
                 
-                // Add multiple descriptive texts to make it very clear this is where player entered
+                // Position player at a safer distance from the portal to prevent immediate activation
+                // Also move player position to match the new portal location
+                level.localPlayer.setPosition(new THREE.Vector3(-20, 5, -10));
+                
+                // Update all text positions
                 level.levelRenderer?.addSimpleText(
                     "RETURN PORTAL",
-                    new THREE.Vector3(-3, 9.5, -9),
+                    new THREE.Vector3(-20, 9.5, -20),
                     "white",
                     "#000000"
                 );
                 
-                // Add "YOU ENTERED HERE" text
                 level.levelRenderer?.addSimpleText(
                     "YOU ENTERED HERE",
-                    new THREE.Vector3(-3, 8.5, -9),
+                    new THREE.Vector3(-20, 8.5, -20),
                     "#ffff00", // Bright yellow
                     "#000000"
                 );
                 
-                // Add referrer site name if available
                 level.levelRenderer?.addSimpleText(
                     `BACK TO: ${displayUrl}`,
-                    new THREE.Vector3(-3, 7.5, -9),
+                    new THREE.Vector3(-20, 7.5, -20),
                     "#00ffff", // Cyan text
                     "#000000"
                 );
                 
-                // Add floating arrow pointing to the portal
-                this.createFloatingArrow(level, new THREE.Vector3(-3, 11, -9));
-                
-                // Position player in front of the return portal
-                if (level.localPlayer) {
-                    // Position player at a safer distance from the portal to prevent immediate activation
-                    level.localPlayer.setPosition(new THREE.Vector3(-3, 5, -3));
-                    
-                    // Extract player information from Game's portal parameters
-                    const username = game.getPortalParameter('username') || "unknown";
-                    const color = game.getPortalParameter('color') || "pink";
-                    const speed = game.getPortalParameter('speed') || "5";
-                    const team = game.getPortalParameter('team') || "";
-                    
-                    // Apply customization to the player
-                    level.localPlayer.setCustomization({
-                        username: username,
-                        color: color,
-                        team: team,
-                        moveSpeed: parseFloat(speed)
-                    });
-                    
-                    console.log(`Applied portal customization to player: ${username}, ${color}, ${speed}`);
-                }
+                // Update arrow position
+                this.createFloatingArrow(level, new THREE.Vector3(-20, 11, -20));
                 
                 // Additional welcome message
                 level.levelRenderer?.addSimpleText(
