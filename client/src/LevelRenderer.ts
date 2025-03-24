@@ -309,7 +309,9 @@ export class LevelRenderer {
         });
 
         // Update shadow map camera to follow player
-        this.updateShadowCamera(this.level.localPlayer!.getPosition());
+        if (this.level.localPlayer) {
+            this.updateShadowCamera(this.level.localPlayer.getPosition());
+        }
 
         // Render all ropes
         this.level.ropes.forEach(rope => {

@@ -154,7 +154,6 @@ export class Player {
         if(this.movementState != MovementState.OnRope && this.notOnGroundTimer > 10){
             this.movementState = MovementState.InAir;
         }
-        console.log(MovementState[this.movementState]);
         
         // Find relevant particles for applying forces
         let highestParticle = particles[0];
