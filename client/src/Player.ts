@@ -348,15 +348,23 @@ export class Player {
     }
 
     /**
-     * Move the player by adding a translation vector to all particles
+     * Set the position of the player by translating all particles
      * @param translation The vector to translate by
      */
-    public move(translation: THREE.Vector3): void {
+    public setPosition(translation: THREE.Vector3): void {
         const particles = this.verletBody.getParticles();
+        // Find average position of all particles
+        const avgPosition = new THREE.Vector3();
+        particles.forEach(particle => {
+            avgPosition.add(particle.position);
+        });
+        avgPosition.divideScalar(particles.length);
         
         // Apply translation to all particles
         particles.forEach(particle => {
+            particle.position.sub(avgPosition);
             particle.position.add(translation);
+            particle.previousPosition.sub(avgPosition);
             particle.previousPosition.add(translation);
         });
     }

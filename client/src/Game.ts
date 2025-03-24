@@ -45,7 +45,7 @@ export class Game {
         this.init();
         
         // Load the default level
-        this.switchLevel(0);
+        this.switchLevel(1);
         
         // Setup controls
         this.setupControls();
@@ -620,11 +620,9 @@ export class Game {
         switch (levelIndex) {
             case 0:
                 TestLevels.createJungleGymTest(this.level);
-                player.move(new THREE.Vector3(0, 5, 0));
                 break;
             case 1:
                 TestLevels.createSimpleTestLevel(this.level);
-                player.move(new THREE.Vector3(0, 15, 0));
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);

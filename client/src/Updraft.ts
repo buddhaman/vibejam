@@ -200,7 +200,7 @@ export class Updraft {
         }
         
         // Debug boundary can be toggled if needed
-        this.renderDebugBoundary(instancedRenderer);
+        // this.renderDebugBoundary(instancedRenderer);
     }
     
     /**

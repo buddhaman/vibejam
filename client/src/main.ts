@@ -1,6 +1,5 @@
 import { Game } from './Game';
 import { Network } from './Network';
-import * as THREE from 'three';
 
 class GameClient {
     public game: Game;
@@ -20,37 +19,7 @@ class GameClient {
         this.game = new Game();
         this.network = new Network(this.game);
         this.localPlayerId = 'local';
-        this.setupLocalPlayer();
-        this.setupControls();
         this.animate();
-    }
-
-    public setupLocalPlayer(): void {
-        this.game.level!.addPlayer(this.localPlayerId, true);
-    }
-
-    public setupControls(): void {
-        document.addEventListener('keydown', (event) => {
-            switch (event.key.toLowerCase()) {
-                case 'w': this.input.w = true; break;
-                case 's': this.input.s = true; break;
-                case 'a': this.input.a = true; break;
-                case 'd': this.input.d = true; break;
-                case ' ': this.input.space = true; break;
-                case 'shift': this.input.shift = true; break;
-            }
-        });
-
-        document.addEventListener('keyup', (event) => {
-            switch (event.key.toLowerCase()) {
-                case 'w': this.input.w = false; break;
-                case 's': this.input.s = false; break;
-                case 'a': this.input.a = false; break;
-                case 'd': this.input.d = false; break;
-                case ' ': this.input.space = false; break;
-                case 'shift': this.input.shift = false; break;
-            }
-        });
     }
 
     public animate(): void {

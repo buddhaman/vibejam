@@ -362,7 +362,8 @@ export class TestLevels {
             0.12                            // Strength - strong enough to lift the player
         );
 
-        level.localPlayer?.move(new THREE.Vector3(0, 52, 0));
+        level.localPlayer?.setPosition(new THREE.Vector3(0, 54, 0));
+        console.log(level.localPlayer);
         
         console.log("Simple test level created with swinging rope between platforms and an updraft");
     }

@@ -63,11 +63,7 @@ export class Level {
         
         // Move player to start on high platform if it's the local player
         if (isLocal) {
-            player.move(new THREE.Vector3(0, 5, 0)); // Position above the platform
             this.localPlayer = player;
-            
-            // Also update camera target to the high platform
-            //this.cameraTarget.set(0, 105, 0);
         }
 
         return player;
@@ -552,26 +548,6 @@ export class Level {
             }
         }
     }
-    
-    /**
-     * Render the level using the provided renderer
-     * @param deltaTime Time since last frame
-     */
-    public render(deltaTime: number = 0.016): void {
-        if (!this.levelRenderer) return;
-        
-        
-        // Render updrafts
-        for (const updraft of this.updrafts) {
-            updraft.render(this.levelRenderer.instancedRenderer, deltaTime);
-        }
-        
-        // Render action areas
-        for (const actionArea of this.actionAreas) {
-            actionArea.render(this.levelRenderer.instancedRenderer, deltaTime);
-        }
-    }
-
 }
 
 
