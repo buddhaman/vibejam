@@ -405,6 +405,7 @@ export class LevelRenderer {
         
         // Reset the scene background
         this.scene.background = new THREE.Color(0xffe6f2);
+        this.cameraTheta = -Math.PI;
         
         // Reset lighting
         this.setupLighting();
