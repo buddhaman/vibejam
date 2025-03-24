@@ -80,21 +80,21 @@ export class TestLevels {
             "JUNGLE GYM",
             new THREE.Vector3(-9, 7, 1),
             "white",
-            "#ff6600"
+            "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
             "SWING & UPDRAFT",
             new THREE.Vector3(9, 7, 1),
             "white",
-            "#00aaff"
+            "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
             "OVERWORLD HUB",
             new THREE.Vector3(0, 10, 0),
             "white",
-            "#44aa88"
+            "#000000"
         );
         
         // Position player in the center of the overworld

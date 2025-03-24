@@ -8,18 +8,21 @@ export class SimpleText {
         position: THREE.Vector3, 
         scene: THREE.Scene,
         textColor: string = 'black',
-        outlineColor: string = 'black',  // Kept for backward compatibility but unused
-        fontSize: number = 24,  // Reduced default font size
-        overallScale: number = 0.5  // Reduced scale factor
+        outlineColor: string = 'black',  // Color for the text outline
+        fontSize: number = 48,  // Increased font size (1.5x from 32)
+        overallScale: number = 1.5  // Increased scale factor (1.5x from 1.0)
     ) {
         // Use higher resolution for the actual rendering
         const resolutionScale = 6;  // Higher resolution for crisper text
         const actualFontSize = fontSize * resolutionScale;
         
+        // Font family with fallbacks
+        const fontFamily = '"Comic Sans MS", "Chalkboard SE", "Marker Felt", "Short Stack", cursive';
+        
         // Create temporary canvas to measure text dimensions
         const measuringCanvas = document.createElement('canvas');
         const measuringContext = measuringCanvas.getContext('2d')!;
-        measuringContext.font = `${actualFontSize}px "Comic Sans MS", cursive`;
+        measuringContext.font = `${actualFontSize}px ${fontFamily}`;
         
         // Measure text width at high resolution
         const metrics = measuringContext.measureText(text);
@@ -47,9 +50,15 @@ export class SimpleText {
         // Set up text style
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.font = `${actualFontSize}px "Comic Sans MS", cursive`;
+        context.font = `${actualFontSize}px ${fontFamily}`;
         
-        // Draw the text - clean and simple
+        // Draw the text outline
+        context.strokeStyle = outlineColor;
+        context.lineWidth = actualFontSize * 0.1; // Outline thickness proportional to font size
+        context.lineJoin = 'round';
+        context.strokeText(text, canvas.width/2, canvas.height/2);
+        
+        // Draw the text fill
         context.fillStyle = textColor;
         context.fillText(text, canvas.width/2, canvas.height/2);
         
@@ -71,7 +80,7 @@ export class SimpleText {
         
         // Scale appropriately - divide by resolution scale to maintain same world size
         const aspectRatio = canvasWidth / canvasHeight;
-        const baseScale = (2.0 * overallScale) / resolutionScale;
+        const baseScale = (3.0 * overallScale) / resolutionScale;  // Increased base scale
         this.sprite.scale.set(baseScale * aspectRatio, baseScale, 1);
         
         this.sprite.renderOrder = 999999;
