@@ -101,6 +101,10 @@ export class Level {
             // Check if player has fallen below y=0
             if (this.localPlayer.getPosition().y < 0) {
                 this.game.switchLevel(this.levelIdx);
+                this.levelRenderer?.spawnSawCollisionParticles(
+                    this.localPlayer.getPosition(),
+                    new THREE.Vector3(0, 2, 0)
+                );
                 this.removePlayer(this.localPlayer.id);
                 this.localPlayer = null;
                 return;
