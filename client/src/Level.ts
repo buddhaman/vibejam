@@ -397,7 +397,7 @@ export class Level {
 
     public checkPlayerRopeInteraction(player: Player, spacePressed: boolean): void {
         const playerPos = player.getPosition();
-        const interactionRadius = 3.0; // How close player needs to be to grab rope
+        const interactionRadius = 4.0; // How close player needs to be to grab rope
         
         // If player already has a rope, don't check for new ones
         if (player.rope) return;

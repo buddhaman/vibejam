@@ -49,7 +49,7 @@ export class Game {
         this.init();
         
         // Load the default level (now the overworld)
-        this.switchLevel(2);
+        this.switchLevel(0);
         
         // Setup controls
         this.setupControls();
@@ -101,11 +101,11 @@ export class Game {
             
             // Handle level switching separately (not in the listener)
             if (event.key === '0') {
-                this.switchLevel(2); // Overworld
+                this.switchLevel(0); // Overworld
             } else if (event.key === '1') {
-                this.switchLevel(0); // Jungle Gym
+                this.switchLevel(1); // Jungle Gym
             } else if (event.key === '2') {
-                this.switchLevel(1); // Simple Test
+                this.switchLevel(2); // Simple Test
             }
         };
         
@@ -641,20 +641,20 @@ export class Game {
         
         // Add the new renderer's canvas to the DOM
         document.body.appendChild(this.levelRenderer.renderer.domElement);
-        
+
         // Create a player
         const player = this.level.addPlayer('local', true);
         
         // Load the appropriate level
         switch (levelIndex) {
             case 0:
-                TestLevels.createJungleGymTest(this.level, this);
+                TestLevels.createOverworld(this.level, this);
                 break;
             case 1:
-                TestLevels.createSimpleTestLevel(this.level);
+                TestLevels.createJungleGymTest(this.level, this);
                 break;
             case 2:
-                TestLevels.createOverworld(this.level, this);
+                TestLevels.createSkydivingChallenge(this.level, this);
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);

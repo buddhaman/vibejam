@@ -182,6 +182,12 @@ export class Player {
             if (this.isSqueezing) {
                 this.rope = null;
                 this.movementState = MovementState.InAir;
+                
+                // Add upward jumping force to all particles
+                const jumpForce = new THREE.Vector3(0, 0.4, 0);
+                particles.forEach(particle => {
+                    particle.applyImpulse(jumpForce);
+                });
             } else {
                 // Calculate the force needed to move hands to rope
                 const toRope = new THREE.Vector3().subVectors(ropeEndPos, handMidpoint);

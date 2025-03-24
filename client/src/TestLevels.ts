@@ -157,9 +157,9 @@ export class TestLevels {
             new THREE.Vector3(-9, 4, 1),    // Center of the portal
             new THREE.Vector3(6, 8, 6),     // Doubled size from 3,4,3 to 6,8,6
             () => {
-                console.log("Switching to Level 0 (Jungle Gym)");
+                console.log("Switching to Level 1 (Jungle Gym)");
                 if (game) {
-                    game.switchLevel(0);
+                    game.switchLevel(1);
                 }
             }
         );
@@ -170,7 +170,7 @@ export class TestLevels {
             () => {
                 console.log("Switching to Level 1 (Simple Test)");
                 if (game) {
-                    game.switchLevel(1);
+                    game.switchLevel(2);
                 }
             }
         );
@@ -230,7 +230,7 @@ export class TestLevels {
             () => {
                 console.log("Returning to Overworld");
                 if (game) {
-                    game.switchLevel(2);  // 2 represents the overworld
+                    game.switchLevel(0);  // 0 represents the overworld
                 }
             }
         );
@@ -517,7 +517,7 @@ export class TestLevels {
      * Creates a simple test level with two platforms and a rope for swinging
      * @param level The Level instance to add level elements to
      */
-    public static createSimpleTestLevel(level: Level): void {
+    public static createSkydivingChallenge(level: Level, game: Game): void {
         // Starting platform - high up
         this.createHorizontalPlatform(
             level,
@@ -586,17 +586,17 @@ export class TestLevels {
         // Final platform with action area
         this.createHorizontalPlatform(
             level,
-            new THREE.Vector3(180, 35, 0),   // Center position
+            new THREE.Vector3(180, 32, 0),   // Center position
             25,                              // Width
             25,                              // Depth
-            3,                               // Height
+            8,                               // Height
             this.MAIN_PLATFORM_MATERIAL,
             "platform-final"
         );
         
         // Action area on final platform
         level.addActionArea(
-            new THREE.Vector3(160, 44, 0),   // Center of final platform, slightly above
+            new THREE.Vector3(180, 38, 0),   // Center of final platform, slightly above
             new THREE.Vector3(10, 4, 10),    // Size of the trigger area
             () => {
                 console.log("Congratulations! You completed the skydiving challenge!");
@@ -606,6 +606,7 @@ export class TestLevels {
                     "white",
                     "black"
                 );
+                game.switchLevel(0);
             },
             true  // Set triggerOnce to true
         );
