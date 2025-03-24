@@ -220,13 +220,17 @@ export class ScreenTransition {
             let bubbleProgress;
             
             if (this.transitionOut) {
-                // For transition out: RIGHT bubbles disappear first by inverting the x-position
-                // This makes bubbles on the left side stay visible longer
-                const rightToLeftDelay = ((this.canvas.width - bubble.x) / this.canvas.width) * 0.5;
-                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - rightToLeftDelay) / (1 - rightToLeftDelay)));
+                // Use a reversed x-position for transition out
+                // This makes bubbles on the left side disappear first
+                const normalizedXPos = 1 - (bubble.x / this.canvas.width); // REVERSED here
+                const outDelay = normalizedXPos * 0.7;
+                
+                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - outDelay) / (1 - outDelay)));
             } else {
-                // For transition in: left bubbles appear first (unchanged)
-                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - bubble.delay) / (1 - bubble.delay)));
+                // For transition in: left bubbles appear first (same as before)
+                const normalizedXPos = bubble.x / this.canvas.width;
+                const inDelay = normalizedXPos * 0.7;
+                bubbleProgress = Math.max(0, Math.min(1, (baseProgress - inDelay) / (1 - inDelay)));
             }
             
             // Apply easing function for smoother animation
