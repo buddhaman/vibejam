@@ -1110,11 +1110,11 @@ export class Game {
     public transitionToExternalPortal(url: string): void {
         console.log(`Starting external portal transition to: ${url}`);
         
+        window.location.href = url;
         // Use the halfway transition that only fills the screen with bubbles but doesn't clear them
         this.screenTransition.transitionHalfwayStart(() => {
             // This code runs when transition is complete (screen is filled)
             console.log(`External portal transition complete, redirecting to: ${url}`);
-            window.location.href = url;
         });
     }
 
