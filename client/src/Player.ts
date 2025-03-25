@@ -18,6 +18,8 @@ export class Player {
     public lastMovementDir: THREE.Vector3 = new THREE.Vector3(0, 0, 1); // Default last movement direction
     public eyeBaseOffset: THREE.Vector3 = new THREE.Vector3(0.2, 0.2, 0.5); // Increased z-offset to place eyes on surface of head
     public debugMode: boolean = false;
+    // Fixed head position for network players
+    public fixedHeadPosition: THREE.Vector3 | null = null;
     private blinkTimer: number = 0;
     private blinkDuration: number = 0;
     private nextBlinkTime: number = Math.random() * 60 + 20; // 20-80 frames

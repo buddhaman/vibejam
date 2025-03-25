@@ -63,8 +63,8 @@ export class Game {
         // Create network object (but don't connect yet)
         this.network = new Network(this);
         
-        // 1. CREATE LEVEL FIRST
         try {
+            // 1. CREATE LEVEL FIRST
             this.level = new Level(this, 0);
             this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
             this.level.levelRenderer = this.levelRenderer;
@@ -73,13 +73,16 @@ export class Game {
             this.init();
             this.setupControls();
             
+            // IMPORTANT: Load the level content BEFORE creating player
+            this.loadLevelContent(0);
+            
             // 2. CONNECT AND GET PLAYER ID
             this.network.connectAndGetPlayerId()
                 .then(playerId => {
                     // Store player ID
                     this.localPlayerId = playerId;
                     
-                    // 3. ADD LOCAL PLAYER (client-side only)
+                    // 3. ADD LOCAL PLAYER only AFTER level is fully loaded
                     console.log(`Creating local player with ID: ${playerId}`);
                     this.level?.addPlayer(playerId, true);
                 })
@@ -964,25 +967,35 @@ export class Game {
         }
         
         // Load the appropriate level
-        switch (levelIndex) {
-            case 0:
-                TestLevels.createOverworld(this.level, this);
-                break;
-            case 1:
-                TestLevels.createJungleGymTest(this.level, this);
-                break;
-            case 2:
-                TestLevels.createSkydivingChallenge(this.level, this);
-                break;
-            default:
-                console.error(`Unknown level index: ${levelIndex}`);
-                TestLevels.createOverworld(this.level, this);
-        }
+        this.loadLevelContent(levelIndex);
         
         // Re-initialize controls
         this.setupControls();
         
         console.log(`Level ${levelIndex} switch complete`);
+    }
+
+    // New method to ensure level content is loaded before player creation
+    private loadLevelContent(levelIndex: number): void {
+        console.log(`Loading level content for level ${levelIndex}...`);
+        
+        // Load the appropriate level content
+        switch (levelIndex) {
+            case 0:
+                TestLevels.createOverworld(this.level!, this);
+                break;
+            case 1:
+                TestLevels.createJungleGymTest(this.level!, this);
+                break;
+            case 2:
+                TestLevels.createSkydivingChallenge(this.level!, this);
+                break;
+            default:
+                console.error(`Unknown level index: ${levelIndex}`);
+                TestLevels.createOverworld(this.level!, this);
+        }
+        
+        console.log("Level content loaded successfully");
     }
 
     // Make sure to clean up on destroy
@@ -1205,51 +1218,6 @@ export class Game {
             return this.level.addPlayer(id, false);
         }
         return null;
-    }
-
-    private processNetworkState(state: GameState): void {
-        // Skip processing if we don't have a valid session ID yet
-        if (!this.room || !this.room.sessionId) return;
-        
-        console.log("Processing state update");
-        const currentPlayers = new Set<string>();
-        
-        state.players.forEach((player: Player, key: string) => {
-            currentPlayers.add(key);
-            console.log(`Player in state: ${key}`);
-            
-            // Skip our own player - we control it locally
-            if (key === this.room!.sessionId) {
-                console.log(`Skipping local player ${key}`);
-                return;
-            }
-            
-            // Add new remote players
-            if (!this.game.hasPlayer(key)) {
-                console.log(`Adding new network player: ${key}`);
-                this.game.addNetworkPlayer(key);
-            }
-            
-            // Update positions of remote players
-            const gamePlayer = this.game.getPlayer(key);
-            if (gamePlayer) {
-                const position = new THREE.Vector3(
-                    player.position.x,
-                    player.position.y,
-                    player.position.z
-                );
-                gamePlayer.setPosition(position);
-            }
-        });
-        
-        // Clean up players that are no longer in the game state
-        this.game.getPlayerIds().forEach(playerId => {
-            // Don't remove our own player
-            if (playerId !== this.room!.sessionId && !currentPlayers.has(playerId)) {
-                console.log(`Removing disconnected player: ${playerId}`);
-                this.game.removePlayer(playerId);
-            }
-        });
     }
 
     /**

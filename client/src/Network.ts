@@ -25,7 +25,7 @@ export class Network {
             // Setup state change handler
             this.room.onStateChange((state) => {
                 // Only care about remote players
-                state.players.forEach((player, id) => {
+                state.players.forEach((player: Player, id: string) => {
                     // Skip our ID, we manage our own player
                     if (id === playerId) return;
                     
