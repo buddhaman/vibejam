@@ -112,6 +112,9 @@ export class Level {
 
             this.localPlayer.forward.copy(inputs.playerForward).normalize();
             this.localPlayer.handleInput(inputs.playerInput);
+            
+            // Send position update to the network
+            this.game.sendPlayerPosition();
         }
 
         // Update all players

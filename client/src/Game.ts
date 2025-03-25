@@ -48,6 +48,9 @@ export class Game {
     private keydownListener: ((event: KeyboardEvent) => void) | null = null;
     private keyupListener: ((event: KeyboardEvent) => void) | null = null;
 
+    // Add network player ID tracking
+    private localPlayerId: string | null = null;
+
     constructor() {
         // Add error logger first thing
         this.setupErrorLogger();
@@ -1138,6 +1141,62 @@ export class Game {
     public removePlayer(id: string): void {
         if (this.level) {
             this.level.removePlayer(id);
+        }
+    }
+
+    /**
+     * Store the local player's network ID
+     */
+    public setLocalPlayerId(id: string): void {
+        this.localPlayerId = id;
+    }
+    
+    /**
+     * Get the local player's network ID
+     */
+    public getLocalPlayerId(): string | null {
+        return this.localPlayerId;
+    }
+    
+    /**
+     * Check if a player with given ID exists
+     */
+    public hasPlayer(id: string): boolean {
+        return this.level ? this.level.players.has(id) : false;
+    }
+    
+    /**
+     * Get a player by ID
+     */
+    public getPlayer(id: string): Player | undefined {
+        return this.level ? this.level.getPlayer(id) : undefined;
+    }
+    
+    /**
+     * Get all player IDs
+     */
+    public getPlayerIds(): string[] {
+        return this.level ? Array.from(this.level.players.keys()) : [];
+    }
+    
+    /**
+     * Add a network player (non-local)
+     */
+    public addNetworkPlayer(id: string): Player | null {
+        if (this.level) {
+            console.log(`Adding network player: ${id}`);
+            return this.level.addPlayer(id, false);
+        }
+        return null;
+    }
+
+    /**
+     * Update for sending position to network
+     */
+    public sendPlayerPosition(): void {
+        if (this.localPlayer && this.network) {
+            const position = this.localPlayer.getPosition();
+            this.network.sendPosition(position);
         }
     }
 } 
