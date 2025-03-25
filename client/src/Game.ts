@@ -4,6 +4,8 @@ import { TestLevels } from './TestLevels';
 import { Level } from './Level';
 import { LevelRenderer } from './LevelRenderer';
 import { ScreenTransition } from './ScreenTransition';
+import { Player } from './Player';
+import { Network } from './Network';
 
 /**
  * Add an interface to define the custom properties on the window object
@@ -50,40 +52,45 @@ export class Game {
 
     // Add network player ID tracking
     private localPlayerId: string | null = null;
+    public network: Network;
 
     constructor() {
-        // Add error logger first thing
+        // Set up basic components
         this.setupErrorLogger();
-        
-        // Detect device capabilities first
         this.detectDeviceCapabilities();
-        
-        // Always use high performance mode for now (can be adjusted based on detection)
         this.highPerformanceMode = true;
         
-        // Check for portal parameters (do this before creating level)
-        this.checkPortalParameters();
+        // Create network object (but don't connect yet)
+        this.network = new Network(this);
         
-        // Create Level and LevelRenderer with predetermined performance mode
+        // 1. CREATE LEVEL FIRST
         try {
             this.level = new Level(this, 0);
             this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
             this.level.levelRenderer = this.levelRenderer;
             
-            // Initialize after renderer is set up
+            // Initialize UI and controls
             this.init();
-            
-            // Load the default level (now the overworld)
-            this.switchLevel(0);
-            
-            // Setup controls - always set up mobile controls for touch devices
             this.setupControls();
+            
+            // 2. CONNECT AND GET PLAYER ID
+            this.network.connectAndGetPlayerId()
+                .then(playerId => {
+                    // Store player ID
+                    this.localPlayerId = playerId;
+                    
+                    // 3. ADD LOCAL PLAYER (client-side only)
+                    console.log(`Creating local player with ID: ${playerId}`);
+                    this.level?.addPlayer(playerId, true);
+                })
+                .catch(err => {
+                    console.error("Failed to get player ID:", err);
+                });
             
             // Start the game loop
             this.lastUpdateTime = performance.now();
             requestAnimationFrame(this.update.bind(this));
-        } catch (error: any) {
-            this.logError("Game initialization error: " + error.message);
+        } catch (error) {
             console.error("Game initialization error:", error);
         }
     }
@@ -943,8 +950,18 @@ export class Game {
             document.body.appendChild(this.levelRenderer.renderer.domElement);
         }
 
-        // Create a player
-        const player = this.level.addPlayer('local', true);
+        // ONLY create the local player if we have a server ID
+        if (this.localPlayerId) {
+            console.log(`Creating LOCAL player with ID: ${this.localPlayerId}`);
+            // Make sure no player exists with this ID first
+            if (this.hasPlayer(this.localPlayerId)) {
+                console.log(`Removing existing player with ID: ${this.localPlayerId}`);
+                this.removePlayer(this.localPlayerId);
+            }
+            this.level.addPlayer(this.localPlayerId, true);
+        } else {
+            console.warn("No server ID yet! Deferring player creation.");
+        }
         
         // Load the appropriate level
         switch (levelIndex) {
@@ -1190,13 +1207,62 @@ export class Game {
         return null;
     }
 
+    private processNetworkState(state: GameState): void {
+        // Skip processing if we don't have a valid session ID yet
+        if (!this.room || !this.room.sessionId) return;
+        
+        console.log("Processing state update");
+        const currentPlayers = new Set<string>();
+        
+        state.players.forEach((player: Player, key: string) => {
+            currentPlayers.add(key);
+            console.log(`Player in state: ${key}`);
+            
+            // Skip our own player - we control it locally
+            if (key === this.room!.sessionId) {
+                console.log(`Skipping local player ${key}`);
+                return;
+            }
+            
+            // Add new remote players
+            if (!this.game.hasPlayer(key)) {
+                console.log(`Adding new network player: ${key}`);
+                this.game.addNetworkPlayer(key);
+            }
+            
+            // Update positions of remote players
+            const gamePlayer = this.game.getPlayer(key);
+            if (gamePlayer) {
+                const position = new THREE.Vector3(
+                    player.position.x,
+                    player.position.y,
+                    player.position.z
+                );
+                gamePlayer.setPosition(position);
+            }
+        });
+        
+        // Clean up players that are no longer in the game state
+        this.game.getPlayerIds().forEach(playerId => {
+            // Don't remove our own player
+            if (playerId !== this.room!.sessionId && !currentPlayers.has(playerId)) {
+                console.log(`Removing disconnected player: ${playerId}`);
+                this.game.removePlayer(playerId);
+            }
+        });
+    }
+
     /**
-     * Update for sending position to network
+     * Clear all players from the level
      */
-    public sendPlayerPosition(): void {
-        if (this.localPlayer && this.network) {
-            const position = this.localPlayer.getPosition();
-            this.network.sendPosition(position);
+    public clearAllPlayers(): void {
+        if (this.level) {
+            console.log("Clearing all players from level");
+            // Get all player IDs first to avoid modification during iteration
+            const playerIds = Array.from(this.level.players.keys());
+            playerIds.forEach(id => {
+                this.level!.removePlayer(id);
+            });
         }
     }
 } 
