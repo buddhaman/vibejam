@@ -4,13 +4,13 @@ import { Server, Room, Client } from 'colyseus';
 import { Schema, type, MapSchema } from "@colyseus/schema";
 
 // Define our schema
-class PlayerPosition extends Schema {
+export class PlayerPosition extends Schema {
   @type("number") x: number = 0;
   @type("number") y: number = 0;
   @type("number") z: number = 0;
 }
 
-class Player extends Schema {
+export class Player extends Schema {
   @type("string") id: string;
   @type(PlayerPosition) position = new PlayerPosition();
 
@@ -20,7 +20,7 @@ class Player extends Schema {
   }
 }
 
-class GameState extends Schema {
+export class GameState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
 }
 
