@@ -38,11 +38,11 @@ export class Network {
                     // Update position
                     const remotePlayer = this.game.getPlayer(id);
                     if (remotePlayer) {
-                        remotePlayer.setPosition(new THREE.Vector3(
+                        remotePlayer.fixedHeadPosition = new THREE.Vector3(
                             player.position.x,
                             player.position.y,
                             player.position.z
-                        ));
+                        );
                     }
                 });
                 
@@ -77,11 +77,12 @@ export class Network {
             
             const localPlayer = this.game.getPlayer(myId);
             if (localPlayer) {
-                const pos = localPlayer.getPosition();
+                // Get head position (first particle) instead of average
+                const headPos = localPlayer.verletBody.getParticles()[0].position;
                 this.room.send("position", {
-                    x: pos.x,
-                    y: pos.y,
-                    z: pos.z
+                    x: headPos.x,
+                    y: headPos.y,
+                    z: headPos.z
                 });
             }
         }, 50); // 20 updates per second

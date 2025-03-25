@@ -339,6 +339,12 @@ export class Player {
                 }
                 break;
         }
+
+        // For networked players, force head position to last received position
+        if (this.fixedHeadPosition && this.id !== 'local') {
+            headParticle.position.copy(this.fixedHeadPosition);
+            headParticle.previousPosition.copy(this.fixedHeadPosition);
+        }
     }
 
     /**
