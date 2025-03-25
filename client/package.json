@@ -9,6 +9,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "colyseus.js": "^0.16.13",
     "nipplejs": "^0.10.2",
     "peerjs": "^1.5.2",
     "three": "^0.162.0"

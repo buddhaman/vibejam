@@ -1,80 +1,83 @@
 import express from 'express';
-import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
+import { Server, Room, Client } from 'colyseus';
+import { Schema, type, MapSchema } from "@colyseus/schema";
 
+// Define our schema
+class PlayerPosition extends Schema {
+  @type("number") x: number = 0;
+  @type("number") y: number = 0;
+  @type("number") z: number = 0;
+}
+
+class Player extends Schema {
+  @type("string") id: string;
+  @type(PlayerPosition) position = new PlayerPosition();
+
+  constructor(id: string) {
+    super();
+    this.id = id;
+  }
+}
+
+class GameState extends Schema {
+  @type({ map: Player }) players = new MapSchema<Player>();
+}
+
+// Create our room
+class GameRoom extends Room<GameState> {
+  onCreate() {
+    this.state = new GameState();
+    console.log("Game room created!");
+
+    // Handle position updates
+    this.onMessage("position", (client, data) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && data.x !== undefined && data.y !== undefined && data.z !== undefined) {
+        player.position.x = data.x;
+        player.position.y = data.y;
+        player.position.z = data.z;
+        
+        // Log positions to confirm they're being sent
+        console.log(`Player ${client.sessionId} position: [${data.x}, ${data.y}, ${data.z}]`);
+      }
+    });
+  }
+
+  onJoin(client: Client) {
+    console.log(`Player ${client.sessionId} joined`);
+    this.state.players.set(client.sessionId, new Player(client.sessionId));
+    
+    // Broadcast player count
+    this.broadcast("player_count", { count: this.state.players.size });
+  }
+
+  onLeave(client: Client) {
+    console.log(`Player ${client.sessionId} left`);
+    this.state.players.delete(client.sessionId);
+    
+    // Broadcast player count
+    this.broadcast("player_count", { count: this.state.players.size });
+  }
+}
+
+// Set up the server
 const app = express();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
 
-// Serve static files from the client directory
-app.use(express.static('../'));
+// Serve static files
+app.use(express.static('../client'));
 
-// Store connected peers
-const peers = new Map<string, WebSocket>();
-
-wss.on('connection', (ws: WebSocket) => {
-    let peerId: string | null = null;
-
-    ws.on('message', (message: Buffer) => {
-        const data = JSON.parse(message.toString());
-
-        switch (data.type) {
-            case 'register':
-                // Register new peer
-                peerId = data.peerId;
-                if (peerId) {
-                    peers.set(peerId, ws);
-                    console.log(`Peer ${peerId} connected`);
-                }
-                break;
-
-            case 'offer':
-                // Forward offer to target peer
-                const targetPeer = peers.get(data.target);
-                if (targetPeer) {
-                    targetPeer.send(JSON.stringify({
-                        type: 'offer',
-                        offer: data.offer,
-                        from: peerId
-                    }));
-                }
-                break;
-
-            case 'answer':
-                // Forward answer to target peer
-                const answerTarget = peers.get(data.target);
-                if (answerTarget) {
-                    answerTarget.send(JSON.stringify({
-                        type: 'answer',
-                        answer: data.answer,
-                        from: peerId
-                    }));
-                }
-                break;
-
-            case 'ice-candidate':
-                // Forward ICE candidate to target peer
-                const iceTarget = peers.get(data.target);
-                if (iceTarget) {
-                    iceTarget.send(JSON.stringify({
-                        type: 'ice-candidate',
-                        candidate: data.candidate,
-                        from: peerId
-                    }));
-                }
-                break;
-        }
-    });
-
-    ws.on('close', () => {
-        if (peerId) {
-            peers.delete(peerId);
-            console.log(`Peer ${peerId} disconnected`);
-        }
-    });
+// Create Colyseus server
+const gameServer = new Server({
+  server,
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Signaling server running on port ${PORT}`);
+// Register room
+gameServer.define('game_room', GameRoom);
+
+// Start server
+const port = 3000;
+gameServer.listen(port).then(() => {
+  console.log(`Server listening on port ${port}`);
 }); 
