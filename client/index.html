@@ -60,27 +60,6 @@
         font-size: 16px;
         margin-top: 20px;
       }
-      #orientation-message {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        text-align: center;
-        padding: 20px;
-      }
-      @media screen and (orientation: portrait) {
-        #orientation-message {
-          display: flex;
-        }
-      }
     </style>
   </head>
   <body>
@@ -91,13 +70,6 @@
       <p>Then select <strong>"Add to Home Screen"</strong></p>
       <p>Launch the game from your home screen icon</p>
       <button id="close-prompt">Continue anyway</button>
-    </div>
-    
-    <div id="orientation-message">
-      <div>
-        <div style="font-size: 24px; margin-bottom: 20px;">📱 Please rotate your device</div>
-        <div>This game works best in landscape mode</div>
-      </div>
     </div>
     
     <script>
