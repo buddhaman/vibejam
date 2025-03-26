@@ -3,25 +3,43 @@ import { Game } from './Game';
 import * as THREE from 'three';
 import { Player, GameState } from '../../server/server';
 
+// Add room type support
+export enum RoomType {
+  OVERWORLD = 'overworld_room',
+  GAMEPLAY = 'gameplay_room'
+}
+
 export class Network {
     private client: Client;
     private room: Room | null = null;
     private game: Game;
     private updateInterval: number | null = null;
     public playerId: string | null = null;
+    private currentRoomType: RoomType | null = null;
 
     constructor(game: Game) {
         this.game = game;
         this.client = new Client('ws://localhost:3000');
     }
 
-    // Connect and get player ID
-    public async connectAndGetPlayerId(): Promise<string> {
+    // Connect to specific room type
+    public async connectToRoom(roomType: RoomType): Promise<string> {
+        // If already connected to this room type, just return the ID
+        if (this.room && this.currentRoomType === roomType) {
+            return this.playerId!;
+        }
+        
+        // Leave current room if connected to a different one
+        if (this.room && this.currentRoomType !== roomType) {
+            console.log(`Leaving ${this.currentRoomType} to join ${roomType}`);
+            this.leaveCurrentRoom();
+        }
+
         try {
-            console.log("Connecting to server...");
+            console.log(`Connecting to ${roomType}...`);
             
             // Use a timeout to ensure the promise resolves or rejects in a reasonable time
-            const connectionPromise = this.client.joinOrCreate('game_room', {
+            const connectionPromise = this.client.joinOrCreate(roomType, {
                 username: this.game.userName // Send username as part of the join options
             });
             
@@ -33,87 +51,126 @@ export class Network {
             // Race between connection and timeout
             this.room = await Promise.race([connectionPromise, timeoutPromise]);
             this.playerId = this.room.sessionId;
-            console.log(`Connected to server with ID: ${this.playerId}`);
+            this.currentRoomType = roomType;
+            console.log(`Connected to ${roomType} with ID: ${this.playerId}`);
             
-            // Setup state change handler
-            this.room.onStateChange((state) => {
-                if (!this.game.level) return;
-                let level = this.game.level;
-                
-                // Only care about remote players
-                state.players.forEach((player: Player, id: string) => {
-                    // Skip our ID, we manage our own player
-                    if (id === this.playerId) return;
-                    
-                    // Get the player's username from the state
-                    const username = player.username || "Unknown Player";
-                    
-                    // Handle other players
-                    if (!level.hasPlayer(id)) {
-                        console.log(`Adding remote player: ${id} with username: ${username}`);
-                        const newPlayer = level.addNetworkPlayer(id, username);
-                        
-                        // Set the username explicitly for the new player
-                        newPlayer.username = username;
-                    }
-                    
-                    // Update position
-                    const remotePlayer = level.getPlayer(id);
-                    if (remotePlayer) {
-                        // Update username if it changed
-                        if (player.username && remotePlayer.username !== player.username) {
-                            remotePlayer.username = player.username;
-                            console.log(`Updated username for player ${id} to: ${player.username}`);
-                        }
-                        
-                        remotePlayer.fixedHeadPosition = new THREE.Vector3(
-                            player.position.x,
-                            player.position.y,
-                            player.position.z
-                        );
-                        // Update direction
-                        remotePlayer.lastMovementDir.set(
-                            player.position.dirX,
-                            player.position.dirY,
-                            player.position.dirZ
-                        );
-                    }
-                });
-                
-                // Remove disconnected players
-                const connectedIds = new Set(Array.from(state.players.keys()));
-                level.getNetworkPlayerIds().forEach(id => {
-                    // If a player is in our level but not in the state, they've disconnected
-                    if (id !== this.playerId && !connectedIds.has(id)) {
-                        console.log(`Removing disconnected player: ${id}`);
-                        level.removePlayer(id);
-                    }
-                });
-            });
+            // Setup appropriate handlers based on room type
+            if (roomType === RoomType.OVERWORLD) {
+                this.setupOverworldHandlers();
+            } else {
+                this.setupGameplayHandlers();
+            }
             
-            // Register handler for player count messages
-            this.room.onMessage("player_count", (message) => {
-                console.log(`Connected players: ${message.count}`);
-            });
-            
-            // Start update loop
+            // Start sending position updates (only matters in overworld)
             this.startSendingPosition();
             
             return this.playerId;
         } catch (error) {
-            console.error("Connection error:", error);
+            console.error(`Connection to ${roomType} failed:`, error);
             throw error;
         }
     }
     
-    // Send position updates
+    private leaveCurrentRoom(): void {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+        
+        if (this.room) {
+            this.room.leave();
+            this.room = null;
+            this.currentRoomType = null;
+            console.log("Left current room");
+        }
+    }
+    
+    // Connect overworld-specific handlers
+    private setupOverworldHandlers(): void {
+        if (!this.room) return;
+        
+        this.room.onStateChange((state) => {
+            if (!this.game.level) return;
+            let level = this.game.level;
+            
+            // Handle other players in overworld (full position/state sync)
+            state.players.forEach((player: Player, id: string) => {
+                // Skip our ID, we manage our own player
+                if (id === this.playerId) return;
+                
+                // Get the player's username from the state
+                const username = player.username || "Unknown Player";
+                
+                // Handle other players
+                if (!level.hasPlayer(id)) {
+                    console.log(`Adding remote player: ${id} with username: ${username}`);
+                    const newPlayer = level.addNetworkPlayer(id, username);
+                    newPlayer.username = username;
+                }
+                
+                // Update remote player position and username
+                const remotePlayer = level.getPlayer(id);
+                if (remotePlayer) {
+                    // Update username if it changed
+                    if (player.username && remotePlayer.username !== player.username) {
+                        remotePlayer.username = player.username;
+                    }
+                    
+                    remotePlayer.fixedHeadPosition = new THREE.Vector3(
+                        player.position.x,
+                        player.position.y,
+                        player.position.z
+                    );
+                    remotePlayer.lastMovementDir.set(
+                        player.position.dirX,
+                        player.position.dirY,
+                        player.position.dirZ
+                    );
+                }
+            });
+            
+            // Remove disconnected players
+            const connectedIds = new Set(Array.from(state.players.keys()));
+            level.getNetworkPlayerIds().forEach(id => {
+                if (id !== this.playerId && !connectedIds.has(id)) {
+                    console.log(`Removing disconnected player: ${id}`);
+                    level.removePlayer(id);
+                }
+            });
+        });
+        
+        // Register player count message handler
+        this.room.onMessage("player_count", (message) => {
+            console.log(`Connected players in overworld: ${message.count}`);
+        });
+    }
+    
+    // Connect gameplay-specific handlers (for non-overworld levels)
+    private setupGameplayHandlers(): void {
+        if (!this.room) return;
+        
+        // We don't need position updates for other players in gameplay rooms
+        // Just listen for specific events like highscores
+        
+        this.room.onMessage("level_completed_by", (message) => {
+            console.log(`Player ${message.username} completed level ${message.levelId} in ${message.timeMs}ms with ${message.stars} stars`);
+            // Could display this in-game
+        });
+        
+        this.room.onMessage("new_highscore", (message) => {
+            console.log(`New highscore on level ${message.levelId}:`);
+            console.log(`${message.username}: ${message.timeMs}ms (${message.stars} stars)`);
+            // Could display this in-game
+        });
+    }
+    
+    // Send position updates (only matters in overworld)
     private startSendingPosition(): void {
         // Clear any existing interval
         if (this.updateInterval) clearInterval(this.updateInterval);
         
-        // Make sure we have a player ID
-        if (!this.playerId) {
-            console.error("Cannot send position updates: No player ID");
+        // Make sure we have a player ID and are in the overworld room
+        if (!this.playerId || this.currentRoomType !== RoomType.OVERWORLD) {
             return;
         }
         
@@ -139,17 +196,22 @@ export class Network {
         }, 50); // 20 updates per second
     }
     
-    // Clean up
+    public getRoomType(): RoomType | null {
+        return this.currentRoomType;
+    }
+    
+    // Original connectAndGetPlayerId now just connects to the appropriate room based on current level
+    public async connectAndGetPlayerId(): Promise<string> {
+        // Determine which room to join based on current level
+        const roomType = this.game.level?.levelIdx === 0 ? 
+            RoomType.OVERWORLD : RoomType.GAMEPLAY;
+            
+        return this.connectToRoom(roomType);
+    }
+    
+    // Clean up all network connections
     public destroy(): void {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-        
-        if (this.room) {
-            this.room.leave();
-            this.room = null;
-        }
+        this.leaveCurrentRoom();
     }
 
     /**

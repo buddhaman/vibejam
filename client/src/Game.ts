@@ -6,6 +6,7 @@ import { LevelRenderer } from './LevelRenderer';
 import { ScreenTransition } from './ScreenTransition';
 import { Player } from './Player';
 import { Network } from './Network';
+import { RoomType } from './Network';
 
 /**
  * Add an interface to define the custom properties on the window object
@@ -933,6 +934,22 @@ export class Game {
     private doLevelSwitch(levelIndex: number): void {
         console.log(`Switching to level ${levelIndex}...`);
         
+        // Determine if we're switching to/from overworld
+        const wasInOverworld = this.level?.levelIdx === 0;
+        const goingToOverworld = levelIndex === 0;
+        
+        // Handle network room switching if needed
+        if (this.network.playerId && wasInOverworld !== goingToOverworld) {
+            // We're changing between overworld and gameplay rooms
+            if (goingToOverworld) {
+                console.log("Switching to overworld room...");
+                this.switchToOverworldRoom();
+            } else {
+                console.log("Switching to gameplay room...");
+                this.switchToGameplayRoom();
+            }
+        }
+        
         // Remove keyboard event listeners to prevent duplicates
         this.removeKeyListeners();
         
@@ -955,13 +972,80 @@ export class Game {
             document.body.appendChild(this.levelRenderer.renderer.domElement);
         }
 
-        // Load the appropriate level
+        // Load the appropriate level content
         this.loadLevelContent(levelIndex);
+        
+        // Create a local player with our existing ID or a new one
+        if (this.localPlayerId) {
+            // We already have a player ID (reconnecting or level switch)
+            this.level.addPlayer(this.localPlayerId, true, this.userName);
+        } else {
+            // First time, create a new local player
+            const localId = `local-${Date.now()}`;
+            this.level.addPlayer(localId, true, this.userName);
+            this.localPlayerId = localId;
+        }
         
         // Re-initialize controls
         this.setupControls();
         
         console.log(`Level ${levelIndex} switch complete`);
+    }
+
+    /**
+     * Switch to the overworld room for multiplayer
+     */
+    private switchToOverworldRoom(): void {
+        if (!this.network) return;
+        
+        // Connect to overworld room
+        this.network.connectToRoom(RoomType.OVERWORLD)
+            .then(networkId => {
+                // Successfully connected to overworld
+                console.log(`Connected to overworld with ID: ${networkId}`);
+                
+                // Update our ID if needed
+                if (this.localPlayerId !== networkId) {
+                    const oldId = this.localPlayerId;
+                    this.localPlayerId = networkId;
+                    
+                    // If level exists and has the old player, change their ID
+                    if (this.level && oldId) {
+                        this.level.changePlayerId(oldId, networkId);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Failed to connect to overworld:", error);
+            });
+    }
+
+    /**
+     * Switch to the gameplay room for non-overworld levels
+     */
+    private switchToGameplayRoom(): void {
+        if (!this.network) return;
+        
+        // Connect to gameplay room
+        this.network.connectToRoom(RoomType.GAMEPLAY)
+            .then(networkId => {
+                // Successfully connected to gameplay room
+                console.log(`Connected to gameplay room with ID: ${networkId}`);
+                
+                // Update our ID if needed
+                if (this.localPlayerId !== networkId) {
+                    const oldId = this.localPlayerId;
+                    this.localPlayerId = networkId;
+                    
+                    // If level exists and has the old player, change their ID
+                    if (this.level && oldId) {
+                        this.level.changePlayerId(oldId, networkId);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Failed to connect to gameplay room:", error);
+            });
     }
 
     // New method to ensure level content is loaded before player creation
@@ -1146,8 +1230,12 @@ export class Game {
     private connectInBackground(): void {
         console.log("Attempting to connect to server in background...");
         
+        // Connect to the appropriate room based on current level
+        const initialRoom = this.level?.levelIdx === 0 ? 
+            RoomType.OVERWORLD : RoomType.GAMEPLAY;
+        
         // Try to connect but don't block the game
-        this.network.connectAndGetPlayerId().then((networkId) => {
+        this.network.connectToRoom(initialRoom).then((networkId) => {
             // Connection successful, update the local player's ID
             if (this.level && this.localPlayerId) {
                 const success = this.level.changePlayerId(this.localPlayerId, networkId);

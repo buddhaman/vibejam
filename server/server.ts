@@ -150,8 +150,9 @@ const gameServer = new Server({
   server,
 });
 
-// Register room
-gameServer.define('game_room', GameRoom);
+// Register both room types
+gameServer.define(RoomType.OVERWORLD, GameRoom);
+gameServer.define(RoomType.GAMEPLAY, GameRoom);
 
 // Start server
 const port = 3000;
