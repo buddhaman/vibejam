@@ -18,6 +18,7 @@ export class Game {
 
     public level: Level | null = null;
     public levelRenderer: LevelRenderer | null = null;
+    public userName: string = "";
     
     // Add fixed framerate properties
     public targetFPS: number = 60;
@@ -60,7 +61,7 @@ export class Game {
         this.detectDeviceCapabilities();
         this.highPerformanceMode = true;
         
-        // Create network object and attempt to connect
+        // Create network object - just initialize, don't connect yet
         this.network = new Network(this);
         
         try {
@@ -76,21 +77,18 @@ export class Game {
             // IMPORTANT: Load the level content BEFORE creating player
             this.loadLevelContent(0);
             
-            // 2. ATTEMPT TO CONNECT (connection logic moved to Network.ts)
-            this.network.connectAndGetPlayerId().then((playerId) => {
-                // Connection successful, player will be added with the network ID
-                console.log(`Creating local player with ID: ${this.network.playerId}`);
-                this.level?.addPlayer(this.network.playerId!, true);
-            }).catch(() => {
-                // Connection failed, create a local player with a generated ID
-                console.log("Playing in single-player mode");
-                const localId = `local-${Date.now()}`;
-                this.level?.addPlayer(localId, true);
-            });
+            // Create local player immediately with temporary ID
+            const localId = `local-${Date.now()}`;
+            this.level.addPlayer(localId, true);
+            this.localPlayerId = localId;
             
-            // Start the game loop
+            // IMPORTANT: Start the game loop immediately
             this.lastUpdateTime = performance.now();
             requestAnimationFrame(this.update.bind(this));
+            
+            // Now attempt to connect in the background
+            // This won't block the game from starting
+            this.connectInBackground();
         } catch (error) {
             console.error("Game initialization error:", error);
         }
@@ -1133,6 +1131,31 @@ export class Game {
         this.screenTransition.transitionHalfwayStart(() => {
             // This code runs when transition is complete (screen is filled)
             console.log(`External portal transition complete, redirecting to: ${url}`);
+        });
+    }
+
+    /**
+     * Attempt to connect to the server in the background without blocking gameplay
+     */
+    private connectInBackground(): void {
+        console.log("Attempting to connect to server in background...");
+        
+        // Try to connect but don't block the game
+        this.network.connectAndGetPlayerId().then((networkId) => {
+            // Connection successful, update the local player's ID
+            if (this.level && this.localPlayerId) {
+                const success = this.level.changePlayerId(this.localPlayerId, networkId);
+                if (success) {
+                    // Update our stored local player ID
+                    this.localPlayerId = networkId;
+                    console.log(`Seamlessly transitioned to multiplayer mode with ID: ${networkId}`);
+                } else {
+                    console.error("Failed to update player ID for multiplayer");
+                }
+            }
+        }).catch((error) => {
+            // Connection failed, but game is already running in single-player mode
+            console.log("Couldn't connect to server, continuing in single-player mode", error);
         });
     }
 } 

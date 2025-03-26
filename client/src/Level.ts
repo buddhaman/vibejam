@@ -600,6 +600,34 @@ export class Level {
         });
         return playerIds;
     }
+
+    /**
+     * Change a player's ID (used when transitioning from offline to online mode)
+     * @param oldId The current player ID
+     * @param newId The new player ID
+     * @returns True if player ID was successfully changed, false otherwise
+     */
+    public changePlayerId(oldId: string, newId: string): boolean {
+        const player = this.players.get(oldId);
+        if (!player) return false;
+        
+        // Remove player from map with old ID
+        this.players.delete(oldId);
+        
+        // Add player to map with new ID
+        this.players.set(newId, player);
+        
+        // Update the player's internal ID
+        player.id = newId;
+        
+        // Update localPlayer reference if needed
+        if (this.localPlayer === player) {
+            this.localPlayer = player;
+        }
+        
+        console.log(`Changed player ID from ${oldId} to ${newId}`);
+        return true;
+    }
 }
 
 

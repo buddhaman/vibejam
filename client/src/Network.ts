@@ -19,9 +19,19 @@ export class Network {
     public async connectAndGetPlayerId(): Promise<string> {
         try {
             console.log("Connecting to server...");
-            this.room = await this.client.joinOrCreate('game_room');
+            
+            // Use a timeout to ensure the promise resolves or rejects in a reasonable time
+            const connectionPromise = this.client.joinOrCreate('game_room');
+            
+            // Set timeout for connection (5 seconds)
+            const timeoutPromise = new Promise<Room>((_, reject) => {
+                setTimeout(() => reject(new Error("Connection timeout")), 5000);
+            });
+            
+            // Race between connection and timeout
+            this.room = await Promise.race([connectionPromise, timeoutPromise]);
             this.playerId = this.room.sessionId;
-            console.log(`Got player ID: ${this.playerId}`);
+            console.log(`Connected to server with ID: ${this.playerId}`);
             
             // Setup state change handler
             this.room.onStateChange((state) => {
