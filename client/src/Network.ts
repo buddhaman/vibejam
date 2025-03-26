@@ -1,7 +1,7 @@
 import { Client, Room } from 'colyseus.js';
 import { Game } from './Game';
 import * as THREE from 'three';
-import { Player, GameState } from '../../server/server';
+import { PlayerPosition, Player, GameState } from '../../shared/types';
 
 // Add room type support
 export enum RoomType {
@@ -19,8 +19,14 @@ export class Network {
 
     constructor(game: Game) {
         this.game = game;
-        // this.client = new Client('ws://localhost:3000');
-        this.client = new Client('ws://192.168.178.136:3000/');
+        
+        // Automatically detect environment and use appropriate URL
+        const isProduction = window.location.hostname === 'schermutseling.com';
+        const wsProtocol = isProduction ? 'wss://' : 'ws://';
+        const wsHost = isProduction ? 'schermutseling.com' : window.location.hostname;
+        const wsPort = isProduction ? '' : ':3000'; // In production, use default port through nginx
+        
+        this.client = new Client(`${wsProtocol}${wsHost}${wsPort}`);
     }
 
     // Connect to specific room type
