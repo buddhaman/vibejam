@@ -64,6 +64,12 @@ export class Game {
         // Create network object - just initialize, don't connect yet
         this.network = new Network(this);
         
+        // Set random username by default (before creating player)
+        this.userName = this.generateRandomUsername();
+        
+        // Check for portal parameters - might contain username
+        this.checkPortalParameters();
+        
         try {
             // 1. CREATE LEVEL FIRST
             this.level = new Level(this, 0);
@@ -77,9 +83,9 @@ export class Game {
             // IMPORTANT: Load the level content BEFORE creating player
             this.loadLevelContent(0);
             
-            // Create local player immediately with temporary ID
+            // Create local player immediately with temporary ID and the username
             const localId = `local-${Date.now()}`;
-            this.level.addPlayer(localId, true);
+            this.level.addPlayer(localId, true, this.userName);
             this.localPlayerId = localId;
             
             // IMPORTANT: Start the game loop immediately
@@ -1148,7 +1154,13 @@ export class Game {
                 if (success) {
                     // Update our stored local player ID
                     this.localPlayerId = networkId;
-                    console.log(`Seamlessly transitioned to multiplayer mode with ID: ${networkId}`);
+                    console.log(`Seamlessly transitioned to multiplayer mode with ID: ${networkId} and username: ${this.userName}`);
+                    
+                    // Make sure the player's username is set correctly after ID change
+                    const player = this.level.getPlayer(networkId);
+                    if (player) {
+                        player.username = this.userName;
+                    }
                 } else {
                     console.error("Failed to update player ID for multiplayer");
                 }

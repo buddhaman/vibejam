@@ -41,10 +41,11 @@ export class Player {
     private isJumping: boolean = false;
     private isSqueezing: boolean = false;
 
-    constructor(id: string, localPlayer: boolean) { 
+    constructor(id: string, localPlayer: boolean, username: string = "") { 
         this.id = id;
         this.verletBody = new VerletBody();
         this.localPlayer = localPlayer;
+        this.username = username;
 
         const scale = 1.0;
         const baseRadius = scale * 0.4;

@@ -61,8 +61,8 @@ export class Level {
         return body;
     }
 
-    public addPlayer(id: string, isLocal: boolean = false): Player {
-        const player = new Player(id, isLocal);
+    public addPlayer(id: string, isLocal: boolean = false, username: string = ""): Player {
+        const player = new Player(id, isLocal, username);
         this.players.set(id, player);
         
         // Move player to start on high platform if it's the local player
@@ -581,9 +581,9 @@ export class Level {
      * @param id The player ID to add
      * @returns The created player
      */
-    public addNetworkPlayer(id: string): Player {
+    public addNetworkPlayer(id: string, username: string = ""): Player {
         // Reusing existing addPlayer method with isLocal=false
-        return this.addPlayer(id, false);
+        return this.addPlayer(id, false, username);
     }
 
     /**
@@ -611,6 +611,9 @@ export class Level {
         const player = this.players.get(oldId);
         if (!player) return false;
         
+        // Store username to preserve it
+        const username = player.username;
+        
         // Remove player from map with old ID
         this.players.delete(oldId);
         
@@ -620,12 +623,15 @@ export class Level {
         // Update the player's internal ID
         player.id = newId;
         
+        // Make sure username is preserved
+        player.username = username;
+        
         // Update localPlayer reference if needed
         if (this.localPlayer === player) {
             this.localPlayer = player;
         }
         
-        console.log(`Changed player ID from ${oldId} to ${newId}`);
+        console.log(`Changed player ID from ${oldId} to ${newId} (username: ${username})`);
         return true;
     }
 }

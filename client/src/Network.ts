@@ -45,15 +45,27 @@ export class Network {
                     // Skip our ID, we manage our own player
                     if (id === this.playerId) return;
                     
+                    // Get the player's username from the state
+                    const username = player.username || "Unknown Player";
+                    
                     // Handle other players
                     if (!level.hasPlayer(id)) {
-                        console.log(`Adding remote player: ${id}`);
-                        level.addNetworkPlayer(id);
+                        console.log(`Adding remote player: ${id} with username: ${username}`);
+                        const newPlayer = level.addNetworkPlayer(id, username);
+                        
+                        // Set the username explicitly for the new player
+                        newPlayer.username = username;
                     }
                     
                     // Update position
                     const remotePlayer = level.getPlayer(id);
                     if (remotePlayer) {
+                        // Update username if it changed
+                        if (player.username && remotePlayer.username !== player.username) {
+                            remotePlayer.username = player.username;
+                            console.log(`Updated username for player ${id} to: ${player.username}`);
+                        }
+                        
                         remotePlayer.fixedHeadPosition = new THREE.Vector3(
                             player.position.x,
                             player.position.y,
