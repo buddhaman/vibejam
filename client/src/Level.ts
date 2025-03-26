@@ -76,6 +76,8 @@ export class Level {
     public removePlayer(id: string): void {
         const player = this.players.get(id);
         if (player) {
+            // Clean up player resources
+            player.cleanup();
             this.players.delete(id);
         }
     }

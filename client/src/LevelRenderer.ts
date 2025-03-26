@@ -306,6 +306,9 @@ export class LevelRenderer {
         // Reset the instanced renderer and render all players
         this.level.players.forEach(player => {
             player.render(this.instancedRenderer);
+            
+            // Update username text
+            player.updateUsernameText(this.scene);
         });
 
         // Update shadow map camera to follow player

@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 
 export class SimpleText {
-    private sprite: THREE.Sprite;
+    private sprite!: THREE.Sprite;
+    private currentText: string = "";
+    private textColor: string;
+    private outlineColor: string;
+    private fontSize: number;
+    private overallScale: number;
 
     constructor(
         text: string, 
@@ -12,9 +17,69 @@ export class SimpleText {
         fontSize: number = 48,  // Increased font size (1.5x from 32)
         overallScale: number = 1.5  // Increased scale factor (1.5x from 1.0)
     ) {
+        this.currentText = text;
+        this.textColor = textColor;
+        this.outlineColor = outlineColor;
+        this.fontSize = fontSize;
+        this.overallScale = overallScale;
+        
+        this.createTextSprite(text, position);
+        scene.add(this.sprite);
+    }
+
+    public remove(scene: THREE.Scene): void {
+        scene.remove(this.sprite);
+        
+        // Clean up resources
+        if (this.sprite.material instanceof THREE.SpriteMaterial) {
+            if (this.sprite.material.map) {
+                this.sprite.material.map.dispose();
+            }
+            this.sprite.material.dispose();
+        }
+    }
+    
+    // Add methods to update position if needed
+    public setPosition(position: THREE.Vector3): void {
+        this.sprite.position.copy(position);
+    }
+
+    /**
+     * Update the text content
+     * @param newText The new text to display
+     */
+    public updateText(newText: string): void {
+        // If text hasn't changed, don't recreate
+        if (this.currentText === newText) return;
+        
+        // Store current position
+        const position = this.sprite.position.clone();
+        
+        // Remove existing sprite
+        if (this.sprite.parent) {
+            this.sprite.parent.remove(this.sprite);
+        }
+        
+        // Clean up resources
+        if (this.sprite.material instanceof THREE.SpriteMaterial) {
+            if (this.sprite.material.map) {
+                this.sprite.material.map.dispose();
+            }
+            this.sprite.material.dispose();
+        }
+        
+        // Create new text with same parameters
+        this.createTextSprite(newText, position);
+        
+        // Store current text
+        this.currentText = newText;
+    }
+
+    // Move sprite creation to a separate method
+    private createTextSprite(text: string, position: THREE.Vector3): void {
         // Use higher resolution for the actual rendering
         const resolutionScale = 6;  // Higher resolution for crisper text
-        const actualFontSize = fontSize * resolutionScale;
+        const actualFontSize = this.fontSize * resolutionScale;
         
         // Font family with fallbacks
         const fontFamily = '"Comic Sans MS", "Chalkboard SE", "Marker Felt", "Short Stack", cursive';
@@ -53,13 +118,13 @@ export class SimpleText {
         context.font = `${actualFontSize}px ${fontFamily}`;
         
         // Draw the text outline
-        context.strokeStyle = outlineColor;
+        context.strokeStyle = this.outlineColor;
         context.lineWidth = actualFontSize * 0.1; // Outline thickness proportional to font size
         context.lineJoin = 'round';
         context.strokeText(text, canvas.width/2, canvas.height/2);
         
         // Draw the text fill
-        context.fillStyle = textColor;
+        context.fillStyle = this.textColor;
         context.fillText(text, canvas.width/2, canvas.height/2);
         
         // Create sprite with crisp texture settings
@@ -80,28 +145,9 @@ export class SimpleText {
         
         // Scale appropriately - divide by resolution scale to maintain same world size
         const aspectRatio = canvasWidth / canvasHeight;
-        const baseScale = (3.0 * overallScale) / resolutionScale;  // Increased base scale
+        const baseScale = (3.0 * this.overallScale) / resolutionScale;  // Increased base scale
         this.sprite.scale.set(baseScale * aspectRatio, baseScale, 1);
         
         this.sprite.renderOrder = 999999;
-        
-        scene.add(this.sprite);
-    }
-
-    public remove(scene: THREE.Scene): void {
-        scene.remove(this.sprite);
-        
-        // Clean up resources
-        if (this.sprite.material instanceof THREE.SpriteMaterial) {
-            if (this.sprite.material.map) {
-                this.sprite.material.map.dispose();
-            }
-            this.sprite.material.dispose();
-        }
-    }
-    
-    // Add methods to update position if needed
-    public setPosition(position: THREE.Vector3): void {
-        this.sprite.position.copy(position);
     }
 } 

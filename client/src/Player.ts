@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Verlet, VerletBody } from '../../shared/Verlet';
 import { InstancedRenderer } from './Render';
 import { Rope } from './Rope';
+import { SimpleText } from './SimpleText';
 
 export enum MovementState {
     OnGround,
@@ -40,6 +41,11 @@ export class Player {
     private inputDirection: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
     private isJumping: boolean = false;
     private isSqueezing: boolean = false;
+
+    // Add to Player class properties
+    private usernameText: SimpleText | null = null;
+    private currentRenderedUsername: string = "";
+    private scene: THREE.Scene | null = null;
 
     constructor(id: string, localPlayer: boolean, username: string = "") { 
         this.id = id;
@@ -549,6 +555,17 @@ export class Player {
                 0x00ff00
             );
         }
+
+        // Update username text position if available
+        if (this.usernameText && this.scene && this.username) {
+            const headPosition = this.verletBody.getParticles()[0].position;
+            const textPosition = new THREE.Vector3(
+                headPosition.x,
+                headPosition.y + 1.5, // Position above head
+                headPosition.z
+            );
+            this.usernameText.setPosition(textPosition);
+        }
     }
 
     /**
@@ -630,5 +647,62 @@ export class Player {
         }
         
         console.log(`Player customized: ${this.username}, color: ${this.color.getHexString()}, speed: ${this.moveSpeed}`);
+    }
+
+    // Add method to update the username text
+    public updateUsernameText(scene: THREE.Scene): void {
+        // Skip if username is empty or scene is not available
+        if (!this.username || !scene) return;
+        
+        // Store scene reference for later cleanup
+        this.scene = scene;
+        
+        // Check if username has changed since last render
+        if (this.username !== this.currentRenderedUsername) {
+            // Remove existing text if it exists
+            if (this.usernameText) {
+                this.usernameText.remove(scene);
+                this.usernameText = null;
+            }
+            
+            // Create new text
+            const headPosition = this.verletBody.getParticles()[0].position;
+            const textPosition = new THREE.Vector3(
+                headPosition.x,
+                headPosition.y + 1.5, // Position above head
+                headPosition.z
+            );
+            
+            // Create simple text - white with black outline for best visibility
+            this.usernameText = new SimpleText(
+                this.username,
+                textPosition,
+                scene,
+                this.localPlayer ? '#FFFFFF' : '#BBDEFB', // White for local, light blue for others
+                '#000000',                                // Black outline
+                32,                                       // Font size
+                this.localPlayer ? 1.2 : 1.0              // Scale - slightly larger for local player
+            );
+            
+            // Store the rendered username
+            this.currentRenderedUsername = this.username;
+        } else if (this.usernameText) {
+            // Just update position of existing text
+            const headPosition = this.verletBody.getParticles()[0].position;
+            const textPosition = new THREE.Vector3(
+                headPosition.x,
+                headPosition.y + 1.5, // Position above head
+                headPosition.z
+            );
+            this.usernameText.setPosition(textPosition);
+        }
+    }
+
+    // Add cleanup method to ensure text is removed when player is deleted
+    public cleanup(): void {
+        if (this.usernameText && this.scene) {
+            this.usernameText.remove(this.scene);
+            this.usernameText = null;
+        }
     }
 } 
