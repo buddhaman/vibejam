@@ -8,6 +8,7 @@ export class Network {
     private room: Room | null = null;
     private game: Game;
     private updateInterval: number | null = null;
+    public playerId: string | null = null;
 
     constructor(game: Game) {
         this.game = game;
@@ -19,24 +20,27 @@ export class Network {
         try {
             console.log("Connecting to server...");
             this.room = await this.client.joinOrCreate('game_room');
-            const playerId = this.room.sessionId;
-            console.log(`Got player ID: ${playerId}`);
+            this.playerId = this.room.sessionId;
+            console.log(`Got player ID: ${this.playerId}`);
             
             // Setup state change handler
             this.room.onStateChange((state) => {
+                if (!this.game.level) return;
+                let level = this.game.level;
+                
                 // Only care about remote players
                 state.players.forEach((player: Player, id: string) => {
                     // Skip our ID, we manage our own player
-                    if (id === playerId) return;
+                    if (id === this.playerId) return;
                     
                     // Handle other players
-                    if (!this.game.hasPlayer(id)) {
+                    if (!level.hasPlayer(id)) {
                         console.log(`Adding remote player: ${id}`);
-                        this.game.addNetworkPlayer(id);
+                        level.addNetworkPlayer(id);
                     }
                     
                     // Update position
-                    const remotePlayer = this.game.getPlayer(id);
+                    const remotePlayer = level.getPlayer(id);
                     if (remotePlayer) {
                         remotePlayer.fixedHeadPosition = new THREE.Vector3(
                             player.position.x,
@@ -54,18 +58,24 @@ export class Network {
                 
                 // Remove disconnected players
                 const connectedIds = new Set(Array.from(state.players.keys()));
-                this.game.getPlayerIds().forEach(id => {
-                    if (id !== playerId && !connectedIds.has(id)) {
-                        console.log(`Removing player: ${id}`);
-                        this.game.removePlayer(id);
+                level.getNetworkPlayerIds().forEach(id => {
+                    // If a player is in our level but not in the state, they've disconnected
+                    if (id !== this.playerId && !connectedIds.has(id)) {
+                        console.log(`Removing disconnected player: ${id}`);
+                        level.removePlayer(id);
                     }
                 });
             });
             
-            // Start update loop
-            this.startSendingPosition(playerId);
+            // Register handler for player count messages
+            this.room.onMessage("player_count", (message) => {
+                console.log(`Connected players: ${message.count}`);
+            });
             
-            return playerId;
+            // Start update loop
+            this.startSendingPosition();
+            
+            return this.playerId;
         } catch (error) {
             console.error("Connection error:", error);
             throw error;
@@ -73,15 +83,21 @@ export class Network {
     }
     
     // Send position updates
-    private startSendingPosition(myId: string): void {
+    private startSendingPosition(): void {
         // Clear any existing interval
         if (this.updateInterval) clearInterval(this.updateInterval);
         
+        // Make sure we have a player ID
+        if (!this.playerId) {
+            console.error("Cannot send position updates: No player ID");
+            return;
+        }
+        
         // Create new interval
         this.updateInterval = window.setInterval(() => {
-            if (!this.room) return;
+            if (!this.room || !this.game.level) return;
             
-            const localPlayer = this.game.getPlayer(myId);
+            const localPlayer = this.game.level.getPlayer(this.playerId!);
             if (localPlayer) {
                 // Get head position (first particle) instead of average
                 const headPos = localPlayer.verletBody.getParticles()[0].position;

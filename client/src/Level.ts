@@ -8,7 +8,6 @@ import { Rope } from "./Rope";
 import { Saw } from "./Saw";
 import { StaticBody } from "./StaticBody";
 import { ActionArea } from "./ActionArea";
-import { SimpleText } from "./SimpleText";
 import { Updraft } from "./Updraft";
 import { Game } from './Game';
 
@@ -63,7 +62,7 @@ export class Level {
     }
 
     public addPlayer(id: string, isLocal: boolean = false): Player {
-        const player = new Player(id);
+        const player = new Player(id, isLocal);
         this.players.set(id, player);
         
         // Move player to start on high platform if it's the local player
@@ -566,6 +565,40 @@ export class Level {
                 updraft.update(player);
             }
         }
+    }
+
+    /**
+     * Check if a player with the given ID exists
+     * @param id The player ID to check
+     * @returns True if the player exists, false otherwise
+     */
+    public hasPlayer(id: string): boolean {
+        return this.players.has(id);
+    }
+
+    /**
+     * Add a network player with the given ID
+     * @param id The player ID to add
+     * @returns The created player
+     */
+    public addNetworkPlayer(id: string): Player {
+        // Reusing existing addPlayer method with isLocal=false
+        return this.addPlayer(id, false);
+    }
+
+    /**
+     * Get all player IDs that are network players (non-local)
+     * @returns Array of player IDs
+     */
+    public getNetworkPlayerIds(): string[] {
+        const playerIds: string[] = [];
+        this.players.forEach((player, id) => {
+            // Include all players except the local player
+            if (player !== this.localPlayer) {
+                playerIds.push(id);
+            }
+        });
+        return playerIds;
     }
 }
 

@@ -60,7 +60,7 @@ export class Game {
         this.detectDeviceCapabilities();
         this.highPerformanceMode = true;
         
-        // Create network object (but don't connect yet)
+        // Create network object and attempt to connect
         this.network = new Network(this);
         
         try {
@@ -76,19 +76,17 @@ export class Game {
             // IMPORTANT: Load the level content BEFORE creating player
             this.loadLevelContent(0);
             
-            // 2. CONNECT AND GET PLAYER ID
-            this.network.connectAndGetPlayerId()
-                .then(playerId => {
-                    // Store player ID
-                    this.localPlayerId = playerId;
-                    
-                    // 3. ADD LOCAL PLAYER only AFTER level is fully loaded
-                    console.log(`Creating local player with ID: ${playerId}`);
-                    this.level?.addPlayer(playerId, true);
-                })
-                .catch(err => {
-                    console.error("Failed to get player ID:", err);
-                });
+            // 2. ATTEMPT TO CONNECT (connection logic moved to Network.ts)
+            this.network.connectAndGetPlayerId().then((playerId) => {
+                // Connection successful, player will be added with the network ID
+                console.log(`Creating local player with ID: ${this.network.playerId}`);
+                this.level?.addPlayer(this.network.playerId!, true);
+            }).catch(() => {
+                // Connection failed, create a local player with a generated ID
+                console.log("Playing in single-player mode");
+                const localId = `local-${Date.now()}`;
+                this.level?.addPlayer(localId, true);
+            });
             
             // Start the game loop
             this.lastUpdateTime = performance.now();
@@ -953,19 +951,6 @@ export class Game {
             document.body.appendChild(this.levelRenderer.renderer.domElement);
         }
 
-        // ONLY create the local player if we have a server ID
-        if (this.localPlayerId) {
-            console.log(`Creating LOCAL player with ID: ${this.localPlayerId}`);
-            // Make sure no player exists with this ID first
-            if (this.hasPlayer(this.localPlayerId)) {
-                console.log(`Removing existing player with ID: ${this.localPlayerId}`);
-                this.removePlayer(this.localPlayerId);
-            }
-            this.level.addPlayer(this.localPlayerId, true);
-        } else {
-            console.warn("No server ID yet! Deferring player creation.");
-        }
-        
         // Load the appropriate level
         this.loadLevelContent(levelIndex);
         
@@ -1149,88 +1134,5 @@ export class Game {
             // This code runs when transition is complete (screen is filled)
             console.log(`External portal transition complete, redirecting to: ${url}`);
         });
-    }
-
-    /**
-     * Add a player with the given ID
-     * @param id The ID of the player to add
-     * @param isLocal Whether this is the local player
-     * @returns The created player
-     */
-    public addPlayer(id: string, isLocal: boolean = false): any {
-        if (this.level) {
-            return this.level.addPlayer(id, isLocal);
-        }
-        return null;
-    }
-
-    /**
-     * Remove a player with the given ID
-     * @param id The ID of the player to remove
-     */
-    public removePlayer(id: string): void {
-        if (this.level) {
-            this.level.removePlayer(id);
-        }
-    }
-
-    /**
-     * Store the local player's network ID
-     */
-    public setLocalPlayerId(id: string): void {
-        this.localPlayerId = id;
-    }
-    
-    /**
-     * Get the local player's network ID
-     */
-    public getLocalPlayerId(): string | null {
-        return this.localPlayerId;
-    }
-    
-    /**
-     * Check if a player with given ID exists
-     */
-    public hasPlayer(id: string): boolean {
-        return this.level ? this.level.players.has(id) : false;
-    }
-    
-    /**
-     * Get a player by ID
-     */
-    public getPlayer(id: string): Player | undefined {
-        return this.level ? this.level.getPlayer(id) : undefined;
-    }
-    
-    /**
-     * Get all player IDs
-     */
-    public getPlayerIds(): string[] {
-        return this.level ? Array.from(this.level.players.keys()) : [];
-    }
-    
-    /**
-     * Add a network player (non-local)
-     */
-    public addNetworkPlayer(id: string): Player | null {
-        if (this.level) {
-            console.log(`Adding network player: ${id}`);
-            return this.level.addPlayer(id, false);
-        }
-        return null;
-    }
-
-    /**
-     * Clear all players from the level
-     */
-    public clearAllPlayers(): void {
-        if (this.level) {
-            console.log("Clearing all players from level");
-            // Get all player IDs first to avoid modification during iteration
-            const playerIds = Array.from(this.level.players.keys());
-            playerIds.forEach(id => {
-                this.level!.removePlayer(id);
-            });
-        }
     }
 } 

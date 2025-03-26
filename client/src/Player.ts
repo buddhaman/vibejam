@@ -29,7 +29,8 @@ export class Player {
     public rope: Rope | null = null;
     public notOnGroundTimer: number = 0;
     public movementState: MovementState = MovementState.OnGround;
-    
+    public localPlayer: boolean = false;
+
     // Customization properties
     public color: THREE.Color = new THREE.Color(0x77dd77); // Default player color
     public username: string = ""; // Player username
@@ -40,10 +41,10 @@ export class Player {
     private isJumping: boolean = false;
     private isSqueezing: boolean = false;
 
-    constructor(id: string, enableDebug: boolean = false) {
+    constructor(id: string, localPlayer: boolean) { 
         this.id = id;
         this.verletBody = new VerletBody();
-        this.debugMode = enableDebug;
+        this.localPlayer = localPlayer;
 
         const scale = 1.0;
         const baseRadius = scale * 0.4;
@@ -435,8 +436,8 @@ export class Player {
         const headParticle = particles[0]; // First particle is the head
         
         // Use custom color or different colors for local vs remote players
-        const particleColor = this.id === 'local' ? this.color.getHex() : 0x6495ed;  // Custom color for local, blue for others
-        const constraintColor = this.id === 'local' ? new THREE.Color(this.color).multiplyScalar(1.2).getHex() : 0x88aaff;
+        const particleColor = this.localPlayer ? this.color.getHex() : 0x6495ed;  // Custom color for local, blue for others
+        const constraintColor = this.localPlayer ? new THREE.Color(this.color).multiplyScalar(1.2).getHex() : 0x88aaff;
         
         // Draw particles as spheres
         particles.forEach(particle => {
