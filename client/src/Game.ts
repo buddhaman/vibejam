@@ -1158,4 +1158,97 @@ export class Game {
             console.log("Couldn't connect to server, continuing in single-player mode", error);
         });
     }
+
+    /**
+     * Generate a fun random username by combining prefixes, nouns, and suffixes
+     */
+    private generateRandomUsername(): string {
+        // Fun prefixes
+        const prefixes = [
+            "Epic", "Super", "Mega", "Ultra", "Hyper", "Awesome", "Rad", "Cool", "Swift", "Speedy",
+            "Flying", "Jumping", "Crazy", "Funky", "Groovy", "Wild", "Mighty", "Brave", "Sneaky",
+            "Ninja", "Pixel", "Cyber", "Digital", "Quantum", "Cosmic", "Astro", "Turbo", "Power"
+        ];
+        
+        // Nouns/creatures
+        const nouns = [
+            "Panda", "Tiger", "Eagle", "Shark", "Wolf", "Dragon", "Phoenix", "Unicorn", "Wizard", 
+            "Warrior", "Runner", "Jumper", "Rider", "Racer", "Hunter", "Explorer", "Adventurer",
+            "Robot", "Cyborg", "Ninja", "Pirate", "Knight", "Samurai", "Hero", "Legend", "Ghost",
+            "Monkey", "Fox", "Lion", "Dolphin", "Penguin", "Koala", "Sloth", "Rhino", "Hedgehog"
+        ];
+        
+        // Optional suffixes or numbers
+        const suffixes = [
+            "", "", "", "", "", // Empty strings increase chance of no suffix
+            "Master", "King", "Queen", "Pro", "Star", "Champion", "Expert", "Guru", "Genius",
+            "X", "Z", "Prime", "Alpha", "Omega", "Plus", "Max", "Ultra"
+        ];
+        
+        // Random number suffix (0-999)
+        const numbers = ["", "", ""]; // Empty strings increase chance of no number
+        for (let i = 0; i < 50; i++) {
+            numbers.push(Math.floor(Math.random() * 1000).toString());
+        }
+        
+        // Randomly decide to use a prefix
+        let username = "";
+        if (Math.random() > 0.3) { // 70% chance to have prefix
+            username += prefixes[Math.floor(Math.random() * prefixes.length)];
+        }
+        
+        // Always have a noun
+        if (username.length > 0) {
+            username += nouns[Math.floor(Math.random() * nouns.length)];
+        } else {
+            // Capitalize the noun if it's the first word
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            username += noun.charAt(0).toUpperCase() + noun.slice(1);
+        }
+        
+        // Add a suffix (lower chance)
+        if (Math.random() > 0.7) { // 30% chance to have suffix
+            username += suffixes[Math.floor(Math.random() * suffixes.length)];
+        }
+        
+        // Add a number (lower chance)
+        if (Math.random() > 0.6) { // 40% chance to have number
+            username += numbers[Math.floor(Math.random() * numbers.length)];
+        }
+        
+        return username;
+    }
+
+    /**
+     * Change the player's username
+     * @param newUsername The new username to set
+     */
+    public changeUsername(newUsername: string): void {
+        // Don't change if it's the same
+        if (this.userName === newUsername) return;
+        
+        const oldUsername = this.userName;
+        this.userName = newUsername;
+        console.log(`Username changed from "${oldUsername}" to "${newUsername}"`);
+        
+        // Send update to server if connected
+        if (this.network && this.network.playerId) {
+            this.network.sendUsernameChange(newUsername);
+        }
+    }
+
+    /**
+     * Report level completion to server
+     * @param levelId The level ID that was completed
+     * @param timeMs Time taken to complete the level in milliseconds
+     * @param stars Number of stars earned (optional)
+     */
+    public reportLevelCompletion(levelId: number, timeMs: number, stars: number = 0): void {
+        console.log(`Level ${levelId} completed in ${timeMs}ms with ${stars} stars`);
+        
+        // Send to server if connected
+        if (this.network && this.network.playerId) {
+            this.network.sendLevelCompletion(levelId, timeMs, stars);
+        }
+    }
 } 

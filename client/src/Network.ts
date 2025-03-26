@@ -21,7 +21,9 @@ export class Network {
             console.log("Connecting to server...");
             
             // Use a timeout to ensure the promise resolves or rejects in a reasonable time
-            const connectionPromise = this.client.joinOrCreate('game_room');
+            const connectionPromise = this.client.joinOrCreate('game_room', {
+                username: this.game.userName // Send username as part of the join options
+            });
             
             // Set timeout for connection (5 seconds)
             const timeoutPromise = new Promise<Room>((_, reject) => {
@@ -118,7 +120,8 @@ export class Network {
                     z: headPos.z,
                     dirX: dir.x,
                     dirY: dir.y,
-                    dirZ: dir.z
+                    dirZ: dir.z,
+                    username: this.game.userName // Include username with each position update
                 });
             }
         }, 50); // 20 updates per second
@@ -134,6 +137,42 @@ export class Network {
         if (this.room) {
             this.room.leave();
             this.room = null;
+        }
+    }
+
+    /**
+     * Send a username change to the server
+     * @param username The new username
+     */
+    public sendUsernameChange(username: string): void {
+        if (!this.room || !this.playerId) return;
+        
+        try {
+            this.room.send("username_change", { username });
+            console.log(`Sent username update: ${username}`);
+        } catch (error) {
+            console.error("Failed to send username update:", error);
+        }
+    }
+
+    /**
+     * Send level completion data to the server
+     * @param levelId The level ID that was completed
+     * @param timeMs Time taken to complete the level in milliseconds
+     * @param stars Number of stars earned (optional)
+     */
+    public sendLevelCompletion(levelId: number, timeMs: number, stars: number = 0): void {
+        if (!this.room || !this.playerId) return;
+        
+        try {
+            this.room.send("level_complete", {
+                levelId,
+                timeMs,
+                stars
+            });
+            console.log(`Sent level completion: Level ${levelId} in ${timeMs}ms with ${stars} stars`);
+        } catch (error) {
+            console.error("Failed to send level completion:", error);
         }
     }
 } 
