@@ -998,6 +998,9 @@ export class Game {
     private switchToOverworldRoom(): void {
         if (!this.network) return;
         
+        // First disconnect from current room (likely gameplay)
+        this.network.disconnect();
+        
         // Connect to overworld room
         this.network.connectToRoom(RoomType.OVERWORLD)
             .then(networkId => {
@@ -1025,6 +1028,9 @@ export class Game {
      */
     private switchToGameplayRoom(): void {
         if (!this.network) return;
+        
+        // First disconnect from current room (likely overworld)
+        this.network.disconnect();
         
         // Connect to gameplay room
         this.network.connectToRoom(RoomType.GAMEPLAY)
