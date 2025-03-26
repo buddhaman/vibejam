@@ -1497,8 +1497,8 @@ export class Game {
             if (localPlayer) {
                 localPlayer.username = newUsername;
                 // If the player is in a scene, update the username text
-                if (this.level.scene) {
-                    localPlayer.updateUsernameText(this.level.scene);
+                if (this.levelRenderer?.scene) {
+                    localPlayer.updateUsernameText(this.levelRenderer.scene);
                 }
             }
         }
