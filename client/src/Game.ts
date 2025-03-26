@@ -65,8 +65,18 @@ export class Game {
         // Create network object - just initialize, don't connect yet
         this.network = new Network(this);
         
-        // Set random username by default (before creating player)
-        this.userName = this.generateRandomUsername();
+        // Check for existing username in localStorage or show prompt
+        const savedUsername = localStorage.getItem('username');
+        if (savedUsername) {
+            this.userName = savedUsername;
+            console.log(`Using saved username: ${this.userName}`);
+        } else {
+            // Set a temporary random username
+            this.userName = this.generateRandomUsername();
+            
+            // Show username prompt after a short delay to let the game start
+            setTimeout(() => this.showUsernamePrompt(), 500);
+        }
         
         // Check for portal parameters - might contain username
         this.checkPortalParameters();
@@ -345,6 +355,9 @@ export class Game {
                 this.switchLevel(1); // Jungle Gym
             } else if (event.key === '2') {
                 this.switchLevel(2); // Simple Test
+            } else if (event.key === 'p' || event.key === 'P') {
+                // Show username prompt when P is pressed
+                this.showUsernamePrompt();
             }
         };
         
@@ -972,8 +985,6 @@ export class Game {
             document.body.appendChild(this.levelRenderer.renderer.domElement);
         }
 
-        // Load the appropriate level content
-        this.loadLevelContent(levelIndex);
         
         // Create a local player with our existing ID or a new one
         if (this.localPlayerId) {
@@ -985,6 +996,9 @@ export class Game {
             this.level.addPlayer(localId, true, this.userName);
             this.localPlayerId = localId;
         }
+
+        // Load the appropriate level content
+        this.loadLevelContent(levelIndex);
         
         // Re-initialize controls
         this.setupControls();
@@ -1326,6 +1340,143 @@ export class Game {
     }
 
     /**
+     * Show a dialog prompting the user to enter a username
+     */
+    private showUsernamePrompt(): void {
+        // Create the modal container
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        modal.style.display = 'flex';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '10000';
+        
+        // Create the modal content
+        const modalContent = document.createElement('div');
+        modalContent.style.backgroundColor = '#333';
+        modalContent.style.color = 'white';
+        modalContent.style.padding = '20px';
+        modalContent.style.borderRadius = '8px';
+        modalContent.style.maxWidth = '400px';
+        modalContent.style.width = '90%';
+        modalContent.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        modalContent.style.textAlign = 'center';
+        modalContent.style.fontFamily = 'Arial, sans-serif';
+        
+        // Add title
+        const title = document.createElement('h2');
+        title.textContent = 'Choose Your Username';
+        title.style.margin = '0 0 20px 0';
+        title.style.color = '#fff';
+        
+        // Add current random username as placeholder
+        const usernameInput = document.createElement('input');
+        usernameInput.type = 'text';
+        usernameInput.placeholder = this.userName;
+        usernameInput.value = this.userName;
+        usernameInput.style.width = '100%';
+        usernameInput.style.padding = '10px';
+        usernameInput.style.marginBottom = '20px';
+        usernameInput.style.borderRadius = '4px';
+        usernameInput.style.border = 'none';
+        usernameInput.style.backgroundColor = '#555';
+        usernameInput.style.color = '#fff';
+        usernameInput.style.fontSize = '16px';
+        usernameInput.style.boxSizing = 'border-box';
+        
+        // Add random name generator button
+        const randomBtn = document.createElement('button');
+        randomBtn.textContent = 'Random Name';
+        randomBtn.style.padding = '10px 15px';
+        randomBtn.style.margin = '0 10px 20px 10px';
+        randomBtn.style.border = 'none';
+        randomBtn.style.borderRadius = '4px';
+        randomBtn.style.backgroundColor = '#555';
+        randomBtn.style.color = '#fff';
+        randomBtn.style.cursor = 'pointer';
+        randomBtn.style.fontSize = '14px';
+        
+        // Add save button
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save Username';
+        saveBtn.style.padding = '10px 15px';
+        saveBtn.style.margin = '0 10px 20px 10px';
+        saveBtn.style.border = 'none';
+        saveBtn.style.borderRadius = '4px';
+        saveBtn.style.backgroundColor = '#4CAF50';
+        saveBtn.style.color = 'white';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.style.fontSize = '14px';
+        
+        // Add note
+        const note = document.createElement('p');
+        note.textContent = 'This username will be used in multiplayer. You can change it later by pressing P.';
+        note.style.fontSize = '12px';
+        note.style.color = '#aaa';
+        note.style.margin = '0';
+        
+        // Add event listeners
+        randomBtn.addEventListener('click', () => {
+            const newRandomName = this.generateRandomUsername();
+            usernameInput.value = newRandomName;
+            usernameInput.focus();
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            const newUsername = usernameInput.value.trim();
+            if (newUsername && newUsername.length >= 3) {
+                // Save to localStorage
+                localStorage.setItem('username', newUsername);
+                
+                // Update username in game
+                this.changeUsername(newUsername);
+                
+                // Remove modal
+                document.body.removeChild(modal);
+            } else {
+                // Show error if username is too short
+                usernameInput.style.border = '2px solid #ff6347';
+                setTimeout(() => {
+                    usernameInput.style.border = 'none';
+                }, 1000);
+            }
+        });
+        
+        // Keyboard event to save on Enter
+        usernameInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                saveBtn.click();
+            }
+        });
+        
+        // Add all elements to modal content
+        modalContent.appendChild(title);
+        modalContent.appendChild(usernameInput);
+        const buttonContainer = document.createElement('div');
+        buttonContainer.appendChild(randomBtn);
+        buttonContainer.appendChild(saveBtn);
+        modalContent.appendChild(buttonContainer);
+        modalContent.appendChild(note);
+        
+        // Add modal content to modal
+        modal.appendChild(modalContent);
+        
+        // Add modal to body
+        document.body.appendChild(modal);
+        
+        // Focus the input
+        setTimeout(() => {
+            usernameInput.focus();
+            usernameInput.select(); // Select all text
+        }, 100);
+    }
+
+    /**
      * Change the player's username
      * @param newUsername The new username to set
      */
@@ -1336,6 +1487,21 @@ export class Game {
         const oldUsername = this.userName;
         this.userName = newUsername;
         console.log(`Username changed from "${oldUsername}" to "${newUsername}"`);
+        
+        // Save to localStorage
+        localStorage.setItem('username', newUsername);
+        
+        // Update the player object's username
+        if (this.level && this.localPlayerId) {
+            const localPlayer = this.level.getPlayer(this.localPlayerId);
+            if (localPlayer) {
+                localPlayer.username = newUsername;
+                // If the player is in a scene, update the username text
+                if (this.level.scene) {
+                    localPlayer.updateUsernameText(this.level.scene);
+                }
+            }
+        }
         
         // Send update to server if connected
         if (this.network && this.network.playerId) {
