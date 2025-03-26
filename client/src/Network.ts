@@ -43,6 +43,12 @@ export class Network {
                             player.position.y,
                             player.position.z
                         );
+                        // Update direction
+                        remotePlayer.lastMovementDir.set(
+                            player.position.dirX,
+                            player.position.dirY,
+                            player.position.dirZ
+                        );
                     }
                 });
                 
@@ -79,10 +85,14 @@ export class Network {
             if (localPlayer) {
                 // Get head position (first particle) instead of average
                 const headPos = localPlayer.verletBody.getParticles()[0].position;
+                const dir = localPlayer.lastMovementDir;
                 this.room.send("position", {
                     x: headPos.x,
                     y: headPos.y,
-                    z: headPos.z
+                    z: headPos.z,
+                    dirX: dir.x,
+                    dirY: dir.y,
+                    dirZ: dir.z
                 });
             }
         }, 50); // 20 updates per second

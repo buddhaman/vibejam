@@ -8,6 +8,9 @@ export class PlayerPosition extends Schema {
   @type("number") x: number = 0;
   @type("number") y: number = 0;
   @type("number") z: number = 0;
+  @type("number") dirX: number = 0;
+  @type("number") dirY: number = 0;
+  @type("number") dirZ: number = 1;  // Default forward direction
 }
 
 export class Player extends Schema {
@@ -37,6 +40,9 @@ class GameRoom extends Room<GameState> {
         player.position.x = data.x;
         player.position.y = data.y;
         player.position.z = data.z;
+        player.position.dirX = data.dirX;
+        player.position.dirY = data.dirY;
+        player.position.dirZ = data.dirZ;
         
         // Log positions to confirm they're being sent
         console.log(`Player ${client.sessionId} position: [${data.x}, ${data.y}, ${data.z}]`);
