@@ -3,6 +3,12 @@ import { createServer } from 'http';
 import { Server, Room, Client } from 'colyseus';
 import { Schema, type, MapSchema } from "@colyseus/schema";
 
+// Define room types enum to match client-side definition
+enum RoomType {
+  OVERWORLD = "overworld_room",
+  GAMEPLAY = "gameplay_room"
+}
+
 // Define our schema
 export class PlayerPosition extends Schema {
   @type("number") x: number = 0;
