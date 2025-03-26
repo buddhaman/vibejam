@@ -215,6 +215,13 @@ export class Network {
     }
 
     /**
+     * Disconnect from the current room
+     */
+    public disconnect(): void {
+        this.leaveCurrentRoom();
+    }
+
+    /**
      * Send a username change to the server
      * @param username The new username
      */
