@@ -19,7 +19,8 @@ export class Network {
 
     constructor(game: Game) {
         this.game = game;
-        this.client = new Client('ws://localhost:3000');
+        // this.client = new Client('ws://localhost:3000');
+        this.client = new Client('ws://192.168.178.136:3000/');
     }
 
     // Connect to specific room type
