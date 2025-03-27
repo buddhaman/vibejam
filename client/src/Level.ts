@@ -127,7 +127,7 @@ export class Level {
         });
         
         
-        this.players.forEach(player => player.setDebugMode(true));
+        //this.players.forEach(player => player.setDebugMode(true));
         
         // Update all dynamic bodies with fixed timestep
         this.updateDynamicBodies();

@@ -25,8 +25,10 @@ export class Network {
         const wsProtocol = isProduction ? 'wss://' : 'ws://';
         const wsHost = isProduction ? 'schermutseling.com' : window.location.hostname;
         const wsPort = isProduction ? '' : ':3000'; // In production, use default port through nginx
+
+        console.log(`${wsProtocol}${wsHost}${wsPort} production: ${isProduction}`);
         
-        this.client = new Client(`${wsProtocol}${wsHost}${wsPort}`);
+        this.client = new Client(`${wsProtocol}${wsHost}${wsPort}/colyseus`);
     }
 
     // Connect to specific room type
