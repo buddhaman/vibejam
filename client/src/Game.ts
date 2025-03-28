@@ -7,6 +7,7 @@ import { ScreenTransition } from './ScreenTransition';
 import { Player } from './Player';
 import { Network } from './Network';
 import { RoomType } from './Network';
+import { BeginnerLevels } from './BeginnerLevels';
 
 /**
  * Add an interface to define the custom properties on the window object
@@ -87,9 +88,9 @@ export class Game {
             this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
             this.level.levelRenderer = this.levelRenderer;
             
-            // Initialize UI and controls
+            // Initialize UI and controls ONCE
             this.init();
-            this.setupControls();
+            this.setupControlsOnce();
             
             // IMPORTANT: Load the level content BEFORE creating player
             this.loadLevelContent(0);
@@ -332,31 +333,24 @@ export class Game {
     }
 
     /**
-     * Set up keyboard input tracking (only track state, don't update player here)
+     * Set up controls once for the entire game lifecycle
      */
-    public setupControls(): void {
-        // Mouse controls for camera rotation
-        let domElement = this.getDomElement();
-        
-        // First, remove any existing keyboard listeners
-        this.removeKeyListeners();
-        
+    private setupControlsOnce(): void {
         // Set up keyboard input tracking
         this.inputKeys = {};
         
-        // Create the event listeners and store references to them
+        // Create the keyboard event listeners
         this.keydownListener = (event) => {
             this.inputKeys[event.key.toLowerCase()] = true;
             
-            // Handle level switching separately (not in the listener)
+            // Handle level switching
             if (event.key === '0') {
-                this.switchLevel(0); // Overworld
+                this.switchLevel(0);
             } else if (event.key === '1') {
-                this.switchLevel(1); // Jungle Gym
+                this.switchLevel(1);
             } else if (event.key === '2') {
-                this.switchLevel(2); // Simple Test
+                this.switchLevel(2);
             } else if (event.key === 'p' || event.key === 'P') {
-                // Show username prompt when P is pressed
                 this.showUsernamePrompt();
             }
         };
@@ -365,11 +359,14 @@ export class Game {
             this.inputKeys[event.key.toLowerCase()] = false;
         };
         
-        // Add the listeners
+        // Add the keyboard listeners
         window.addEventListener('keydown', this.keydownListener);
         window.addEventListener('keyup', this.keyupListener);
         
         // Mouse controls for camera rotation
+        const domElement = this.getDomElement();
+        
+        // Create and store mouse event listeners
         domElement.addEventListener('mousedown', (event) => {
             this.isDragging = true;
             this.previousMousePosition = {
@@ -377,24 +374,23 @@ export class Game {
                 y: event.clientY
             };
             
-            // Request pointer lock on mouse down for desktop fullscreen
             if (document.fullscreenElement && !document.pointerLockElement) {
-                this.getDomElement().requestPointerLock();
+                domElement.requestPointerLock();
             }
         });
 
         domElement.addEventListener('mousemove', (event) => {
             // If pointer is locked (fullscreen mode)
             if (document.pointerLockElement === domElement) {
-                // Use movement instead of absolute position
                 const deltaMove = {
                     x: event.movementX,
                     y: event.movementY
                 };
                 
-                this.levelRenderer!.cameraTheta += deltaMove.x * 0.002; // Adjusted sensitivity
-                // Invert Y movement in fullscreen mode for more intuitive control
-                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.levelRenderer!.cameraPhi - deltaMove.y * 0.002));
+                const sensitivity = 0.002;
+                this.levelRenderer!.cameraTheta += deltaMove.x * sensitivity;
+                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, 
+                    this.levelRenderer!.cameraPhi - deltaMove.y * sensitivity));
             }
             // Regular dragging (outside fullscreen)
             else if (this.isDragging) {
@@ -403,9 +399,10 @@ export class Game {
                     y: event.clientY - this.previousMousePosition.y
                 };
 
-                this.levelRenderer!.cameraTheta += deltaMove.x * 0.01;
-                // Keep Y movement non-inverted for regular dragging
-                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.levelRenderer!.cameraPhi + deltaMove.y * 0.01));
+                const sensitivity = 0.002; // Same sensitivity for consistency
+                this.levelRenderer!.cameraTheta += deltaMove.x * sensitivity;
+                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, 
+                    this.levelRenderer!.cameraPhi + deltaMove.y * sensitivity));
 
                 this.previousMousePosition = {
                     x: event.clientX,
@@ -418,40 +415,25 @@ export class Game {
             this.isDragging = false;
         });
 
+        domElement.addEventListener('wheel', (event) => {
+            this.levelRenderer!.cameraDistance = Math.max(4, Math.min(20, 
+                this.levelRenderer!.cameraDistance + event.deltaY * 0.01));
+        });
+
         // Add pointer lock change and error event listeners
         document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
         document.addEventListener('pointerlockerror', () => {
             console.error('Pointer lock error');
         });
 
-        // Wheel for zoom
-        domElement.addEventListener('wheel', (event) => {
-            this.levelRenderer!.cameraDistance = Math.max(4, Math.min(20, this.levelRenderer!.cameraDistance + event.deltaY * 0.01));
-        });
-
-        // Use 'T' key to toggle performance mode instead of just toon shadows
+        // Performance mode toggle
         window.addEventListener('keydown', (event) => {
             if (event.key === 't' || event.key === 'T') {
-                // Only allow toggling on desktop devices
                 if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
                     this.togglePerformanceMode();
-                    console.log(`Toggled to ${this.highPerformanceMode ? 'high' : 'low'} performance mode`);
                 }
             }
         });
-    }
-
-    // Method to remove key listeners
-    private removeKeyListeners(): void {
-        if (this.keydownListener) {
-            window.removeEventListener('keydown', this.keydownListener);
-            this.keydownListener = null;
-        }
-        
-        if (this.keyupListener) {
-            window.removeEventListener('keyup', this.keyupListener);
-            this.keyupListener = null;
-        }
     }
 
     /**
@@ -963,45 +945,28 @@ export class Game {
             }
         }
         
-        // Remove keyboard event listeners to prevent duplicates
-        this.removeKeyListeners();
-        
         // Create new Level instance
         this.level = new Level(this, levelIndex);
         
-        // If renderer exists, just reset it with the new level
         if (this.levelRenderer) {
-            // Simply reset the renderer with new level - keeps WebGL context
             this.levelRenderer.reset(this.level);
-            
-            // Update level's reference to this renderer
             this.level.levelRenderer = this.levelRenderer;
         } else {
-            // First time - create new renderer
             this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
             this.level.levelRenderer = this.levelRenderer;
-            
-            // Add the renderer's canvas to the DOM
             document.body.appendChild(this.levelRenderer.renderer.domElement);
         }
-
         
-        // Create a local player with our existing ID or a new one
+        // Add player and load content
         if (this.localPlayerId) {
-            // We already have a player ID (reconnecting or level switch)
             this.level.addPlayer(this.localPlayerId, true, this.userName);
         } else {
-            // First time, create a new local player
             const localId = `local-${Date.now()}`;
             this.level.addPlayer(localId, true, this.userName);
             this.localPlayerId = localId;
         }
 
-        // Load the appropriate level content
         this.loadLevelContent(levelIndex);
-        
-        // Re-initialize controls
-        this.setupControls();
         
         console.log(`Level ${levelIndex} switch complete`);
     }
@@ -1082,6 +1047,9 @@ export class Game {
                 break;
             case 2:
                 TestLevels.createSkydivingChallenge(this.level!, this);
+                break;
+            case 3:
+                BeginnerLevels.createTutorialLevel(this.level!, this);
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);

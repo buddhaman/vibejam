@@ -14,12 +14,20 @@ export class TestLevels {
      * @param game The Game instance for level switching
      */
     public static createOverworld(level: Level, game: Game): void {
-        // Main platform in the center - use main material and make it larger
+        // Main platform in the center - make it larger
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-25, 0, -25),
-            new THREE.Vector3(25, 2, 25),
+            new THREE.Vector3(-35, 0, -35),
+            new THREE.Vector3(35, 2, 35),
             LevelBuilder.MAIN_PLATFORM_MATERIAL,
             "overworld-platform"
+        ));
+        
+        // Portal to beginner tutorial level
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-25, 2, 0),
+            new THREE.Vector3(-22, 6, 3),
+            LevelBuilder.PORTAL_MATERIAL,
+            "portal-tutorial"
         ));
         
         // Regular level portals on the main platform
@@ -81,6 +89,18 @@ export class TestLevels {
         // Add Vibeverse portal on the separate island
         this.createVibeVersePortal(level, game);
         
+        // Make action area for beginner tutorial portal
+        level.addActionArea(
+            new THREE.Vector3(-23.5, 4, 1.5),    // Center of the portal
+            new THREE.Vector3(6, 8, 6),          // Interaction area
+            () => {
+                console.log("Switching to Tutorial Level");
+                if (game) {
+                    game.switchLevel(3); // Assuming 3 will be the index for tutorial level
+                }
+            }
+        );
+        
         // Make action areas for regular level portals
         level.addActionArea(
             new THREE.Vector3(-13.5, 4, 1.5),    // Center of the portal
@@ -116,6 +136,22 @@ export class TestLevels {
             "SKYDIVING",
             new THREE.Vector3(16.5, 7, 1.5),
             "white",
+            "#000000"
+        );
+        
+        // Add descriptive text for tutorial portal
+        level.levelRenderer?.addSimpleText(
+            "TUTORIAL",
+            new THREE.Vector3(-23.5, 7, 1.5),
+            "white",
+            "#000000"
+        );
+        
+        // Add extra text explaining it's for beginners
+        level.levelRenderer?.addSimpleText(
+            "FOR BEGINNERS",
+            new THREE.Vector3(-23.5, 6, 1.5),
+            "#aaffaa", // Light green
             "#000000"
         );
         
