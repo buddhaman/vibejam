@@ -23,6 +23,18 @@ export class LevelEditor {
     // New property
     private platforms: any[] = [];
 
+    // Add properties to track the transform panel
+    private transformPanel: HTMLDivElement | null = null;
+    private posXInput: HTMLInputElement | null = null;
+    private posYInput: HTMLInputElement | null = null;
+    private posZInput: HTMLInputElement | null = null;
+    private rotXInput: HTMLInputElement | null = null;
+    private rotYInput: HTMLInputElement | null = null;
+    private rotZInput: HTMLInputElement | null = null;
+    private scaleXInput: HTMLInputElement | null = null;
+    private scaleYInput: HTMLInputElement | null = null;
+    private scaleZInput: HTMLInputElement | null = null;
+
     /**
      * Check if the editor should be activated based on URL parameters
      */
@@ -66,6 +78,7 @@ export class LevelEditor {
         
         // Setup UI and controls
         this.setupEditorUI();
+        this.createTransformPanel();
         this.setupSelectionControls();
     }
 
@@ -276,11 +289,14 @@ export class LevelEditor {
             
             // Adjust the transform controls to have smaller translations
             this.transformControls.setTranslationSnap(0.5); // Snap to 0.5 unit grid
-            this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Snap to 15 degrees
+            this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(5)); // Make rotation less sensitive (5 degrees)
             this.transformControls.setScaleSnap(0.1); // Snap scale to 0.1 increments
         }
         
         console.log('Selected object:', object.name || 'Unnamed Object');
+        
+        // Update transform panel with object values
+        this.updateTransformPanel();
     }
     
     /**
@@ -298,6 +314,11 @@ export class LevelEditor {
             // Detach transform controls
             if (this.transformControls) {
                 this.transformControls.detach();
+            }
+            
+            // Hide transform panel
+            if (this.transformPanel) {
+                this.transformPanel.style.display = 'none';
             }
             
             this.selectedObject = null;
@@ -562,17 +583,204 @@ export class LevelEditor {
                     platform.shape.orientation.copy(this.selectedObject.quaternion);
                     // Don't update scale unless you need to
                 }
+                
+                // Update the transform panel to reflect new values
+                this.updateTransformPanel();
             }
         });
         
-        // Standard event listeners
+        // Tell the game that transform controls are active to prevent camera movement
         this.transformControls.addEventListener('mouseDown', () => {
             this.isDragging = true;
+            // Set a global flag that the game can check
+            if (this.game) {
+                this.game.editorDraggingObject = true;
+            }
         });
         
         this.transformControls.addEventListener('mouseUp', () => {
             this.isDragging = false;
+            // Clear the global flag
+            if (this.game) {
+                this.game.editorDraggingObject = false;
+            }
         });
+        
+        // Set rotation sensitivity - make it less sensitive
+        this.transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)); // Snap to 15 degrees
+    }
+
+    // Create a transform panel with text fields for position, rotation, and scale
+    private createTransformPanel(): void {
+        // Create the panel
+        this.transformPanel = document.createElement('div');
+        this.transformPanel.style.position = 'fixed';
+        this.transformPanel.style.top = '50px';
+        this.transformPanel.style.right = '10px';
+        this.transformPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        this.transformPanel.style.padding = '10px';
+        this.transformPanel.style.borderRadius = '5px';
+        this.transformPanel.style.color = 'white';
+        this.transformPanel.style.fontFamily = 'Arial, sans-serif';
+        this.transformPanel.style.zIndex = '9998';
+        this.transformPanel.style.width = '220px';
+        this.transformPanel.style.display = 'none'; // Initially hidden
+        
+        // Create title
+        const title = document.createElement('div');
+        title.textContent = 'Transform Controls';
+        title.style.fontSize = '16px';
+        title.style.fontWeight = 'bold';
+        title.style.marginBottom = '10px';
+        title.style.textAlign = 'center';
+        this.transformPanel.appendChild(title);
+        
+        // Create sections for position, rotation, and scale
+        this.transformPanel.appendChild(this.createTransformSection('Position', ['X', 'Y', 'Z'], (inputs) => {
+            this.posXInput = inputs[0];
+            this.posYInput = inputs[1];
+            this.posZInput = inputs[2];
+        }));
+        
+        this.transformPanel.appendChild(this.createTransformSection('Rotation', ['X', 'Y', 'Z'], (inputs) => {
+            this.rotXInput = inputs[0];
+            this.rotYInput = inputs[1];
+            this.rotZInput = inputs[2];
+        }));
+        
+        this.transformPanel.appendChild(this.createTransformSection('Scale', ['X', 'Y', 'Z'], (inputs) => {
+            this.scaleXInput = inputs[0];
+            this.scaleYInput = inputs[1];
+            this.scaleZInput = inputs[2];
+        }));
+        
+        // Create apply button
+        const applyButton = document.createElement('button');
+        applyButton.textContent = 'Apply';
+        applyButton.style.width = '100%';
+        applyButton.style.padding = '5px';
+        applyButton.style.marginTop = '10px';
+        applyButton.style.backgroundColor = '#4CAF50';
+        applyButton.style.color = 'white';
+        applyButton.style.border = 'none';
+        applyButton.style.borderRadius = '4px';
+        applyButton.style.cursor = 'pointer';
+        
+        applyButton.addEventListener('click', () => this.applyTransform());
+        this.transformPanel.appendChild(applyButton);
+        
+        // Add to body
+        document.body.appendChild(this.transformPanel);
+    }
+
+    // Helper to create a transform section (position, rotation, or scale)
+    private createTransformSection(title: string, labels: string[], callback: (inputs: HTMLInputElement[]) => void): HTMLDivElement {
+        const section = document.createElement('div');
+        section.style.marginBottom = '10px';
+        
+        // Section title
+        const titleElem = document.createElement('div');
+        titleElem.textContent = title;
+        titleElem.style.marginBottom = '5px';
+        section.appendChild(titleElem);
+        
+        // Create input grid
+        const grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = '30px 1fr';
+        grid.style.gap = '5px';
+        
+        const inputs: HTMLInputElement[] = [];
+        
+        // Create labeled inputs
+        labels.forEach(label => {
+            // Label
+            const labelElem = document.createElement('div');
+            labelElem.textContent = label;
+            labelElem.style.textAlign = 'right';
+            grid.appendChild(labelElem);
+            
+            // Input
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = title === 'Scale' ? '0.1' : '0.5';
+            input.style.width = '100%';
+            input.style.boxSizing = 'border-box';
+            input.style.backgroundColor = '#333';
+            input.style.color = 'white';
+            input.style.border = '1px solid #555';
+            input.style.borderRadius = '3px';
+            input.style.padding = '3px';
+            
+            grid.appendChild(input);
+            inputs.push(input);
+        });
+        
+        section.appendChild(grid);
+        
+        // Call the callback with the inputs
+        callback(inputs);
+        
+        return section;
+    }
+
+    // Apply the transform values from the text fields
+    private applyTransform(): void {
+        if (!this.selectedObject) return;
+        
+        try {
+            // Get values from inputs
+            const posX = this.posXInput ? parseFloat(this.posXInput.value) : 0;
+            const posY = this.posYInput ? parseFloat(this.posYInput.value) : 0;
+            const posZ = this.posZInput ? parseFloat(this.posZInput.value) : 0;
+            
+            const rotX = this.rotXInput ? THREE.MathUtils.degToRad(parseFloat(this.rotXInput.value)) : 0;
+            const rotY = this.rotYInput ? THREE.MathUtils.degToRad(parseFloat(this.rotYInput.value)) : 0;
+            const rotZ = this.rotZInput ? THREE.MathUtils.degToRad(parseFloat(this.rotZInput.value)) : 0;
+            
+            const scaleX = this.scaleXInput ? parseFloat(this.scaleXInput.value) : 1;
+            const scaleY = this.scaleYInput ? parseFloat(this.scaleYInput.value) : 1;
+            const scaleZ = this.scaleZInput ? parseFloat(this.scaleZInput.value) : 1;
+            
+            // Apply to the selected object
+            this.selectedObject.position.set(posX, posY, posZ);
+            this.selectedObject.rotation.set(rotX, rotY, rotZ);
+            this.selectedObject.scale.set(scaleX, scaleY, scaleZ);
+            
+            // Update the platform's shape
+            const platform = this.platforms.find(p => p.mesh === this.selectedObject);
+            if (platform && platform.shape) {
+                platform.shape.position.copy(this.selectedObject.position);
+                platform.shape.orientation.setFromEuler(new THREE.Euler(rotX, rotY, rotZ));
+                platform.shape.scaling.copy(this.selectedObject.scale);
+                platform.shape.updateTransform();
+            }
+        } catch (e) {
+            console.error("Error applying transform:", e);
+        }
+    }
+
+    // Update values in the panel when an object is selected
+    private updateTransformPanel(): void {
+        if (!this.selectedObject || !this.transformPanel) return;
+        
+        // Show the panel
+        this.transformPanel.style.display = 'block';
+        
+        // Update position values
+        if (this.posXInput) this.posXInput.value = this.selectedObject.position.x.toFixed(2);
+        if (this.posYInput) this.posYInput.value = this.selectedObject.position.y.toFixed(2);
+        if (this.posZInput) this.posZInput.value = this.selectedObject.position.z.toFixed(2);
+        
+        // Update rotation values (convert to degrees)
+        if (this.rotXInput) this.rotXInput.value = THREE.MathUtils.radToDeg(this.selectedObject.rotation.x).toFixed(1);
+        if (this.rotYInput) this.rotYInput.value = THREE.MathUtils.radToDeg(this.selectedObject.rotation.y).toFixed(1);
+        if (this.rotZInput) this.rotZInput.value = THREE.MathUtils.radToDeg(this.selectedObject.rotation.z).toFixed(1);
+        
+        // Update scale values
+        if (this.scaleXInput) this.scaleXInput.value = this.selectedObject.scale.x.toFixed(2);
+        if (this.scaleYInput) this.scaleYInput.value = this.selectedObject.scale.y.toFixed(2);
+        if (this.scaleZInput) this.scaleZInput.value = this.selectedObject.scale.z.toFixed(2);
     }
 }
 

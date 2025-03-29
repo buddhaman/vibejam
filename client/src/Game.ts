@@ -59,6 +59,9 @@ export class Game {
     private localPlayerId: string | null = null;
     public network: Network | null = null;
 
+    // Add a property to the Game class
+    public editorDraggingObject: boolean = false;
+
     constructor() {
         // Set up basic components
         this.detectDeviceCapabilities();
@@ -237,6 +240,9 @@ export class Game {
         });
 
         domElement.addEventListener('mousemove', (event) => {
+            // Skip camera rotation if editor is dragging an object
+            if (this.editorDraggingObject) return;
+            
             // If pointer is locked (fullscreen mode)
             if (document.pointerLockElement === domElement) {
                 // Use movement values directly (more precise)
