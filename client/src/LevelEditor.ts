@@ -7,6 +7,7 @@ import { LevelBuilder } from './LevelBuilder';
 import { ConvexShape } from '../../shared/ConvexShape';
 import { RigidBody } from './RigidBody';
 import { StaticBody } from './StaticBody';
+import { Rope } from './Rope';
 
 export class LevelEditor {
     private game: Game;
@@ -76,10 +77,73 @@ export class LevelEditor {
         // Set document title
         document.title = "Level Editor - 3D Platformer";
         
+        // Hide standard game controls and disable level switching
+        this.hideGameControls();
+        this.disableLevelSwitching();
+        
         // Setup UI and controls
         this.setupEditorUI();
         this.createTransformPanel();
         this.setupSelectionControls();
+    }
+
+    /**
+     * Disable level switching functionality
+     */
+    private disableLevelSwitching(): void {
+        // Overwrite the game's switchLevel method with an empty function
+        if (this.game) {
+            this.game.switchLevel = () => {
+                console.log("Level switching is disabled in editor mode");
+            };
+            
+            // Also remove keyboard handlers for level switching by redefining keydown event
+            if (this.game.keydownListener) {
+                window.removeEventListener('keydown', this.game.keydownListener);
+            }
+            
+            // Create a new keydown listener that doesn't handle level switching
+            this.game.keydownListener = (event) => {
+                this.game.inputKeys[event.key.toLowerCase()] = true;
+                
+                // Only handle camera movement in editor mode
+                if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
+                    this.game.handleCameraMovementKey(event.key, true);
+                }
+            };
+            
+            // Add the new listener
+            window.addEventListener('keydown', this.game.keydownListener);
+        }
+    }
+
+    /**
+     * Hide standard game controls
+     */
+    private hideGameControls(): void {
+        // Hide fullscreen controls container if it exists
+        const fullscreenControls = document.getElementById('fullscreen-controls-container');
+        if (fullscreenControls) {
+            fullscreenControls.style.display = 'none';
+        }
+        
+        // Hide mobile controls if they exist
+        const mobileControls = document.querySelector('.mobile-controls');
+        if (mobileControls) {
+            (mobileControls as HTMLElement).style.display = 'none';
+        }
+        
+        // Hide any other game UI elements
+        const gameUIElements = document.querySelectorAll('.game-ui');
+        gameUIElements.forEach(element => {
+            (element as HTMLElement).style.display = 'none';
+        });
+        
+        // If there's an escape message, hide that too
+        const escapeMsg = document.getElementById('escape-message');
+        if (escapeMsg) {
+            escapeMsg.style.display = 'none';
+        }
     }
 
     /**
@@ -140,6 +204,10 @@ export class LevelEditor {
         // Add Platform button
         const addPlatformBtn = this.createButton('Add Platform', () => this.addPlatform());
         toolbar.appendChild(addPlatformBtn);
+        
+        // Add Rope button
+        const addRopeBtn = this.createButton('Add Rope', () => this.addRope());
+        toolbar.appendChild(addRopeBtn);
         
         // Add delete button 
         const deleteBtn = this.createButton('Delete Selected', () => this.deleteSelected());
@@ -204,6 +272,18 @@ export class LevelEditor {
             
             // Add event listener to handle transform mode changes
             window.addEventListener('keydown', (event) => {
+                // Skip shortcut processing if focused on an input element
+                const activeElement = document.activeElement;
+                const isInputActive = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'TEXTAREA' || 
+                    activeElement.isContentEditable
+                );
+                
+                if (isInputActive) {
+                    return; // Don't process shortcuts when editing text
+                }
+                
                 if (!this.selectedObject) return;
                 
                 switch (event.key.toLowerCase()) {
@@ -235,18 +315,20 @@ export class LevelEditor {
             // Skip if we're dragging with transform controls
             if (this.isDragging) return;
             
-            // Calculate mouse position in normalized device coordinates
+            // Calculate mouse position
             this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             
             // Raycast to find intersected objects
             this.raycaster.setFromCamera(this.mouse, this.levelRenderer.camera.threeCamera);
             
-            // Find all platforms in the scene
-            const platforms = this.platforms.map(p => p.mesh);
+            // Create a list of all selectable objects
+            const selectables = [
+                ...this.platforms.map(p => p.mesh)
+            ];
             
             // Check for intersections
-            const intersects = this.raycaster.intersectObjects(platforms, false);
+            const intersects = this.raycaster.intersectObjects(selectables, false);
             
             if (intersects.length > 0) {
                 // Select the first intersected object
@@ -337,17 +419,16 @@ export class LevelEditor {
         const platformPos = cameraPos.clone().add(forwardDir.multiplyScalar(10));
         platformPos.y -= 1; // Slightly below camera view for better visibility
         
-        // Create a random color
-        const color = new THREE.Color(Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5);
+        // Use the standard red color from LevelBuilder
+        const color = new THREE.Color(0xFF0000); // Red color
         
         // Platform name
         const platformName = `platform_${Date.now()}`;
         
-        // Use LevelBuilder but DO NOT add it to the scene through standard channels
-        // This creates a box with correct dimensions but we'll handle positioning manually
+        // Create platform at origin first
         const platform = LevelBuilder.createHorizontalPlatform(
             this.level,
-            new THREE.Vector3(0, 0, 0), // Create at origin first
+            new THREE.Vector3(0, 0, 0),
             5, // width
             5, // depth
             1, // height
@@ -363,13 +444,13 @@ export class LevelEditor {
             // Set the shape's position to our desired world position
             platform.shape.position.copy(platformPos);
             
-            // Now update the transform which will cascade to the mesh
+            // Update the transform which will cascade to the mesh
             platform.shape.updateTransform();
             
             // Add to our platforms array
             this.platforms.push(platform);
             
-            // Add to scene if needed (depends on what LevelBuilder does)
+            // Add to scene if needed
             if (!platform.mesh.parent) {
                 this.levelRenderer.scene.add(platform.mesh);
             }
@@ -379,6 +460,37 @@ export class LevelEditor {
         }
         
         console.log(`Added new platform: ${platformName}`);
+    }
+    
+    /**
+     * Add a new rope
+     */
+    private addRope(): void {
+        // Get camera position and forward direction
+        const cameraPos = this.levelRenderer.camera.getPosition();
+        const forwardDir = this.levelRenderer.camera.getForwardVector();
+        
+        // Position the rope start point at camera position
+        const startPos = cameraPos.clone();
+        
+        // Position the rope end point 10 units in front of and below the camera
+        const endPos = cameraPos.clone().add(forwardDir.multiplyScalar(5));
+        endPos.y -= 5; // Make it hang down from camera position
+        
+        // Create a unique name
+        const ropeName = `rope_${Date.now()}`;
+        
+        // Create the rope with correct parameters
+        const distanceToEnd = startPos.distanceTo(endPos);
+        const rope = new Rope(startPos, 10, distanceToEnd, 0.1);
+        
+        // Add rope to level and scene
+        this.level.ropes.push(rope);
+        
+        // We should ideally select the rope, but we need to extend our selection logic
+        // to handle ropes, which have different structure than platforms
+        
+        console.log(`Added new rope: ${ropeName}`);
     }
     
     /**
@@ -394,10 +506,22 @@ export class LevelEditor {
             // Get the platform
             const platform = this.platforms[platformIndex];
             
-            // Remove from scene
-            platform.removeFromScene(this.levelRenderer.scene);
+            // Remove mesh from scene directly instead of calling removeFromScene
+            if (platform.mesh && platform.mesh.parent) {
+                platform.mesh.parent.remove(platform.mesh);
+            } else if (this.selectedObject.parent) {
+                this.selectedObject.parent.remove(this.selectedObject);
+            }
             
-            // Remove from level data
+            // Remove from level data if it's tracked there
+            if (this.level.rigidBodies) {
+                const rigidBodyIndex = this.level.rigidBodies.indexOf(platform);
+                if (rigidBodyIndex >= 0) {
+                    this.level.rigidBodies.splice(rigidBodyIndex, 1);
+                }
+            }
+            
+            // Remove from platforms array
             this.platforms.splice(platformIndex, 1);
             
             console.log(`Deleted platform: ${platform.mesh.name || 'Unnamed Platform'}`);
@@ -413,6 +537,10 @@ export class LevelEditor {
     private saveLevel(): void {
         // Create level data object
         const levelData = {
+            name: "Custom Level",
+            author: "Level Editor",
+            version: 1,
+            created: new Date().toISOString(),
             platforms: this.platforms.map(platform => ({
                 position: [
                     platform.mesh.position.x,
@@ -434,27 +562,48 @@ export class LevelEditor {
                     : '#888888',
                 name: platform.mesh.name || ''
             })),
-            metadata: {
-                created: new Date().toISOString(),
-                name: 'Custom Level'
-            }
+            ropes: this.ropes.map(rope => {
+                // Get the start position from the fixedPoint property
+                const startPos = rope.fixedPoint ? [rope.fixedPoint.x, rope.fixedPoint.y, rope.fixedPoint.z] 
+                    : [0, 0, 0];
+                
+                // For end position, try using verletBody.endParticle if it exists
+                const endParticle = rope.endParticle || (rope.verletBody && rope.verletBody.getParticles().slice(-1)[0]);
+                const endPos = endParticle ? [endParticle.position.x, endParticle.position.y, endParticle.position.z]
+                    : [0, 0, 0];
+                
+                return {
+                    startPos: startPos,
+                    endPos: endPos,
+                    length: rope.totalLength || rope.getTotalLength?.() || 5,
+                    segments: rope.segments || rope.getSegments?.() || 10,
+                    name: rope.name || ''
+                };
+            })
         };
         
         // Convert to JSON string
         const jsonString = JSON.stringify(levelData, null, 2);
+        
+        // Create a text input for the level name
+        const levelName = prompt("Enter a name for your level:", "level1");
+        if (!levelName) return; // User cancelled
+        
+        // Create filename
+        const filename = levelName.endsWith('.json') ? levelName : `${levelName}.json`;
         
         // Create download
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'level.json';
+        a.download = filename;
         a.click();
         
         // Clean up
         URL.revokeObjectURL(url);
         
-        console.log('Level saved to JSON');
+        console.log(`Level saved to ${filename}`);
     }
     
     /**
@@ -478,59 +627,106 @@ export class LevelEditor {
                     const content = e.target?.result as string;
                     const levelData = JSON.parse(content);
                     
+                    // Show confirmation dialog
+                    const confirmLoad = confirm(`Load level "${file.name}"? This will replace your current level.`);
+                    if (!confirmLoad) return;
+                    
                     // Clear existing level
                     this.clearLevel();
                     
                     // Load platforms
                     if (levelData.platforms && Array.isArray(levelData.platforms)) {
                         levelData.platforms.forEach((platformData: any) => {
-                            // Extract platform data
-                            const position = new THREE.Vector3(
-                                platformData.position[0],
-                                platformData.position[1],
-                                platformData.position[2]
-                            );
-                            
-                            // Create color from hex string or use default
-                            let color;
-                            try {
-                                color = new THREE.Color(platformData.color || '#888888');
-                            } catch (e) {
-                                color = new THREE.Color(0x888888);
-                            }
-                            
-                            // Create the platform
-                            const width = platformData.scale ? platformData.scale[0] : 5;
-                            const depth = platformData.scale ? platformData.scale[2] : 5;
-                            const height = platformData.scale ? platformData.scale[1] : 1;
-                            
+                            // Create a platform with a temporary position
                             const platform = LevelBuilder.createHorizontalPlatform(
                                 this.level,
-                                position,
-                                width,
-                                depth,
-                                height,
+                                new THREE.Vector3(0, 0, 0), // Create at origin first
+                                5, // Default width 
+                                5, // Default depth
+                                1, // Default height
                                 new THREE.MeshStandardMaterial({ 
-                                    color: color,
+                                    color: new THREE.Color(platformData.color || '#FF0000'),
                                     roughness: 0.7
                                 }),
                                 platformData.name || `platform_${Date.now()}`
                             );
                             
-                            // Apply rotation if available
-                            if (platformData.rotation && platform) {
+                            if (platform && platform.mesh) {
+                                // Now explicitly set position, rotation, and scale
+                                platform.mesh.position.set(
+                                    platformData.position[0],
+                                    platformData.position[1],
+                                    platformData.position[2]
+                                );
+                                
                                 platform.mesh.rotation.set(
                                     platformData.rotation[0],
                                     platformData.rotation[1],
                                     platformData.rotation[2]
                                 );
+                                
+                                platform.mesh.scale.set(
+                                    platformData.scale[0],
+                                    platformData.scale[1],
+                                    platformData.scale[2]
+                                );
+                                
+                                // Update the shape to match the mesh
+                                if (platform.shape) {
+                                    platform.shape.position.copy(platform.mesh.position);
+                                    platform.shape.orientation.setFromEuler(new THREE.Euler(
+                                        platformData.rotation[0],
+                                        platformData.rotation[1],
+                                        platformData.rotation[2]
+                                    ));
+                                    platform.shape.scaling.copy(platform.mesh.scale);
+                                    platform.shape.updateTransform();
+                                }
+                                
+                                // Add to platforms array
+                                this.platforms.push(platform);
                             }
                         });
+                        
+                        console.log(`Loaded level with ${levelData.platforms.length} platforms`);
                     }
                     
-                    console.log('Level loaded from JSON');
+                    // Load ropes
+                    if (levelData.ropes && Array.isArray(levelData.ropes)) {
+                        levelData.ropes.forEach((ropeData: any) => {
+                            const startPos = new THREE.Vector3(
+                                ropeData.startPos[0],
+                                ropeData.startPos[1],
+                                ropeData.startPos[2]
+                            );
+                            
+                            const endPos = new THREE.Vector3(
+                                ropeData.endPos[0],
+                                ropeData.endPos[1],
+                                ropeData.endPos[2]
+                            );
+                            
+                            // Create the rope with correct parameters
+                            const rope = new Rope(startPos, 10, ropeData.length || startPos.distanceTo(endPos), 0.1);
+                            
+                            // Add to level and scene
+                            this.level.ropes.push(rope);
+                            
+                            // Add to our ropes array
+                            this.ropes.push(rope);
+                        });
+                        
+                        console.log(`Loaded level with ${levelData.platforms.length} platforms and ${levelData.ropes.length} ropes`);
+                    }
+                    
+                    // Show metadata if available
+                    if (levelData.name || levelData.author) {
+                        console.log(`Level info: ${levelData.name || 'Unnamed'} by ${levelData.author || 'Unknown'}`);
+                    }
+                    
                 } catch (error) {
-                    console.error('Error loading level:', error);
+                    console.error("Error loading level:", error);
+                    alert("Error loading level. See console for details.");
                 }
             };
             
@@ -550,14 +746,16 @@ export class LevelEditor {
         
         // Remove all platforms from scene
         this.platforms.forEach(platform => {
-            platform.removeFromScene(this.levelRenderer.scene);
+            if (platform.mesh && platform.mesh.parent) {
+                platform.mesh.parent.remove(platform.mesh);
+            }
         });
         
         // Clear platforms array
         this.platforms = [];
         
         // Add ground platform back
-        LevelBuilder.createHorizontalPlatform(this.level, 
+        const groundPlatform = LevelBuilder.createHorizontalPlatform(this.level, 
             new THREE.Vector3(0, -2, 0), 
             50, 
             50, 
@@ -567,6 +765,11 @@ export class LevelEditor {
                 roughness: 0.8,
             }), 
             "ground_platform");
+        
+        // Add to platforms array if created successfully
+        if (groundPlatform) {
+            this.platforms.push(groundPlatform);
+        }
     }
 
     private setupTransformControlsEvents(): void {
