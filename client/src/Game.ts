@@ -8,6 +8,8 @@ import { Player } from './Player';
 import { Network } from './Network';
 import { RoomType } from './Network';
 import { BeginnerLevels } from './BeginnerLevels';
+import { LevelEditor } from './LevelEditor';
+import { Camera, CameraMode } from './Camera';
 
 /**
  * Add an interface to define the custom properties on the window object
@@ -35,7 +37,7 @@ export class Game {
     public highPerformanceMode: boolean = true;
     
     // Add debug mode flag
-    private debugMode: boolean = false;
+    public debugMode: boolean = false;
 
     // Add mobile controls
     private mobileControls: MobileControls | null = null;
@@ -55,14 +57,39 @@ export class Game {
 
     // Add network player ID tracking
     private localPlayerId: string | null = null;
-    public network: Network;
+    public network: Network | null = null;
 
     constructor() {
         // Set up basic components
-        this.setupErrorLogger();
         this.detectDeviceCapabilities();
         this.highPerformanceMode = true;
         
+        // Check if we should run in level editor mode
+        if (LevelEditor.shouldActivateEditor()) {
+            console.log("Starting in level editor mode...");
+            
+            // Create level renderer for editor use
+            this.level = new Level(this, -1);
+            this.levelRenderer = new LevelRenderer(this.level, this.highPerformanceMode);
+            this.level.levelRenderer = this.levelRenderer;
+            
+            // Initialize UI
+            this.init();
+            this.setupControlsOnce();
+            
+            // No player is created in editor mode
+            
+            // Initialize the editor
+            new LevelEditor(this);
+            
+            // Start a simple render loop for the editor
+            this.lastUpdateTime = performance.now();
+            requestAnimationFrame(this.updateEditor.bind(this));
+            
+            return; // Skip the rest of the initialization
+        }
+        
+        // Continue with normal game initialization
         // Create network object - just initialize, don't connect yet
         this.network = new Network(this);
         
@@ -109,187 +136,6 @@ export class Game {
             this.connectInBackground();
         } catch (error) {
             console.error("Game initialization error:", error);
-        }
-    }
-
-    /**
-     * Set up error logging to display on screen for mobile debugging
-     */
-    private setupErrorLogger(): void {
-        // Create error display container
-        const errorContainer = document.createElement('div');
-        errorContainer.id = 'error-logger';
-        errorContainer.style.position = 'fixed';
-        errorContainer.style.top = '0';
-        errorContainer.style.left = '0';
-        errorContainer.style.width = '100%';
-        errorContainer.style.padding = '10px';
-        errorContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        errorContainer.style.color = 'red';
-        errorContainer.style.fontFamily = 'monospace';
-        errorContainer.style.fontSize = '12px';
-        errorContainer.style.zIndex = '10000';
-        errorContainer.style.overflowY = 'auto';
-        errorContainer.style.maxHeight = '50%';
-        errorContainer.style.display = 'none'; // Hidden by default
-        
-        // Add a clear button
-        const clearButton = document.createElement('button');
-        clearButton.textContent = 'Clear';
-        clearButton.style.position = 'absolute';
-        clearButton.style.right = '10px';
-        clearButton.style.top = '10px';
-        clearButton.style.zIndex = '10001';
-        clearButton.addEventListener('click', () => {
-            const logContainer = document.getElementById('error-log-content');
-            if (logContainer) logContainer.innerHTML = '';
-        });
-        errorContainer.appendChild(clearButton);
-        
-        // Add a content div for logs
-        const logContent = document.createElement('div');
-        logContent.id = 'error-log-content';
-        errorContainer.appendChild(logContent);
-        
-        // Add show/hide toggle button
-        const toggleButton = document.createElement('button');
-        toggleButton.id = 'toggle-error-log';
-        toggleButton.textContent = 'Show Logs';
-        toggleButton.style.position = 'fixed';
-        toggleButton.style.top = '10px';
-        toggleButton.style.left = '10px';
-        toggleButton.style.zIndex = '10001';
-        toggleButton.style.padding = '5px';
-        toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        toggleButton.style.color = 'white';
-        toggleButton.style.border = '1px solid red';
-        toggleButton.style.borderRadius = '5px';
-        // Initially hide the toggle button unless in debug mode
-        toggleButton.style.display = this.debugMode ? 'block' : 'none';
-        
-        toggleButton.addEventListener('click', () => {
-            if (errorContainer.style.display === 'none') {
-                errorContainer.style.display = 'block';
-                toggleButton.textContent = 'Hide Logs';
-            } else {
-                errorContainer.style.display = 'none';
-                toggleButton.textContent = 'Show Logs';
-            }
-        });
-        
-        // Add elements to the DOM
-        document.body.appendChild(errorContainer);
-        document.body.appendChild(toggleButton);
-        
-        // Override console.log and console.error
-        const originalConsoleLog = console.log;
-        const originalConsoleError = console.error;
-        
-        console.log = (...args) => {
-            this.logMessage(args.map(arg => this.formatArg(arg)).join(' '));
-            originalConsoleLog.apply(console, args);
-        };
-        
-        console.error = (...args) => {
-            this.logError(args.map(arg => this.formatArg(arg)).join(' '));
-            originalConsoleError.apply(console, args);
-        };
-        
-        // Add global error handler
-        window.addEventListener('error', (event) => {
-            this.logError(`ERROR: ${event.message} at ${event.filename}:${event.lineno}`);
-            return false;
-        });
-        
-        // Add unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', (event) => {
-            this.logError(`Unhandled Promise Rejection: ${event.reason}`);
-        });
-        
-        // Add keyboard shortcut to show/hide logs (Ctrl+D)
-        window.addEventListener('keydown', (event) => {
-            if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
-                event.preventDefault(); // Prevent browser bookmark dialog
-                const toggleBtn = document.getElementById('toggle-error-log');
-                if (toggleBtn) {
-                    toggleBtn.style.display = toggleBtn.style.display === 'none' ? 'block' : 'none';
-                    
-                    // If showing the toggle, also update debug mode
-                    if (toggleBtn.style.display === 'block') {
-                        this.debugMode = true;
-                    }
-                }
-            }
-        });
-    }
-    
-    /**
-     * Format argument for logging
-     */
-    private formatArg(arg: any): string {
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        if (typeof arg === 'object') {
-            try {
-                return JSON.stringify(arg);
-            } catch (e) {
-                return arg.toString();
-            }
-        }
-        return String(arg);
-    }
-    
-    /**
-     * Log a message to the on-screen display
-     */
-    private logMessage(message: string): void {
-        const logContainer = document.getElementById('error-log-content');
-        if (!logContainer) return;
-        
-        const logEntry = document.createElement('div');
-        logEntry.textContent = message;
-        logEntry.style.borderBottom = '1px solid #333';
-        logEntry.style.padding = '5px 0';
-        logEntry.style.color = 'white';
-        
-        logContainer.appendChild(logEntry);
-        logContainer.scrollTop = logContainer.scrollHeight;
-        
-        // Only show the toggle button in debug mode
-        if (this.debugMode) {
-            const toggleButton = document.getElementById('toggle-error-log');
-            if (toggleButton) toggleButton.style.display = 'block';
-        }
-    }
-    
-    /**
-     * Log an error to the on-screen display
-     */
-    private logError(message: string): void {
-        const logContainer = document.getElementById('error-log-content');
-        if (!logContainer) return;
-        
-        const logEntry = document.createElement('div');
-        logEntry.textContent = message;
-        logEntry.style.borderBottom = '1px solid #333';
-        logEntry.style.padding = '5px 0';
-        logEntry.style.color = 'red';
-        logEntry.style.fontWeight = 'bold';
-        
-        logContainer.appendChild(logEntry);
-        logContainer.scrollTop = logContainer.scrollHeight;
-        
-        // Auto-show the error log only when in debug mode
-        if (this.debugMode) {
-            const errorContainer = document.getElementById('error-logger');
-            if (errorContainer) errorContainer.style.display = 'block';
-            
-            // Update toggle button text
-            const toggleButton = document.getElementById('toggle-error-log');
-            if (toggleButton) {
-                toggleButton.style.display = 'block';
-                toggleButton.textContent = 'Hide Logs';
-            }
         }
     }
 
@@ -365,6 +211,7 @@ export class Game {
         
         // Mouse controls for camera rotation
         const domElement = this.getDomElement();
+
         
         // Create and store mouse event listeners
         domElement.addEventListener('mousedown', (event) => {
@@ -387,10 +234,8 @@ export class Game {
                     y: event.movementY
                 };
                 
-                const sensitivity = 0.002;
-                this.levelRenderer!.cameraTheta += deltaMove.x * sensitivity;
-                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, 
-                    this.levelRenderer!.cameraPhi - deltaMove.y * sensitivity));
+                // Use the new Camera rotate method
+                this.levelRenderer!.camera.rotate(deltaMove.x, -deltaMove.y);
             }
             // Regular dragging (outside fullscreen)
             else if (this.isDragging) {
@@ -399,10 +244,8 @@ export class Game {
                     y: event.clientY - this.previousMousePosition.y
                 };
 
-                const sensitivity = 0.002; // Same sensitivity for consistency
-                this.levelRenderer!.cameraTheta += deltaMove.x * sensitivity;
-                this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, 
-                    this.levelRenderer!.cameraPhi + deltaMove.y * sensitivity));
+                // Use the new Camera rotate method
+                this.levelRenderer!.camera.rotate(deltaMove.x, deltaMove.y);
 
                 this.previousMousePosition = {
                     x: event.clientX,
@@ -416,8 +259,8 @@ export class Game {
         });
 
         domElement.addEventListener('wheel', (event) => {
-            this.levelRenderer!.cameraDistance = Math.max(4, Math.min(20, 
-                this.levelRenderer!.cameraDistance + event.deltaY * 0.01));
+            // Use the Camera zoom method
+            this.levelRenderer!.camera.zoom(event.deltaY);
         });
 
         // Add pointer lock change and error event listeners
@@ -432,6 +275,24 @@ export class Game {
                 if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
                     this.togglePerformanceMode();
                 }
+            }
+        });
+
+        // For editor mode, add keyboard controls to move the camera
+        // Add these to the setupControlsOnce method:
+        window.addEventListener('keydown', (event) => {
+            // Only for editor mode (first-person flying camera)
+            if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
+                const isKeyDown = true;
+                this.handleCameraMovementKey(event.key, isKeyDown);
+            }
+        });
+
+        window.addEventListener('keyup', (event) => {
+            // Only for editor mode (first-person flying camera)
+            if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
+                const isKeyDown = false;
+                this.handleCameraMovementKey(event.key, isKeyDown);
             }
         });
     }
@@ -451,7 +312,6 @@ export class Game {
         
         this.highPerformanceMode = highPerformance;
         
-        
         console.log(`Switched to ${highPerformance ? 'high' : 'low'} performance mode`);
     }
 
@@ -460,25 +320,23 @@ export class Game {
      */
     private setupMobileControls(): void {
         // Create new mobile controls
-        this.mobileControls = new MobileControls();
+        this.mobileControls = new MobileControls(this);
         
         // Set the camera rotation callback with increased sensitivity for mobile
         this.mobileControls.setCameraRotateCallback((deltaX, deltaY) => {
             // Adjust camera angles based on touch movement - use higher sensitivity for mobile
             const sensitivity = 0.02; // Doubled from 0.01
-            this.levelRenderer!.cameraTheta += deltaX * sensitivity;
-            // INVERTED Y-axis for more natural camera control - using negative deltaY
-            this.levelRenderer!.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.levelRenderer!.cameraPhi - deltaY * sensitivity));
+            this.levelRenderer!.camera.rotate(deltaX * sensitivity, -deltaY * sensitivity);
             
             // Log camera rotation for debugging
-            console.log(`Camera rotation: theta=${this.levelRenderer!.cameraTheta.toFixed(2)}, phi=${this.levelRenderer!.cameraPhi.toFixed(2)}`);
+            console.log(`Camera rotation: theta=${this.levelRenderer!.camera.theta.toFixed(2)}, phi=${this.levelRenderer!.camera.phi.toFixed(2)}`);
         });
         
         // Set the zoom callback
         this.mobileControls.setZoomCallback((zoomDelta) => {
             // Adjust camera distance with higher sensitivity
-            this.levelRenderer!.cameraDistance = Math.max(2, Math.min(20, this.levelRenderer!.cameraDistance - zoomDelta * 2)); // Multiplied by 2 for more sensitivity
-            console.log(`Camera zoom: distance=${this.levelRenderer!.cameraDistance.toFixed(2)}`);
+            this.levelRenderer!.camera.zoom(zoomDelta * 2); // Multiplied by 2 for more sensitivity
+            console.log(`Camera zoom: distance=${this.levelRenderer!.camera.distance.toFixed(2)}`);
         });
         
         // Attach the controls to the DOM
@@ -519,9 +377,6 @@ export class Game {
         // Renderer setup
         document.body.appendChild(this.getDomElement());
         
-        // Check WebGL context and log status
-        this.checkWebGLContext();
-        
         // Add fullscreen button for desktop users
         if (!this.isMobile) {
             this.addDesktopFullscreenButton();
@@ -534,54 +389,15 @@ export class Game {
         if (this.isMobile && !this.mobileControls) {
             this.setupMobileControls();
         }
+
+        // Check WebGL context and log status
+        //this.mobileControls!.checkWebGLContext();
         
         // Make sure the screen transition overlay has the correct z-index
         // It should be above the 3D scene but below the mobile controls
         this.screenTransition.getElement().style.zIndex = '999';
     }
 
-    /**
-     * Check if WebGL is supported and log detailed info about the context
-     */
-    private checkWebGLContext(): void {
-        try {
-            if (!this.levelRenderer || !this.levelRenderer.renderer) {
-                this.logError("WebGL: Renderer not initialized");
-                return;
-            }
-            
-            const gl = this.levelRenderer.renderer.getContext();
-            if (!gl) {
-                this.logError("WebGL: Failed to get WebGL context");
-                return;
-            }
-            
-            // Log WebGL info
-            this.logMessage(`WebGL Version: ${gl.getParameter(gl.VERSION)}`);
-            this.logMessage(`WebGL Vendor: ${gl.getParameter(gl.VENDOR)}`);
-            this.logMessage(`WebGL Renderer: ${gl.getParameter(gl.RENDERER)}`);
-            this.logMessage(`Max Texture Size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
-            this.logMessage(`Max Viewport Dims: ${gl.getParameter(gl.MAX_VIEWPORT_DIMS)}`);
-            
-            // Check for lost context
-            if (gl.isContextLost()) {
-                this.logError("WebGL: Context is lost!");
-            } else {
-                this.logMessage("WebGL: Context is valid");
-            }
-            
-            // Check canvas size
-            const canvas = this.levelRenderer.renderer.domElement;
-            this.logMessage(`Canvas size: ${canvas.width}x${canvas.height}`);
-            this.logMessage(`Canvas display size: ${canvas.clientWidth}x${canvas.clientHeight}`);
-            
-            // Check if the renderer has actually rendered anything
-            this.logMessage(`Renderer info - Render calls: ${this.levelRenderer.renderer.info.render.calls}`);
-            this.logMessage(`Renderer info - Triangles: ${this.levelRenderer.renderer.info.render.triangles}`);
-        } catch (error: any) {
-            this.logError(`WebGL check error: ${error.message}`);
-        }
-    }
 
     public getDomElement(): HTMLElement {
         return this.levelRenderer!.renderer.domElement;
@@ -680,10 +496,8 @@ export class Game {
      * Collect all inputs to pass to the level
      */
     private collectInputs(): { playerForward: THREE.Vector3, playerInput: any } {
-        // Calculate the forward vector using cameraPhi and cameraTheta
-        const forwardX = -Math.sin(this.levelRenderer!.cameraPhi) * Math.cos(this.levelRenderer!.cameraTheta);
-        const forwardZ = -Math.sin(this.levelRenderer!.cameraPhi) * Math.sin(this.levelRenderer!.cameraTheta);
-        const playerForward = new THREE.Vector3(forwardX, 0, forwardZ);
+        // Get forward vector from the camera
+        const playerForward = this.levelRenderer!.camera.getForwardVector();
         
         // Get mobile input if available
         let mobileInput = { w: false, a: false, s: false, d: false, space: false, shift: false };
@@ -934,7 +748,7 @@ export class Game {
         const goingToOverworld = levelIndex === 0;
         
         // Handle network room switching if needed
-        if (this.network.playerId && wasInOverworld !== goingToOverworld) {
+        if (this.network!.playerId && wasInOverworld !== goingToOverworld) {
             // We're changing between overworld and gameplay rooms
             if (goingToOverworld) {
                 console.log("Switching to overworld room...");
@@ -1061,7 +875,6 @@ export class Game {
 
     // Make sure to clean up on destroy
     public destroy(): void {
-        this.removeKeyListeners();
         // Clean up other event listeners and resources
         this.screenTransition.destroy();
     }
@@ -1223,7 +1036,7 @@ export class Game {
             RoomType.OVERWORLD : RoomType.GAMEPLAY;
         
         // Try to connect but don't block the game
-        this.network.connectToRoom(initialRoom).then((networkId) => {
+        this.network!.connectToRoom(initialRoom).then((networkId) => {
             // Connection successful, update the local player's ID
             if (this.level && this.localPlayerId) {
                 const success = this.level.changePlayerId(this.localPlayerId, networkId);
@@ -1490,5 +1303,55 @@ export class Game {
         if (this.network && this.network.playerId) {
             this.network.sendLevelCompletion(levelId, timeMs, stars);
         }
+    }
+
+    /**
+     * Simple update method for editor mode (no physics, just rendering)
+     */
+    private updateEditor(): void {
+        const currentTime = performance.now();
+        const deltaTime = currentTime - this.lastUpdateTime;
+        this.lastUpdateTime = currentTime;
+        
+        // In editor mode, we don't need physics updates
+        // Just update camera and render
+        if (this.levelRenderer) {
+            this.levelRenderer.updateCamera();
+            this.levelRenderer.render();
+        }
+        
+        // Continue the editor loop
+        requestAnimationFrame(this.updateEditor.bind(this));
+    }
+
+    // Add this method:
+    private handleCameraMovementKey(key: string, isDown: boolean): void {
+        if (!this.levelRenderer) return;
+        
+        // Current key states
+        const forward = this.inputKeys['w'] || false;
+        const backward = this.inputKeys['s'] || false;
+        const left = this.inputKeys['a'] || false;
+        const right = this.inputKeys['d'] || false;
+        const up = this.inputKeys['q'] || false;
+        const down = this.inputKeys['e'] || false;
+        
+        // Update state based on key
+        if (key.toLowerCase() === 'w') this.inputKeys['w'] = isDown;
+        if (key.toLowerCase() === 's') this.inputKeys['s'] = isDown;
+        if (key.toLowerCase() === 'a') this.inputKeys['a'] = isDown;
+        if (key.toLowerCase() === 'd') this.inputKeys['d'] = isDown;
+        if (key.toLowerCase() === 'q') this.inputKeys['q'] = isDown;
+        if (key.toLowerCase() === 'e') this.inputKeys['e'] = isDown;
+
+        // Update camera movement
+        this.levelRenderer!.camera.move(
+            forward,
+            backward,
+            left,
+            right,
+            up,
+            down
+        );
     }
 } 

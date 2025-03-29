@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
+import { Game } from './Game';
 
 /**
  * Class that handles all mobile-specific controls including:
@@ -24,6 +25,7 @@ export class MobileControls {
     private zoomTouchId1: number | null = null;
     private zoomTouchId2: number | null = null;
     private previousZoomDistance: number = 0;
+    private game: Game;
     
     // Button states
     private jumpActive: boolean = false;
@@ -36,7 +38,8 @@ export class MobileControls {
     private cameraRotateCallback: ((deltaX: number, deltaY: number) => void) | null = null;
     private zoomCallback: ((zoomDelta: number) => void) | null = null;
     
-    constructor() {
+    constructor(game: Game) {
+        this.game = game;
         // Create container for all mobile UI elements
         this.container = document.createElement('div');
         this.container.className = 'mobile-controls';
@@ -693,4 +696,229 @@ export class MobileControls {
             }
         }
     }
+
+    /**
+     * Set up error logging to display on screen for mobile debugging
+     */
+    public setupErrorLogger(game: Game): void {
+        // Create error display container
+        const errorContainer = document.createElement('div');
+        errorContainer.id = 'error-logger';
+        errorContainer.style.position = 'fixed';
+        errorContainer.style.top = '0';
+        errorContainer.style.left = '0';
+        errorContainer.style.width = '100%';
+        errorContainer.style.padding = '10px';
+        errorContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        errorContainer.style.color = 'red';
+        errorContainer.style.fontFamily = 'monospace';
+        errorContainer.style.fontSize = '12px';
+        errorContainer.style.zIndex = '10000';
+        errorContainer.style.overflowY = 'auto';
+        errorContainer.style.maxHeight = '50%';
+        errorContainer.style.display = 'none'; // Hidden by default
+        
+        // Add a clear button
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear';
+        clearButton.style.position = 'absolute';
+        clearButton.style.right = '10px';
+        clearButton.style.top = '10px';
+        clearButton.style.zIndex = '10001';
+        clearButton.addEventListener('click', () => {
+            const logContainer = document.getElementById('error-log-content');
+            if (logContainer) logContainer.innerHTML = '';
+        });
+        errorContainer.appendChild(clearButton);
+        
+        // Add a content div for logs
+        const logContent = document.createElement('div');
+        logContent.id = 'error-log-content';
+        errorContainer.appendChild(logContent);
+        
+        // Add show/hide toggle button
+        const toggleButton = document.createElement('button');
+        toggleButton.id = 'toggle-error-log';
+        toggleButton.textContent = 'Show Logs';
+        toggleButton.style.position = 'fixed';
+        toggleButton.style.top = '10px';
+        toggleButton.style.left = '10px';
+        toggleButton.style.zIndex = '10001';
+        toggleButton.style.padding = '5px';
+        toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        toggleButton.style.color = 'white';
+        toggleButton.style.border = '1px solid red';
+        toggleButton.style.borderRadius = '5px';
+        // Initially hide the toggle button unless in debug mode
+        toggleButton.style.display = game.debugMode ? 'block' : 'none';
+        
+        toggleButton.addEventListener('click', () => {
+            if (errorContainer.style.display === 'none') {
+                errorContainer.style.display = 'block';
+                toggleButton.textContent = 'Hide Logs';
+            } else {
+                errorContainer.style.display = 'none';
+                toggleButton.textContent = 'Show Logs';
+            }
+        });
+        
+        // Add elements to the DOM
+        document.body.appendChild(errorContainer);
+        document.body.appendChild(toggleButton);
+        
+        // Override console.log and console.error
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = (...args) => {
+            this.logMessage(args.map(arg => this.formatArg(arg)).join(' '));
+            originalConsoleLog.apply(console, args);
+        };
+        
+        console.error = (...args) => {
+            this.logError(args.map(arg => this.formatArg(arg)).join(' '));
+            originalConsoleError.apply(console, args);
+        };
+        
+        // Add global error handler
+        window.addEventListener('error', (event) => {
+            this.logError(`ERROR: ${event.message} at ${event.filename}:${event.lineno}`);
+            return false;
+        });
+        
+        // Add unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            this.logError(`Unhandled Promise Rejection: ${event.reason}`);
+        });
+        
+        // Add keyboard shortcut to show/hide logs (Ctrl+D)
+        window.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
+                event.preventDefault(); // Prevent browser bookmark dialog
+                const toggleBtn = document.getElementById('toggle-error-log');
+                if (toggleBtn) {
+                    toggleBtn.style.display = toggleBtn.style.display === 'none' ? 'block' : 'none';
+                    
+                    // If showing the toggle, also update debug mode
+                    if (toggleBtn.style.display === 'block') {
+                        game.debugMode = true;
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Check if WebGL is supported and log detailed info about the context
+     */
+    public checkWebGLContext(): void {
+        try {
+            if (!this.game.levelRenderer || !this.game.levelRenderer.renderer) {
+                this.logError("WebGL: Renderer not initialized");
+                return;
+            }
+            
+            const gl = this.game.levelRenderer!.renderer!.getContext();
+            if (!gl) {
+                this.logError("WebGL: Failed to get WebGL context");
+                return;
+            }
+            
+            // Log WebGL info
+            this.logMessage(`WebGL Version: ${gl.getParameter(gl.VERSION)}`);
+            this.logMessage(`WebGL Vendor: ${gl.getParameter(gl.VENDOR)}`);
+            this.logMessage(`WebGL Renderer: ${gl.getParameter(gl.RENDERER)}`);
+            this.logMessage(`Max Texture Size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
+            this.logMessage(`Max Viewport Dims: ${gl.getParameter(gl.MAX_VIEWPORT_DIMS)}`);
+            
+            // Check for lost context
+            if (gl.isContextLost()) {
+                this.logError("WebGL: Context is lost!");
+            } else {
+                this.logMessage("WebGL: Context is valid");
+            }
+            
+            // Check canvas size
+            const canvas = this.game.levelRenderer!.renderer!.domElement;
+            this.logMessage(`Canvas size: ${canvas.width}x${canvas.height}`);
+            this.logMessage(`Canvas display size: ${canvas.clientWidth}x${canvas.clientHeight}`);
+            
+            // Check if the renderer has actually rendered anything
+            this.logMessage(`Renderer info - Render calls: ${this.game.levelRenderer!.renderer!.info.render.calls}`);
+            this.logMessage(`Renderer info - Triangles: ${this.game.levelRenderer!.renderer!.info.render.triangles}`);
+        } catch (error: any) {
+            this.logError(`WebGL check error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Format argument for logging
+     */
+    private formatArg(arg: any): string {
+        if (arg === null) return 'null';
+        if (arg === undefined) return 'undefined';
+        if (typeof arg === 'object') {
+            try {
+                return JSON.stringify(arg);
+            } catch (e) {
+                return arg.toString();
+            }
+        }
+        return String(arg);
+    }
+
+    /**
+     * Log a message to the on-screen display
+     */
+    private logMessage(message: string): void {
+        const logContainer = document.getElementById('error-log-content');
+        if (!logContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logEntry.style.borderBottom = '1px solid #333';
+        logEntry.style.padding = '5px 0';
+        logEntry.style.color = 'white';
+        
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Only show the toggle button in debug mode
+        if (this.game.debugMode) {
+            const toggleButton = document.getElementById('toggle-error-log');
+            if (toggleButton) toggleButton.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Log an error to the on-screen display
+     */
+    private logError(message: string): void {
+        const logContainer = document.getElementById('error-log-content');
+        if (!logContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logEntry.style.borderBottom = '1px solid #333';
+        logEntry.style.padding = '5px 0';
+        logEntry.style.color = 'red';
+        logEntry.style.fontWeight = 'bold';
+        
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Auto-show the error log only when in debug mode
+        if (this.game.debugMode) {
+            const errorContainer = document.getElementById('error-logger');
+            if (errorContainer) errorContainer.style.display = 'block';
+            
+            // Update toggle button text
+            const toggleButton = document.getElementById('toggle-error-log');
+            if (toggleButton) {
+                toggleButton.style.display = 'block';
+                toggleButton.textContent = 'Hide Logs';
+            }
+        }
+    }
+    
 } 

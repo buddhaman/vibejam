@@ -5,6 +5,7 @@ import { InstancedRenderer } from './Render';
 import { Level } from './Level';
 import { ParticleSystem } from './ParticleSystem';
 import { SimpleText } from './SimpleText';
+import { Camera, CameraMode } from './Camera';
 
 export class LevelRenderer {
     public scene: THREE.Scene;
@@ -14,19 +15,16 @@ export class LevelRenderer {
     public toonTextureGradient: THREE.Texture | null = null;
     public instancedRenderer: InstancedRenderer;
     public level: Level;
-    public camera: THREE.PerspectiveCamera;
-    public cameraDistance: number = 8;
-    public cameraTheta: number = -Math.PI; // Horizontal angle
-    public cameraPhi: number = Math.PI / 3; // Vertical angle (0 to PI)
-    public cameraTarget: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
-
+    public camera: Camera;
     public highPerformanceMode: boolean = false;    
 
     // Add particle system
     public particleSystem: ParticleSystem | null = null;
 
     constructor(level: Level, highPerformance: boolean) {
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Create Camera with third-person mode by default
+        this.camera = new Camera(CameraMode.THIRD_PERSON);
+        
         this.level = level;
         this.scene = new THREE.Scene();
         this.highPerformanceMode = highPerformance;
@@ -172,7 +170,7 @@ export class LevelRenderer {
         this.composer = new EffectComposer(this.renderer, renderTarget);
         
         // Add render pass
-        const renderPass = new RenderPass(this.scene, this.camera);
+        const renderPass = new RenderPass(this.scene, this.camera.threeCamera);
         this.composer.addPass(renderPass);
     }
 
@@ -182,7 +180,7 @@ export class LevelRenderer {
         
         // Set up the composer with a render pass
         this.composer = new EffectComposer(this.renderer);
-        this.composer.addPass(new RenderPass(this.scene, this.camera));
+        this.composer.addPass(new RenderPass(this.scene, this.camera.threeCamera));
         
         // Create a texture gradient for toon materials if not already created
         if (!this.toonTextureGradient) {
@@ -261,34 +259,32 @@ export class LevelRenderer {
 
     public updateCamera(): void {
         // Update camera target to follow the local player if available
-        if (this.level.localPlayer) {
+        if (this.level.localPlayer && this.camera.getMode() === CameraMode.THIRD_PERSON) {
             // Get player position
             const playerPos = this.level.localPlayer.getPosition();
             
-            // Smoothly move camera target towards player position
-            this.cameraTarget.lerp(playerPos, 0.1);
+            // Update the camera with the target position
+            this.camera.update(playerPos);
+        } else {
+            // Update camera without a target (for editor mode)
+            this.camera.update();
         }
-        
-        // Calculate camera position based on spherical coordinates
-        const x = this.cameraDistance * Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
-        const y = this.cameraDistance * Math.cos(this.cameraPhi);
-        const z = this.cameraDistance * Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
-
-        this.camera.position.set(
-            this.cameraTarget.x + x,
-            this.cameraTarget.y + y,
-            this.cameraTarget.z + z
-        );
-        this.camera.lookAt(this.cameraTarget);
     }
 
     public init(): void {
         // Scene background (sky color)
         this.scene.background = new THREE.Color(0xffe6f2);
         
-        // Setup camera
-        this.camera.position.set(0, 8, 8);
-        this.camera.lookAt(0, 0, 0);
+        // Setup camera - this is now handled by the Camera class
+        // Just set initial position
+        if (this.camera.getMode() === CameraMode.THIRD_PERSON) {
+            this.camera.target.set(0, 0, 0);
+            this.camera.update();
+        } else {
+            // For first-person mode, just position the camera
+            this.camera.threeCamera.position.set(0, 5, 10);
+            this.camera.threeCamera.lookAt(0, 5, 0);
+        }
 
         // Add lighting based on performance mode
         this.setupLighting();
@@ -298,7 +294,7 @@ export class LevelRenderer {
         if (this.highPerformanceMode && this.composer) {
             this.composer.render();
         } else {
-            this.renderer.render(this.scene, this.camera);
+            this.renderer.render(this.scene, this.camera.threeCamera);
         }
 
         this.instancedRenderer.reset();
@@ -369,9 +365,8 @@ export class LevelRenderer {
     }
 
     public handleResize(width: number, height: number): void {
-        // Update camera aspect ratio
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
+        // Update camera aspect ratio using the Camera class
+        this.camera.handleResize(width, height);
         
         // Update renderer size
         this.renderer.setSize(width, height);
@@ -398,7 +393,8 @@ export class LevelRenderer {
         }
         
         // Reset camera target
-        this.cameraTarget = new THREE.Vector3(0, 1, 0);
+        this.camera.target.set(0, 1, 0);
+        this.camera.theta = -Math.PI;
         
         // Create new particle system
         this.particleSystem = new ParticleSystem();
@@ -408,7 +404,6 @@ export class LevelRenderer {
         
         // Reset the scene background
         this.scene.background = new THREE.Color(0xffe6f2);
-        this.cameraTheta = -Math.PI;
         
         // Reset lighting
         this.setupLighting();
