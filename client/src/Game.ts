@@ -202,7 +202,7 @@ export class Game {
             
             // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                this.handleCameraMovementKey(event.key.toLowerCase(), true);
+                this.handleCameraMovementKey(event.key, true);
             }
         };
         
@@ -211,7 +211,7 @@ export class Game {
             
             // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                this.handleCameraMovementKey(event.key.toLowerCase(), false);
+                this.handleCameraMovementKey(event.key, false);
             }
         };
         
@@ -289,6 +289,21 @@ export class Game {
             // Track key state
             this.inputKeys[event.key.toLowerCase()] = true;
             
+            // Special handling for shift key
+            if (event.key === 'Shift') {
+                this.inputKeys['shift'] = true;
+            }
+            
+            // Special handling for control key
+            if (event.key === 'Control') {
+                this.inputKeys['control'] = true;
+            }
+            
+            // Special handling for alt key
+            if (event.key === 'Alt') {
+                this.inputKeys['alt'] = true;
+            }
+            
             // Process special keys
             if (event.key === '0') {
                 this.switchLevel(0);
@@ -302,7 +317,7 @@ export class Game {
             
             // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                this.handleCameraMovementKey(event.key.toLowerCase(), true);
+                this.handleCameraMovementKey(event.key, true);
             }
         });
 
@@ -310,9 +325,24 @@ export class Game {
             // Track key state
             this.inputKeys[event.key.toLowerCase()] = false;
             
+            // Special handling for shift key
+            if (event.key === 'Shift') {
+                this.inputKeys['shift'] = false;
+            }
+            
+            // Special handling for control key
+            if (event.key === 'Control') {
+                this.inputKeys['control'] = false;
+            }
+            
+            // Special handling for alt key
+            if (event.key === 'Alt') {
+                this.inputKeys['alt'] = false;
+            }
+            
             // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                this.handleCameraMovementKey(event.key.toLowerCase(), false);
+                this.handleCameraMovementKey(event.key, false);
             }
         });
     }
@@ -1347,23 +1377,25 @@ export class Game {
     private handleCameraMovementKey(key: string, isDown: boolean): void {
         if (!this.levelRenderer) return;
         
-        // Update input state based on key
-        let forward = false;
-        let backward = false;
-        let left = false;
-        let right = false;
-        let up = false;
-        let down = false;
+        // Update the specific key state
+        this.inputKeys[key.toLowerCase()] = isDown;
         
-        // Check all relevant keys (regardless of which key was just pressed/released)
-        if (this.inputKeys['w']) forward = true;
-        if (this.inputKeys['s']) backward = true;
-        if (this.inputKeys['a']) left = true;
-        if (this.inputKeys['d']) right = true;
-        if (this.inputKeys['q'] || this.inputKeys['e']) up = this.inputKeys['e'];
-        if (this.inputKeys['q'] || this.inputKeys['e']) down = this.inputKeys['q'];
+        // Get current key states
+        const forward = this.inputKeys['w'] || false;
+        const backward = this.inputKeys['s'] || false;
+        const left = this.inputKeys['a'] || false;
+        const right = this.inputKeys['d'] || false;
         
-        // Update camera movement state
-        this.levelRenderer.camera.updateMovementState(forward, backward, left, right, up, down);
+        // Use space for up and shift for down (Minecraft style)
+        const up = this.inputKeys[' '] || false;  // Space key
+        const down = this.inputKeys['shift'] || false;
+        
+        // Use left control or left alt as sprint modifier
+        const sprint = this.inputKeys['control'] || this.inputKeys['alt'] || false;
+        
+        // Update camera movement state with all current keys
+        this.levelRenderer.camera.updateMovementState(
+            forward, backward, left, right, up, down, sprint
+        );
     }
 } 

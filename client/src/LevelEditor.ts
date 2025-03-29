@@ -77,6 +77,21 @@ export class LevelEditor {
         infoLabel.style.fontWeight = 'bold';
         infoLabel.style.zIndex = '9999';
         document.body.appendChild(infoLabel);
+
+        // Add help text for controls
+        const helpText = document.createElement('div');
+        helpText.textContent = "Editor Controls: WASD = Move, Space = Up, Shift = Down, Alt/Ctrl = Sprint";
+        helpText.style.position = 'fixed';
+        helpText.style.bottom = '10px';
+        helpText.style.left = '10px';
+        helpText.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        helpText.style.color = 'white';
+        helpText.style.padding = '5px 10px';
+        helpText.style.borderRadius = '5px';
+        helpText.style.fontFamily = 'Arial, sans-serif';
+        helpText.style.fontSize = '12px';
+        helpText.style.zIndex = '9999';
+        document.body.appendChild(helpText);
     }
 }
 
