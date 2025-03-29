@@ -199,10 +199,20 @@ export class Game {
             } else if (event.key === 'p' || event.key === 'P') {
                 this.showUsernamePrompt();
             }
+            
+            // Handle camera movement in editor mode
+            if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
+                this.handleCameraMovementKey(event.key.toLowerCase(), true);
+            }
         };
         
         this.keyupListener = (event) => {
             this.inputKeys[event.key.toLowerCase()] = false;
+            
+            // Handle camera movement in editor mode
+            if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
+                this.handleCameraMovementKey(event.key.toLowerCase(), false);
+            }
         };
         
         // Add the keyboard listeners
@@ -229,13 +239,8 @@ export class Game {
         domElement.addEventListener('mousemove', (event) => {
             // If pointer is locked (fullscreen mode)
             if (document.pointerLockElement === domElement) {
-                const deltaMove = {
-                    x: event.movementX,
-                    y: event.movementY
-                };
-                
-                // Use the new Camera rotate method
-                this.levelRenderer!.camera.rotate(deltaMove.x, -deltaMove.y);
+                // Use movement values directly (more precise)
+                this.levelRenderer!.camera.rotate(event.movementX, event.movementY);
             }
             // Regular dragging (outside fullscreen)
             else if (this.isDragging) {
@@ -281,18 +286,33 @@ export class Game {
         // For editor mode, add keyboard controls to move the camera
         // Add these to the setupControlsOnce method:
         window.addEventListener('keydown', (event) => {
-            // Only for editor mode (first-person flying camera)
+            // Track key state
+            this.inputKeys[event.key.toLowerCase()] = true;
+            
+            // Process special keys
+            if (event.key === '0') {
+                this.switchLevel(0);
+            } else if (event.key === '1') {
+                this.switchLevel(1);
+            } else if (event.key === '2') {
+                this.switchLevel(2);
+            } else if (event.key === 'p' || event.key === 'P') {
+                this.showUsernamePrompt();
+            }
+            
+            // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                const isKeyDown = true;
-                this.handleCameraMovementKey(event.key, isKeyDown);
+                this.handleCameraMovementKey(event.key.toLowerCase(), true);
             }
         });
 
         window.addEventListener('keyup', (event) => {
-            // Only for editor mode (first-person flying camera)
+            // Track key state
+            this.inputKeys[event.key.toLowerCase()] = false;
+            
+            // Handle camera movement in editor mode
             if (this.levelRenderer?.camera.getMode() === CameraMode.FIRST_PERSON_FLYING) {
-                const isKeyDown = false;
-                this.handleCameraMovementKey(event.key, isKeyDown);
+                this.handleCameraMovementKey(event.key.toLowerCase(), false);
             }
         });
     }
@@ -1313,10 +1333,9 @@ export class Game {
         const deltaTime = currentTime - this.lastUpdateTime;
         this.lastUpdateTime = currentTime;
         
-        // In editor mode, we don't need physics updates
-        // Just update camera and render
+        // Update camera - this will now handle the first-person flying motion
         if (this.levelRenderer) {
-            this.levelRenderer.updateCamera();
+            this.levelRenderer.camera.update();
             this.levelRenderer.render();
         }
         
@@ -1328,30 +1347,23 @@ export class Game {
     private handleCameraMovementKey(key: string, isDown: boolean): void {
         if (!this.levelRenderer) return;
         
-        // Current key states
-        const forward = this.inputKeys['w'] || false;
-        const backward = this.inputKeys['s'] || false;
-        const left = this.inputKeys['a'] || false;
-        const right = this.inputKeys['d'] || false;
-        const up = this.inputKeys['q'] || false;
-        const down = this.inputKeys['e'] || false;
+        // Update input state based on key
+        let forward = false;
+        let backward = false;
+        let left = false;
+        let right = false;
+        let up = false;
+        let down = false;
         
-        // Update state based on key
-        if (key.toLowerCase() === 'w') this.inputKeys['w'] = isDown;
-        if (key.toLowerCase() === 's') this.inputKeys['s'] = isDown;
-        if (key.toLowerCase() === 'a') this.inputKeys['a'] = isDown;
-        if (key.toLowerCase() === 'd') this.inputKeys['d'] = isDown;
-        if (key.toLowerCase() === 'q') this.inputKeys['q'] = isDown;
-        if (key.toLowerCase() === 'e') this.inputKeys['e'] = isDown;
-
-        // Update camera movement
-        this.levelRenderer!.camera.move(
-            forward,
-            backward,
-            left,
-            right,
-            up,
-            down
-        );
+        // Check all relevant keys (regardless of which key was just pressed/released)
+        if (this.inputKeys['w']) forward = true;
+        if (this.inputKeys['s']) backward = true;
+        if (this.inputKeys['a']) left = true;
+        if (this.inputKeys['d']) right = true;
+        if (this.inputKeys['q'] || this.inputKeys['e']) up = this.inputKeys['e'];
+        if (this.inputKeys['q'] || this.inputKeys['e']) down = this.inputKeys['q'];
+        
+        // Update camera movement state
+        this.levelRenderer.camera.updateMovementState(forward, backward, left, right, up, down);
     }
 } 
