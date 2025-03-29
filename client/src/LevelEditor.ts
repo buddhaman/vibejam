@@ -4,7 +4,9 @@ import { Level } from "./Level";
 import { LevelRenderer } from './LevelRenderer';
 import { CameraMode } from './Camera';
 import { LevelBuilder } from './LevelBuilder';
-import { Platform } from './Platform';
+import { ConvexShape } from '../../shared/ConvexShape';
+import { RigidBody } from './RigidBody';
+import { StaticBody } from './StaticBody';
 
 export class LevelEditor {
     private game: Game;
@@ -174,7 +176,6 @@ export class LevelEditor {
      * Set up selection and transformation controls
      */
     private setupSelectionControls(): void {
-        // Import the TransformControls class
         import('three/examples/jsm/controls/TransformControls').then(({ TransformControls }) => {
             // Create transform controls
             this.transformControls = new TransformControls(
@@ -184,6 +185,9 @@ export class LevelEditor {
             
             // Add to scene
             this.levelRenderer.scene.add(this.transformControls);
+            
+            // Set up events for the transform controls
+            this.setupTransformControlsEvents();
             
             // Add event listener to handle transform mode changes
             window.addEventListener('keydown', (event) => {
@@ -315,11 +319,14 @@ export class LevelEditor {
         // Create a random color
         const color = new THREE.Color(Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5);
         
-        // Create platform with a unique name
+        // Platform name
         const platformName = `platform_${Date.now()}`;
+        
+        // Use LevelBuilder but DO NOT add it to the scene through standard channels
+        // This creates a box with correct dimensions but we'll handle positioning manually
         const platform = LevelBuilder.createHorizontalPlatform(
             this.level,
-            platformPos,
+            new THREE.Vector3(0, 0, 0), // Create at origin first
             5, // width
             5, // depth
             1, // height
@@ -330,9 +337,23 @@ export class LevelEditor {
             platformName
         );
         
-        // Store the platform in our local array
-        if (platform && platform.mesh) {
+        // Now set the shape's position without updating the mesh
+        if (platform && platform.shape) {
+            // Set the shape's position to our desired world position
+            platform.shape.position.copy(platformPos);
+            
+            // Now update the transform which will cascade to the mesh
+            platform.shape.updateTransform();
+            
+            // Add to our platforms array
             this.platforms.push(platform);
+            
+            // Add to scene if needed (depends on what LevelBuilder does)
+            if (!platform.mesh.parent) {
+                this.levelRenderer.scene.add(platform.mesh);
+            }
+            
+            // Select the new platform
             this.selectObject(platform.mesh);
         }
         
@@ -530,18 +551,27 @@ export class LevelEditor {
     private setupTransformControlsEvents(): void {
         if (!this.transformControls) return;
         
-        // Make transform controls disable camera controls while dragging
+        // When object is transformed, update the underlying shape
+        this.transformControls.addEventListener('objectChange', () => {
+            if (this.selectedObject) {
+                // Find the platform
+                const platform = this.platforms.find(p => p.mesh === this.selectedObject);
+                if (platform && platform.shape) {
+                    // Update the shape's transform properties to match the mesh
+                    platform.shape.position.copy(this.selectedObject.position);
+                    platform.shape.orientation.copy(this.selectedObject.quaternion);
+                    // Don't update scale unless you need to
+                }
+            }
+        });
+        
+        // Standard event listeners
         this.transformControls.addEventListener('mouseDown', () => {
             this.isDragging = true;
         });
         
         this.transformControls.addEventListener('mouseUp', () => {
             this.isDragging = false;
-        });
-        
-        this.transformControls.addEventListener('objectChange', () => {
-            // This fires when the object is being transformed
-            // You could add additional logic here if needed
         });
     }
 }
