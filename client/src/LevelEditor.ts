@@ -10,6 +10,7 @@ import { StaticBody } from './StaticBody';
 import { Rope } from './Rope';
 import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
 import { Box3, Box3Helper } from 'three';
+import { Serialize } from './Serialize';
 
 export class LevelEditor {
     private game: Game;
@@ -63,16 +64,18 @@ export class LevelEditor {
         this.level = this.game.level!;
 
         // Add a ground platform to start with
-        LevelBuilder.createHorizontalPlatform(this.level, 
-            new THREE.Vector3(0, -2, 0), 
-            50, 
-            50, 
+        let platform = LevelBuilder.createHorizontalPlatform(this.level, 
+            new THREE.Vector3(0,0,0), 
+            1,
+            1,
             1, 
             new THREE.MeshStandardMaterial({ 
-                color: 0x888888,
+                color: 0xFF8888,
                 roughness: 0.8,
             }), 
             "ground_platform");
+        platform.mesh.scale.set(100,3,100);
+        
 
         // Set camera to first-person flying mode for the editor
         this.levelRenderer.camera.setMode(CameraMode.FIRST_PERSON_FLYING);
@@ -466,7 +469,6 @@ export class LevelEditor {
         // Set the shape's position to our desired world position
         platform.shape.position.copy(platformPos);
         platform.mesh.position.copy(platformPos);
-        debugger;
         
         // Update the transform which will cascade to the mesh
         platform.shape.updateTransform();
@@ -478,8 +480,6 @@ export class LevelEditor {
         
         // Select the new platform
         this.selectObject(platform.mesh);
-
-        this.level.addStaticBody(platform);
         
         console.log(`Added new platform: ${platformName}`);
     }
@@ -523,213 +523,36 @@ export class LevelEditor {
      * Save the current level to JSON
      */
     private saveLevel(): void {
-        // Create level data object
-        const levelData = {
-            name: "Custom Level",
-            author: "Level Editor",
-            version: 1,
-            created: new Date().toISOString(),
-            platforms: this.level.staticBodies.map(platform => ({
-                position: [
-                    platform.mesh.position.x,
-                    platform.mesh.position.y,
-                    platform.mesh.position.z
-                ],
-                rotation: [
-                    platform.mesh.rotation.x,
-                    platform.mesh.rotation.y,
-                    platform.mesh.rotation.z
-                ],
-                scale: [
-                    platform.mesh.scale.x,
-                    platform.mesh.scale.y,
-                    platform.mesh.scale.z
-                ],
-                color: platform.mesh.material instanceof THREE.MeshStandardMaterial 
-                    ? '#' + platform.mesh.material.color.getHexString()
-                    : '#888888',
-                name: platform.mesh.name || ''
-            })),
-            // ropes: this.level.ropes.map(rope => {
-            //     // Get the start position from the fixedPoint property
-            //     const startPos = rope.fixedPoint ? [rope.fixedPoint.x, rope.fixedPoint.y, rope.fixedPoint.z] 
-            //         : [0, 0, 0];
-                
-            //     // For end position, try using verletBody.endParticle if it exists
-            //     const endParticle = rope.endParticle || (rope.verletBody && rope.verletBody.getParticles().slice(-1)[0]);
-            //     const endPos = endParticle ? [endParticle.position.x, endParticle.position.y, endParticle.position.z]
-            //         : [0, 0, 0];
-                
-            //     return {
-            //         startPos: startPos,
-            //         endPos: endPos,
-            //         length: rope.totalLength || rope.getTotalLength?.() || 5,
-            //         segments: rope.segments || rope.getSegments?.() || 10,
-            //         name: rope.name || ''
-            //     };
-            // })
-        };
-        
-        // Convert to JSON string
-        const jsonString = JSON.stringify(levelData, null, 2);
-        
-        // Create a text input for the level name
-        const levelName = prompt("Enter a name for your level:", "level1");
-        if (!levelName) return; // User cancelled
-        
-        // Create filename
-        const filename = levelName.endsWith('.json') ? levelName : `${levelName}.json`;
-        
-        // Create download
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        
-        // Clean up
-        URL.revokeObjectURL(url);
-        
-        console.log(`Level saved to ${filename}`);
+        // Use the Serialize class to download the level
+        Serialize.downloadLevel(this.level);
     }
     
     /**
      * Load a level from JSON file
      */
     private loadLevel(): void {
-        // Create file input element
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.json';
-        
-        // Handle file selection
-        fileInput.onchange = (event) => {
-            const file = (event.target as HTMLInputElement).files?.[0];
-            if (!file) return;
-            
-            // Read the file
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const content = e.target?.result as string;
-                    const levelData = JSON.parse(content);
-                    
-                    // Show confirmation dialog
-                    const confirmLoad = confirm(`Load level "${file.name}"? This will replace your current level.`);
-                    if (!confirmLoad) return;
-                    
-                    // Clear existing level
-                    this.clearLevel();
-                    
-                    // Load platforms
-                    if (levelData.platforms && Array.isArray(levelData.platforms)) {
-                        levelData.platforms.forEach((platformData: any) => {
-                            // Create a platform with a temporary position
-                            const platform = LevelBuilder.createHorizontalPlatform(
-                                this.level,
-                                new THREE.Vector3(0, 0, 0), // Create at origin first
-                                1, // Default width 
-                                1, // Default depth
-                                1, // Default height
-                                new THREE.MeshStandardMaterial({ 
-                                    color: new THREE.Color(platformData.color || '#FF0000'),
-                                    roughness: 0.7
-                                }),
-                                platformData.name || `platform_${Date.now()}`
-                            );
-                            
-                            if (platform && platform.mesh) {
-                                // Now explicitly set position, rotation, and scale
-                                platform.mesh.position.set(
-                                    platformData.position[0],
-                                    platformData.position[1],
-                                    platformData.position[2]
-                                );
-                                
-                                platform.mesh.rotation.set(
-                                    platformData.rotation[0],
-                                    platformData.rotation[1],
-                                    platformData.rotation[2]
-                                );
-                                
-                                platform.mesh.scale.set(
-                                    platformData.scale[0],
-                                    platformData.scale[1],
-                                    platformData.scale[2]
-                                );
-                                
-                                // Update the shape to match the mesh
-                                if (platform.shape) {
-                                    platform.shape.position.copy(platform.mesh.position);
-                                    platform.shape.orientation.setFromEuler(new THREE.Euler(
-                                        platformData.rotation[0],
-                                        platformData.rotation[1],
-                                        platformData.rotation[2]
-                                    ));
-                                    platform.shape.scaling.copy(platform.mesh.scale);
-                                    platform.shape.updateTransform();
-                                }
-                                
-                                // Add to platforms array
-                                this.level.addStaticBody(platform);
-                            }
-                        });
-                        
-                        console.log(`Loaded level with ${levelData.platforms.length} platforms`);
-                    }
-                    
-                    // Load ropes
-                    if (levelData.ropes && Array.isArray(levelData.ropes)) {
-                        levelData.ropes.forEach((ropeData: any) => {
-                            const startPos = new THREE.Vector3(
-                                ropeData.startPos[0],
-                                ropeData.startPos[1],
-                                ropeData.startPos[2]
-                            );
-                            
-                            const endPos = new THREE.Vector3(
-                                ropeData.endPos[0],
-                                ropeData.endPos[1],
-                                ropeData.endPos[2]
-                            );
-                            
-                            // Create the rope with correct parameters
-                            const rope = new Rope(startPos, 10, ropeData.length || startPos.distanceTo(endPos), 0.1);
-                            
-                            // Add to level and scene
-                            this.level.ropes.push(rope);
-                            
-                            // Add to our ropes array
-                            //this.ropes.push(rope);
-                        });
-                        
-                        console.log(`Loaded level with ${levelData.platforms.length} platforms and ${levelData.ropes.length} ropes`);
-                    }
-                    
-                    // Show metadata if available
-                    if (levelData.name || levelData.author) {
-                        console.log(`Level info: ${levelData.name || 'Unnamed'} by ${levelData.author || 'Unknown'}`);
-                    }
-                    
-                } catch (error) {
-                    console.error("Error loading level:", error);
-                    alert("Error loading level. See console for details.");
+        // Use the Serialize class to load the level from file
+        Serialize.loadLevelFromFile(this.level, this.levelRenderer.scene, (success) => {
+            if (success) {
+                console.log("Level loaded successfully");
+                
+                // Update bounding boxes if they're visible
+                if (this.showBoundingBoxes) {
+                    this.showAllBoundingBoxes();
                 }
-            };
-            
-            reader.readAsText(file);
-        };
-        
-        // Trigger file selection
-        fileInput.click();
+            }
+        });
     }
     
     /**
      * Clear the current level
      */
     private clearLevel(): void {
-        this.level = new Level(this.game, -1);
+        // Note: we don't need to create a new Level anymore since loadLevelFromString
+        // now properly clears the existing level
+        this.level.staticBodies = [];
+        this.level.entities = [];
+        this.level.ropes = [];
         this.levelRenderer.reset(this.level);
     }
 
