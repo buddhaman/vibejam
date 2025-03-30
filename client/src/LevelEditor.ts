@@ -529,6 +529,9 @@ export class LevelEditor {
         );
 
         // Set the shape's position to our desired world position
+        let scale = new THREE.Vector3(4,4,4);
+        platform.shape.scaling.copy(scale);
+        platform.mesh.scale.copy(scale);
         platform.shape.position.copy(platformPos);
         platform.mesh.position.copy(platformPos);
         
@@ -555,7 +558,7 @@ export class LevelEditor {
         
         // Get position for the rope end point
         const endPos = startPos.clone();
-        endPos.y -= 10;
+        endPos.y -= 20;
         
         // Create a unique name
         const ropeName = `rope_${Date.now()}`;
@@ -564,7 +567,7 @@ export class LevelEditor {
         const distanceToEnd = startPos.distanceTo(endPos);
         
         // Add rope to level and scene
-        let rope = this.level.addRope(startPos, 10, distanceToEnd, 0.1);
+        let rope = this.level.addRope(startPos, 14, distanceToEnd, 0.1);
         this.levelRenderer.scene.add(rope.getCollisionMesh());
         rope.update();
         
@@ -582,7 +585,7 @@ export class LevelEditor {
         const startPos = this.getPlacePosition(10, -1);
         
         // Create a purple cube to mark the player start
-        const geometry = new THREE.BoxGeometry(1, 2, 1); // Player-sized box
+        const geometry = new THREE.BoxGeometry(2, 5, 2); // Player-sized box
         const material = new THREE.MeshStandardMaterial({
             color: 0x8822cc, // Purple color
             transparent: true,

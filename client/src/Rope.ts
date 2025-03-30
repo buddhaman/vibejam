@@ -10,7 +10,7 @@ export class Rope extends Entity {
     public  segments: number;
     public  segmentLength: number;
     public  totalLength: number;
-    public  color: number = 0xffffff;   
+    public  color: number = 0xffff00;   
     
     // Add editMesh     
     private editMesh: THREE.Mesh | null = null;
