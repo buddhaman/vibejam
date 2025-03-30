@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { ConvexShape } from '../../shared/ConvexShape';
+import { Body } from '../../shared/Body';
 
 /**
  * Represents a rigid body with physics properties
  */
-export class RigidBody {
+export class RigidBody extends Body {
     // Underlying shape for collision
     shape: ConvexShape;
     
@@ -28,6 +29,7 @@ export class RigidBody {
      * @param material Material for the mesh
      */
     constructor(shape: ConvexShape, mass: number, material: THREE.Material) {
+        super();
         this.shape = shape;
         
         // Initialize physics properties
@@ -67,7 +69,12 @@ export class RigidBody {
         // Initial sync from shape to mesh
         this.syncMeshToShape();
     }
-    
+
+    public updateBoundingBox(): void {
+        // Assume trnasform is applied and get the bounding box of the 
+        
+    }
+
     /**
      * Detect if shape is a box for optimized handling
      */
@@ -109,8 +116,12 @@ export class RigidBody {
             return new THREE.Vector3(0, 0, 0); // Static bodies have infinite inertia
         }
         
-        // Approximate inertia based on bounding sphere
-        const radius = this.shape.boundingSphere.radius;
+        // Approximate inertia based on bounding box size
+        const size = new THREE.Vector3();
+        this.shape.boundingBox.getSize(size);
+        
+        // Get average radius from box dimensions
+        const radius = size.length() / 2;
         
         // For a solid sphere, I = 2/5 * m * r²
         // For more complex shapes, we'd need more sophisticated calculations
@@ -118,6 +129,10 @@ export class RigidBody {
         
         // Return uniform inertia for now (can be refined later)
         return new THREE.Vector3(sphereInertia, sphereInertia, sphereInertia);
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.shape.boundingBox;
     }
     
     /**

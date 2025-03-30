@@ -44,7 +44,7 @@ export class Updraft {
         if (!this.isActive) return;
         
         // Get player's particles
-        const particles = player.verletBody.getParticles();
+        const particles = player.boyd.getParticles();
         let particlesInside = false;
         
         // Get bounds for height-based force calculation

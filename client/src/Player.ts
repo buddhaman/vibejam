@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { Verlet, VerletBody } from '../../shared/Verlet';
-import { InstancedRenderer } from './Render';
 import { Rope } from './Rope';
 import { SimpleText } from './SimpleText';
 import { Entity } from './Entity';
@@ -695,6 +694,14 @@ export class Player extends Entity {
             );
             this.usernameText.setPosition(textPosition);
         }
+    }
+
+    public getBody(): VerletBody {
+        return this.verletBody;
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.verletBody.getBoundingBox();
     }
 
     // Add cleanup method to ensure text is removed when player is deleted

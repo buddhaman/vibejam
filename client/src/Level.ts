@@ -179,7 +179,7 @@ export class Level {
      */
     public checkPlayerCollisions(player: Player): void {
         // Get all particles from the player's verlet body
-        const particles = player.verletBody.getParticles();
+        const particles = player.getBody().getParticles();
         
         // Check collision for each particle against each static body
         for (const particle of particles) {
@@ -301,7 +301,7 @@ export class Level {
      */
     public checkPlayerDynamicBodyCollisions(player: Player): void {
         // Get all particles from the player's verlet body
-        const particles = player.verletBody.getParticles();
+        const particles = player.getBody().getParticles();
         
         // Check collision for each particle against each dynamic body
         for (const particle of particles) {
@@ -467,7 +467,7 @@ export class Level {
      */
     public checkPlayerSawCollisions(player: Player): void {
         // Get all particles from the player's verlet body
-        const particles = player.verletBody.getParticles();
+        const particles = player.getBody().getParticles();
         
         // Check collision for each particle against each saw
         for (const particle of particles) {

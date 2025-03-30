@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+import {Body} from './Body';
 export class Verlet {
     public position: THREE.Vector3;
     public previousPosition: THREE.Vector3;
@@ -24,7 +24,7 @@ export class Verlet {
     }
 }
 
-export class VerletBody {
+export class VerletBody extends Body {
     public particles: Verlet[];
     public constraints: { a: Verlet; b: Verlet; restLength: number }[];
     public airFriction: number = 0.98; // Air resistance (0-1)
@@ -36,6 +36,7 @@ export class VerletBody {
     private gravityVec: THREE.Vector3;
 
     constructor() {
+        super();
         this.particles = [];
         this.constraints = [];
         this.tempVec1 = new THREE.Vector3();
@@ -72,6 +73,8 @@ export class VerletBody {
             this.solveConstraints();
         }
 
+        this.updateBoundingBox();
+
         // // Apply bounds and ground friction
         // this.particles.forEach(particle => {
         //     if (particle.position.y - particle.radius < 0.0) {
@@ -86,6 +89,17 @@ export class VerletBody {
         //         particle.position.add(this.tempVec2);
         //     }
         // });
+    }
+
+    public updateBoundingBox(): void {
+        // Get the min and max of the particles
+        let min = new THREE.Vector3();
+        let max = new THREE.Vector3();
+        this.particles.forEach(particle => {
+            min.min(particle.position);
+            max.max(particle.position);
+        });
+        this.boundingBox.set(min, max);
     }
 
     public handleInternalCollisions(): void {

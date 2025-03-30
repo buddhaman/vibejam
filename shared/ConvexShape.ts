@@ -23,7 +23,7 @@ export class ConvexShape {
     faces: { indices: number[] }[];
     
     // Cached data for performance
-    boundingSphere: { center: THREE.Vector3, radius: number } = { center: new THREE.Vector3(), radius: 0 };
+    boundingBox: THREE.Box3 = new THREE.Box3();
     
     /**
      * Create a convex shape from points and faces
@@ -64,8 +64,8 @@ export class ConvexShape {
             this.worldPoints[i].copy(this.localPoints[i]).applyMatrix4(this.worldMatrix);
         }
         
-        // Recalculate bounding sphere
-        this.boundingSphere = this.calculateBoundingSphere();
+        // Recalculate bounding box
+        this.updateBoundingBox();
     }
     
     /**
@@ -110,29 +110,13 @@ export class ConvexShape {
     }
     
     /**
-     * Calculate a bounding sphere for quick rejection tests
+     * Calculate a bounding box for quick rejection tests
      */
-    public calculateBoundingSphere(): { center: THREE.Vector3, radius: number } {
-        // Find centroid of world points
-        const center = new THREE.Vector3();
+    private updateBoundingBox(): void {
+        this.boundingBox.makeEmpty();
         for (const point of this.worldPoints) {
-            center.add(point);
+            this.boundingBox.expandByPoint(point);
         }
-        center.divideScalar(this.worldPoints.length);
-        
-        // Find radius (maximum distance from centroid to any point)
-        let maxDistSq = 0;
-        for (const point of this.worldPoints) {
-            const distSq = center.distanceToSquared(point);
-            if (distSq > maxDistSq) {
-                maxDistSq = distSq;
-            }
-        }
-        
-        return {
-            center,
-            radius: Math.sqrt(maxDistSq)
-        };
     }
     
     /**
@@ -142,9 +126,14 @@ export class ConvexShape {
      * @returns Minimum translation vector to resolve collision, or null if no collision
      */
     collideWithSphere(sphereCenter: THREE.Vector3, sphereRadius: number): THREE.Vector3 | null {
-        // Quick rejection with bounding sphere
-        const centerDist = this.boundingSphere.center.distanceTo(sphereCenter);
-        if (centerDist > this.boundingSphere.radius + sphereRadius) {
+        // Create a sphere bounding box for quick rejection test
+        const sphereBox = new THREE.Box3().setFromCenterAndSize(
+            sphereCenter,
+            new THREE.Vector3(sphereRadius * 2, sphereRadius * 2, sphereRadius * 2)
+        );
+        
+        // Quick rejection with bounding box
+        if (!this.boundingBox.intersectsBox(sphereBox)) {
             return null; // No collision possible
         }
         
@@ -212,7 +201,7 @@ export class ConvexShape {
         // Handle case where closest point is exactly at sphere center
         if (direction.lengthSq() < 0.0001) {
             // Use direction from shape's center to sphere center
-            direction.subVectors(sphereCenter, this.boundingSphere.center);
+            direction.subVectors(sphereCenter, this.boundingBox.getCenter(new THREE.Vector3()));
             
             // If still too small, use arbitrary direction
             if (direction.lengthSq() < 0.0001) {
@@ -232,13 +221,31 @@ export class ConvexShape {
      * @returns The closest point on the convex shape
      */
     findClosestPoint(point: THREE.Vector3): THREE.Vector3 {
-        // If we have faces defined, use them for a more precise calculation
+        // If the point is inside the bounding box, we need a full check
+        if (this.boundingBox.containsPoint(point)) {
+            // If we have faces defined, use them for a more precise calculation
+            if (this.faces.length > 0) {
+                return this.findClosestPointUsingFaces(point);
+            }
+            
+            // Fallback to simplex-based approach
+            return this.findClosestPointSimplex(point);
+        }
+        
+        // Clamp the point to the bounding box first for optimization
+        // This gives us a good starting point
+        const clampedPoint = new THREE.Vector3().copy(point).clamp(
+            this.boundingBox.min,
+            this.boundingBox.max
+        );
+        
+        // If we have faces defined, use them for precise calculation
         if (this.faces.length > 0) {
-            return this.findClosestPointUsingFaces(point);
+            return this.findClosestPointUsingFaces(clampedPoint);
         }
         
         // Fallback to simplex-based approach
-        return this.findClosestPointSimplex(point);
+        return this.findClosestPointSimplex(clampedPoint);
     }
     
     /**
@@ -329,7 +336,7 @@ export class ConvexShape {
         
         // For more complex shapes, use a simple hill-climbing algorithm
         // Start with centroid
-        let current = this.boundingSphere.center.clone();
+        let current = this.boundingBox.getCenter(new THREE.Vector3());
         let currentDistSq = point.distanceToSquared(current);
         let improved = true;
         

@@ -3,7 +3,6 @@ import { LevelRenderer } from './LevelRenderer';
 import { Body } from '../../shared/Body';
 
 export class Entity {
-    public body: Body | null = null;
     constructor() {
 
     }
@@ -14,7 +13,11 @@ export class Entity {
     public render(renderer: LevelRenderer): void {
     }
 
+    public getBody(): Body {
+        return new Body();
+    }
+
     public getBoundingBox(): THREE.Box3 {
-        return this.body?.getBoundingBox() ?? new THREE.Box3();
+        return this.getBody().getBoundingBox() ?? new THREE.Box3();
     }
 }
