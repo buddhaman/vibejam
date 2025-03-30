@@ -8,6 +8,7 @@ import { ConvexShape } from '../../shared/ConvexShape';
 import { RigidBody } from './RigidBody';
 import { StaticBody } from './StaticBody';
 import { Rope } from './Rope';
+import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
 
 export class LevelEditor {
     private game: Game;
@@ -16,7 +17,7 @@ export class LevelEditor {
     
     // Selection handling
     private selectedObject: THREE.Object3D | null = null;
-    private transformControls: THREE.TransformControls | null = null;
+    private transformControls: TransformControlsType | null = null;
     private raycaster: THREE.Raycaster = new THREE.Raycaster();
     private mouse: THREE.Vector2 = new THREE.Vector2();
     private isDragging: boolean = false;
@@ -520,10 +521,10 @@ export class LevelEditor {
             }
             
             // Remove from level data if it's tracked there
-            if (this.level.rigidBodies) {
-                const rigidBodyIndex = this.level.rigidBodies.indexOf(platform);
+            if (this.level.staticBodies) {
+                const rigidBodyIndex = this.level.staticBodies.indexOf(platform);
                 if (rigidBodyIndex >= 0) {
-                    this.level.rigidBodies.splice(rigidBodyIndex, 1);
+                    this.level.staticBodies.splice(rigidBodyIndex, 1);
                 }
             }
             

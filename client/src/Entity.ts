@@ -14,6 +14,7 @@ export class Entity {
     }
 
     public getBody(): Body {
+        console.error("getBody not implemented for Entity");
         return new Body();
     }
 
