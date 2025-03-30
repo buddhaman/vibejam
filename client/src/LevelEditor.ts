@@ -156,6 +156,7 @@ export class LevelEditor {
      * Set up the editor UI components
      */
     private setupEditorUI(): void {
+        console.log("Setting up editor UI...");
         // Add editor label
         const infoLabel = document.createElement('div');
         infoLabel.textContent = "LEVEL EDITOR MODE";
@@ -258,7 +259,20 @@ export class LevelEditor {
             button.style.backgroundColor = '#4CAF50';
         });
         
-        button.addEventListener('click', onClick);
+        // Only respond to actual clicks, not spacebar presses
+        button.addEventListener('click', (event) => {
+            // Only proceed if it's a mouse click, not a keyboard event
+            if (event.detail > 0) {
+                onClick();
+            }
+        });
+        
+        // Prevent spacebar from triggering the button
+        button.addEventListener('keydown', (event) => {
+            if (event.key === ' ' || event.key === 'Spacebar') {
+                event.preventDefault();
+            }
+        });
         
         return button;
     }
@@ -448,8 +462,6 @@ export class LevelEditor {
             platformName
         );
 
-        debugger;
-        
         // Set the shape's position to our desired world position
         platform.shape.position.copy(platformPos);
         
@@ -492,10 +504,8 @@ export class LevelEditor {
         
         // Add rope to level and scene
         let rope = this.level.addRope(startPos, 10, distanceToEnd, 0.1);
-        debugger
         
         console.log(`Added new rope: ${ropeName}`);
-        
     }
     
     /**
