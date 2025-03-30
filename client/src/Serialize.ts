@@ -13,6 +13,7 @@ export interface LevelData {
     created: string;
     platforms: PlatformData[];
     ropes: RopeData[];
+    playerStartPosition?: number[];
 }
 
 /**
@@ -89,7 +90,10 @@ export class Serialize {
                     segments: rope.segments,
                     name: rope.name || `rope_${Date.now()}`
                 };
-            })
+            }),
+            playerStartPosition: level.playerStartPosition ? 
+                [level.playerStartPosition.x, level.playerStartPosition.y, level.playerStartPosition.z] : 
+                undefined
         };
         
         // Convert to JSON string
@@ -239,6 +243,20 @@ export class Serialize {
                 });
                 
                 console.log(`Loaded level with ${levelData.platforms.length} platforms and ${levelData.ropes.length} ropes`);
+            }
+            
+            // Load player start position if available
+            if (levelData.playerStartPosition && levelData.playerStartPosition.length === 3) {
+                level.playerStartPosition = new THREE.Vector3(
+                    levelData.playerStartPosition[0],
+                    levelData.playerStartPosition[1],
+                    levelData.playerStartPosition[2]
+                );
+                console.log(`Loaded player start position: (${levelData.playerStartPosition[0]}, ${levelData.playerStartPosition[1]}, ${levelData.playerStartPosition[2]})`);
+            } else {
+                // Set a default if not found
+                level.playerStartPosition = new THREE.Vector3(0, 50, 0);
+                console.log("No player start position found in level data, using default");
             }
             
             // Show metadata if available
