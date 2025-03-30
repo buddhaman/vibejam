@@ -19,6 +19,8 @@ export class Level {
 
     public entities: Entity[] = [];
 
+    public playerStartPosition: THREE.Vector3 = new THREE.Vector3(0, 50, 0);
+
     // Static bodies collection for collision detection
     public staticBodies: StaticBody[] = [];
 

@@ -220,6 +220,10 @@ export class LevelEditor {
         const addRopeBtn = this.createButton('Add Rope', () => this.addRope());
         toolbar.appendChild(addRopeBtn);
         
+        // Add Player Start button
+        const addPlayerStartBtn = this.createButton('Add Player Start', () => this.addPlayerStart());
+        toolbar.appendChild(addPlayerStartBtn);
+        
         // Add delete button 
         const deleteBtn = this.createButton('Delete Selected', () => this.deleteSelected());
         toolbar.appendChild(deleteBtn);
@@ -523,6 +527,63 @@ export class LevelEditor {
     }
     
     /**
+     * Add a player start position marker (purple cube)
+     */
+    private addPlayerStart(): void {
+        // Remove any existing player start markers
+        this.removeExistingPlayerStart();
+        
+        // Get position for the player start (high up)
+        const startPos = this.getPlacePosition(10, -1);
+        
+        // Create a purple cube to mark the player start
+        const geometry = new THREE.BoxGeometry(1, 2, 1); // Player-sized box
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x8822cc, // Purple color
+            transparent: true,
+            opacity: 0.8,
+            emissive: 0x220066, // Slight glow
+        });
+        
+        const playerStartMarker = new THREE.Mesh(geometry, material);
+        playerStartMarker.position.copy(startPos);
+        playerStartMarker.name = "player_start_position";
+        playerStartMarker.userData.isPlayerStart = true;
+        
+        // Add to scene
+        this.levelRenderer.scene.add(playerStartMarker);
+        
+        // Set the player start position in the level data
+        this.level.playerStartPosition.copy(startPos);
+        
+        // Select the marker
+        this.selectObject(playerStartMarker);
+        
+        console.log(`Added player start position at ${startPos.x.toFixed(2)}, ${startPos.y.toFixed(2)}, ${startPos.z.toFixed(2)}`);
+    }
+
+    /**
+     * Remove any existing player start markers
+     */
+    private removeExistingPlayerStart(): void {
+        // Find any existing player start markers
+        const existingMarker = this.levelRenderer.scene.children.find(
+            obj => obj.name === "player_start_position" || (obj.userData && obj.userData.isPlayerStart)
+        );
+        
+        if (existingMarker) {
+            // If currently selected, deselect first
+            if (this.selectedObject === existingMarker) {
+                this.deselectObject();
+            }
+            
+            // Remove from scene
+            this.levelRenderer.scene.remove(existingMarker);
+            console.log("Removed existing player start marker");
+        }
+    }
+    
+    /**
      * Delete the currently selected object
      */
     private deleteSelected(): void {
@@ -532,6 +593,19 @@ export class LevelEditor {
      * Save the current level to JSON
      */
     private saveLevel(): void {
+        // Make sure player start position is updated if marker exists
+        const playerStartMarker = this.levelRenderer.scene.children.find(
+            obj => obj.name === "player_start_position" || (obj.userData && obj.userData.isPlayerStart)
+        ) as THREE.Mesh;
+        
+        if (playerStartMarker) {
+            // Update the level's player start position from the marker
+            this.level.playerStartPosition = playerStartMarker.position.clone();
+        } else if (!this.level.playerStartPosition) {
+            // Default player start if none exists
+            this.level.playerStartPosition = new THREE.Vector3(0, 50, 0);
+        }
+        
         // Use the Serialize class to download the level
         Serialize.downloadLevel(this.level);
     }
@@ -548,6 +622,27 @@ export class LevelEditor {
                 // Update bounding boxes if they're visible
                 if (this.showBoundingBoxes) {
                     this.showAllBoundingBoxes();
+                }
+                
+                // Create player start marker if position exists
+                if (this.level.playerStartPosition) {
+                    this.removeExistingPlayerStart(); // Remove any existing marker
+                    
+                    // Create a new marker at the saved position
+                    const geometry = new THREE.BoxGeometry(1, 2, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x8822cc,
+                        transparent: true,
+                        opacity: 0.8,
+                        emissive: 0x220066,
+                    });
+                    
+                    const playerStartMarker = new THREE.Mesh(geometry, material);
+                    playerStartMarker.position.copy(this.level.playerStartPosition);
+                    playerStartMarker.name = "player_start_position";
+                    playerStartMarker.userData.isPlayerStart = true;
+                    
+                    this.levelRenderer.scene.add(playerStartMarker);
                 }
             }
         });
