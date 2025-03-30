@@ -661,6 +661,7 @@ export class LevelEditor {
      */
     private loadLevel(): void {
         // Use the Serialize class to load the level from file
+        this.clearLevel();
         Serialize.loadLevelFromFile(this.level, this.levelRenderer.scene, (success) => {
             if (success) {
                 console.log("Level loaded successfully");
@@ -704,6 +705,15 @@ export class LevelEditor {
         this.level.entities = [];
         this.level.ropes = [];
         this.levelRenderer.reset(this.level);
+        
+        // Very important: deselect any currently selected object
+        // to ensure transform controls are properly reset
+        this.deselectObject();
+        
+        // Make sure transform controls are properly added to the scene again
+        if (this.transformControls && !this.transformControls.parent) {
+            this.levelRenderer.scene.add(this.transformControls);
+        }
     }
 
     private setupTransformControlsEvents(): void {
