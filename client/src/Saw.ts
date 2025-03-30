@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { RigidBody } from './RigidBody';
 import { ConvexShape } from '../../shared/ConvexShape';
+import { Entity } from './Entity';
 
 /**
  * Represents a dangerous sawblade obstacle that behaves like a regular rigid body
  */
-export class Saw {
+export class Saw extends Entity {
     // The physics body
     public body: RigidBody;
     
@@ -21,6 +22,7 @@ export class Saw {
         thickness: number = 0.2,
         spinSpeed: number = 0.1
     ) {
+        super();
         this.spinSpeed = spinSpeed;
         
         // Create the octagonal prism shape (centered at origin)
@@ -113,6 +115,14 @@ export class Saw {
         
         // Update physics (let the rigid body handle all transformations)
         this.body.update();
+    }
+
+    public getBody(): RigidBody {
+        return this.body;
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.body.getBoundingBox();
     }
     
     static create(

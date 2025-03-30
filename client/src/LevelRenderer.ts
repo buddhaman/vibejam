@@ -329,7 +329,7 @@ export class LevelRenderer {
 
         // Render action areas
         this.level.actionAreas?.forEach(actionArea => {
-            actionArea.render(this.instancedRenderer, 0.016);
+            actionArea.render(this);
         });
 
         // Update the instanced renderer after all rendering is done

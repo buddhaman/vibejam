@@ -190,7 +190,7 @@ export class Network {
             const localPlayer = this.game.level.getPlayer(this.playerId!);
             if (localPlayer) {
                 // Get head position (first particle) instead of average
-                const headPos = localPlayer.boyd.getParticles()[0].position;
+                const headPos = localPlayer.getBody().getParticles()[0].position;
                 const dir = localPlayer.lastMovementDir;
                 this.room.send("position", {
                     x: headPos.x,

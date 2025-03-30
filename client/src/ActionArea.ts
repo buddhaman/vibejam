@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { InstancedRenderer } from './Render';
+import { Entity } from './Entity';
+import { LevelRenderer } from './LevelRenderer';
 
-export class ActionArea {
+export class ActionArea extends Entity {
     private position: THREE.Vector3;
     private size: THREE.Vector3;
     private bounds: THREE.Box3;
@@ -16,6 +17,7 @@ export class ActionArea {
         callback: () => void,
         triggerOnce: boolean = false
     ) {
+        super();
         this.position = position.clone();
         this.size = size.clone();
         
@@ -43,10 +45,10 @@ export class ActionArea {
         );
     }
 
-    public render(instancedRenderer: InstancedRenderer, deltaTime: number = 0.016): void {
+    public render(levelRenderer: LevelRenderer): void {
         if (!this.isActive) return;
-        
-        this.time += deltaTime;
+        let instancedRenderer = levelRenderer.instancedRenderer;
+        this.time += 0.016;
         const baseColor = new THREE.Color(0x00ff88);
         const glowColor = new THREE.Color(0x88ffaa);
         
@@ -185,6 +187,10 @@ export class ActionArea {
                 this.isActive = false;
             }
         }
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.bounds;
     }
 
     public setActive(active: boolean): void {
