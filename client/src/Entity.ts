@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LevelRenderer } from './LevelRenderer';
 import { Body } from '../../shared/Body';
+import { ConvexShape } from 'shared/ConvexShape';
 
 export class Entity {
     public boxCollisionMesh: THREE.Mesh | null = null;
@@ -51,4 +52,10 @@ export class Entity {
         
         return this.boxCollisionMesh;
     }
+
+    public getShape() : ConvexShape | null
+    {
+        return null;
+    }
+
 }

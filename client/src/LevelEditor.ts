@@ -274,8 +274,7 @@ export class LevelEditor {
                 const activeElement = document.activeElement;
                 const isInputActive = activeElement && (
                     activeElement.tagName === 'INPUT' || 
-                    activeElement.tagName === 'TEXTAREA' || 
-                    activeElement.isContentEditable
+                    activeElement.tagName === 'TEXTAREA'
                 );
                 
                 if (isInputActive) {

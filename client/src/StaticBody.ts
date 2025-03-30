@@ -126,11 +126,15 @@ export class StaticBody extends Entity {
         return StaticBody.createBox(min, max, material, id, "platform");
     }
 
+    public getCollisionMesh(): THREE.Mesh {
+        return this.mesh;
+    }
+
     public getBody(): ConvexShape {
         return this.shape;
     }
 
-    public getMesh(): THREE.Mesh {
-        return this.mesh;
+    public getShape(): ConvexShape | null {
+        return this.shape;
     }
 }
