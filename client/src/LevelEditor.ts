@@ -41,6 +41,12 @@ export class LevelEditor {
     private boundingBoxHelpers: THREE.Box3Helper[] = [];
     private showBoundingBoxes: boolean = false;
 
+    // Add this property to track when transform controls are released
+    private lastTransformReleaseTime: number = 0;
+
+    // Add a flag to track if we're in test mode
+    private inTestMode: boolean = false;
+
     /**
      * Check if the editor should be activated based on URL parameters
      */
@@ -164,6 +170,7 @@ export class LevelEditor {
         // Add editor label
         const infoLabel = document.createElement('div');
         infoLabel.textContent = "LEVEL EDITOR MODE";
+        infoLabel.classList.add('editor-ui');
         infoLabel.style.position = 'fixed';
         infoLabel.style.top = '10px';
         infoLabel.style.left = '50%';
@@ -180,6 +187,7 @@ export class LevelEditor {
         // Add help text for controls
         const helpText = document.createElement('div');
         helpText.textContent = "Editor Controls: WASD = Move, Space = Up, Shift = Down, Alt/Ctrl = Sprint, G/R/S = Transform Modes";
+        helpText.classList.add('editor-ui');
         helpText.style.position = 'fixed';
         helpText.style.bottom = '10px';
         helpText.style.left = '10px';
@@ -201,6 +209,7 @@ export class LevelEditor {
      */
     private createEditorToolbar(): void {
         const toolbar = document.createElement('div');
+        toolbar.classList.add('editor-ui');
         toolbar.style.position = 'fixed';
         toolbar.style.top = '50px';
         toolbar.style.left = '10px';
@@ -238,6 +247,11 @@ export class LevelEditor {
         // Add toggle for bounding boxes
         const toggleBoxesBtn = this.createButton('Toggle Bounding Boxes', () => this.toggleBoundingBoxes());
         toolbar.appendChild(toggleBoxesBtn);
+        
+        // Add Test Level button
+        const testLevelBtn = this.createButton('Test Level', () => this.toggleTestMode());
+        testLevelBtn.style.backgroundColor = '#9933CC'; // Purple color to stand out
+        toolbar.appendChild(testLevelBtn);
         
         document.body.appendChild(toolbar);
     }
@@ -342,9 +356,38 @@ export class LevelEditor {
         
         // Add click event listener for selection
         const canvas = this.levelRenderer.renderer.domElement;
+        
+        // Track mouse position and state for better click handling
+        let mouseDownTime = 0;
+        let mouseDownPos = new THREE.Vector2();
+        
+        canvas.addEventListener('mousedown', (event) => {
+            // Record the time and position when mouse is pressed
+            mouseDownTime = Date.now();
+            mouseDownPos.set(event.clientX, event.clientY);
+        });
+        
         canvas.addEventListener('click', (event) => {
             // Skip if we're dragging with transform controls
             if (this.isDragging) return;
+            
+            // Ignore click events that happen shortly after releasing transform controls
+            // This prevents accidental reselection
+            if (Date.now() - this.lastTransformReleaseTime < 300) {
+                return;
+            }
+            
+            // Make sure this was a real click, not the end of a drag
+            // Calculate distance moved since mousedown
+            const distance = Math.sqrt(
+                Math.pow(mouseDownPos.x - event.clientX, 2) + 
+                Math.pow(mouseDownPos.y - event.clientY, 2)
+            );
+            
+            // Skip if mouse moved more than a small threshold (indicating a drag, not a click)
+            if (distance > 5) {
+                return;
+            }
             
             // Calculate mouse position
             this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -356,6 +399,8 @@ export class LevelEditor {
             // Create a list of all selectable objects
             const selectables = [
                 ...this.level.entities.map(entity => entity.getCollisionMesh()),
+                // Also include player start marker in selectables
+                ...this.levelRenderer.scene.children.filter(obj => obj.userData && obj.userData.isPlayerStart)
             ].filter(Boolean);
             
             // Check for intersections
@@ -946,6 +991,85 @@ export class LevelEditor {
         }
         
         requestAnimationFrame(this.update.bind(this));
+    }
+
+    /**
+     * Toggle between edit mode and test mode
+     */
+    private toggleTestMode(): void {
+        if (this.inTestMode) {
+            // Switch back to editor mode
+            this.exitTestMode();
+        } else {
+            // Switch to test mode
+            this.enterTestMode();
+        }
+    }
+
+    /**
+     * Enter test mode - spawns player and switches camera
+     */
+    private enterTestMode(): void {
+        // Update the flag
+        this.inTestMode = true;
+        
+        // Get player start position from marker if it exists
+        const playerStartMarker = this.levelRenderer.scene.children.find(
+            obj => obj.name === "player_start_position" || (obj.userData && obj.userData.isPlayerStart)
+        ) as THREE.Mesh;
+        
+        if (playerStartMarker) {
+            this.level.playerStartPosition = playerStartMarker.position.clone();
+        }
+        
+        // Switch camera to third-person
+        this.levelRenderer.camera.setMode(CameraMode.THIRD_PERSON);
+        
+        // Spawn player at start position
+        const player = this.level.addPlayer('local-player', true);
+        player.setPosition(this.level.playerStartPosition.clone());
+        this.levelRenderer.scene.add(player.getCollisionMesh());
+        
+        // Enable physics
+        this.game.doLevelUpdate = true;
+        
+        // Change test button text
+        const testButton = document.querySelector('button') as HTMLButtonElement;
+        if (testButton && testButton.textContent === 'Test Level') {
+            testButton.textContent = 'Exit Test Mode';
+            testButton.style.backgroundColor = '#FF4444'; // Red for exit
+        }
+        
+        console.log("Entered test mode");
+    }
+
+    /**
+     * Exit test mode - removes player and restores editor camera
+     */
+    private exitTestMode(): void {
+        // Update the flag
+        this.inTestMode = false;
+        
+        // Remove player
+        if (this.level.localPlayer) {
+            const playerId = this.level.localPlayer.id;
+            this.level.removePlayer(playerId);
+        }
+        
+        // Disable physics
+        this.game.doLevelUpdate = false;
+        
+        // Switch camera back to flying mode
+        this.levelRenderer.camera.setMode(CameraMode.FIRST_PERSON_FLYING);
+        
+        // Change test button text back
+        const testButton = document.querySelector('button') as HTMLButtonElement;
+        if (testButton && testButton.textContent === 'Exit Test Mode') {
+            testButton.textContent = 'Test Level';
+            testButton.style.backgroundColor = '#9933CC'; // Purple for test
+        }
+        
+        console.log("Exited test mode");
     }
 }
 
