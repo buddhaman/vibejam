@@ -320,7 +320,7 @@ export class LevelEditor {
                     case 'r': // Rotate
                         this.transformControls!.setMode('rotate');
                         break;
-                    case 's': // Scale
+                    case 'x': // Scale (changed from 's' to 'x')
                         this.transformControls!.setMode('scale');
                         break;
                     case 'delete': // Delete selected object
