@@ -1401,7 +1401,7 @@ export class Game {
         
         // Update camera movement state with all current keys
         this.levelRenderer.camera.updateMovementState(
-            forward, backward, left, right, up, down, sprint
+            forward, backward, left, right, up, down
         );
     }
 } 

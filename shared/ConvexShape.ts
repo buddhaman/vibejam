@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { Body } from './Body';
 
 /**
  * Represents a 3D convex shape with efficient collision detection and transform capabilities
  */
-export class ConvexShape {
+export class ConvexShape extends Body {
     // Original local-space points (never change after creation)
     private localPoints: THREE.Vector3[];
     
@@ -31,6 +32,7 @@ export class ConvexShape {
      * @param faces Array of faces, each defined by indices into the points array
      */
     constructor(points: THREE.Vector3[], faces?: { indices: number[] }[]) {
+        super();
         // Store local points (clone to avoid external modification)
         this.localPoints = points.map(p => p.clone());
         
@@ -112,7 +114,7 @@ export class ConvexShape {
     /**
      * Calculate a bounding box for quick rejection tests
      */
-    private updateBoundingBox(): void {
+    public updateBoundingBox(): void {
         this.boundingBox.makeEmpty();
         for (const point of this.worldPoints) {
             this.boundingBox.expandByPoint(point);
@@ -680,4 +682,9 @@ export class ConvexShape {
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         return new THREE.Mesh(geometry, material);
     }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.boundingBox;
+    }
+
 } 

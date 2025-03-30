@@ -319,7 +319,7 @@ export class LevelRenderer {
 
         // Render all updrafts
         this.level.updrafts.forEach(updraft => {
-            updraft.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
+            updraft.render(this); 
         });
 
         // Render particles

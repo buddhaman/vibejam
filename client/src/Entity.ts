@@ -24,6 +24,8 @@ export class Entity {
         return this.getBody().getBoundingBox() ?? new THREE.Box3();
     }
 
+    // Returns a mesh that can be used for collision detection. 
+    // If not overridden, it will create a box mesh that matches the bounding box of the entity.
     public getCollisionMesh(): THREE.Mesh {
         const boundingBox = this.getBoundingBox();
         const size = new THREE.Vector3();

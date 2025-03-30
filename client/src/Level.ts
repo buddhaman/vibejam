@@ -10,11 +10,15 @@ import { StaticBody } from "./StaticBody";
 import { ActionArea } from "./ActionArea";
 import { Updraft } from "./Updraft";
 import { Game } from './Game';
+import { Entity } from './Entity';
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
     public game: Game;
     public levelIdx: number;
+
+    public entities: Entity[] = [];
+
     // Static bodies collection for collision detection
     public staticBodies: StaticBody[] = [];
 
@@ -57,6 +61,7 @@ export class Level {
     public addStaticBody(body: StaticBody): StaticBody {
         this.staticBodies.push(body);
         this.levelRenderer?.scene.add(body.mesh);
+        this.entities.push(body);
         return body;
     }
 
@@ -68,6 +73,8 @@ export class Level {
         if (isLocal) {
             this.localPlayer = player;
         }
+
+        this.entities.push(player);
 
         return player;
     }
@@ -401,6 +408,7 @@ export class Level {
     ): Rope {
         const rope = new Rope(fixedPoint, segments, length, radius);
         this.ropes.push(rope);
+        this.entities.push(rope);
         return rope;
     }
 
@@ -457,6 +465,7 @@ export class Level {
     public addSaw(saw: Saw): Saw {
         this.saws.push(saw);
         this.levelRenderer?.scene.add(saw.mesh);
+        this.entities.push(saw);
         return saw;
     }
     
@@ -535,6 +544,7 @@ export class Level {
     ): ActionArea {
         const actionArea = new ActionArea(position, size, callback, triggerOnce);
         this.actionAreas.push(actionArea);
+        this.entities.push(actionArea);
         return actionArea;
     }
 
@@ -552,6 +562,7 @@ export class Level {
     ): Updraft {
         const updraft = new Updraft(position, size, strength);
         this.updrafts.push(updraft);
+        this.entities.push(updraft);
         return updraft;
     }
 
@@ -563,7 +574,7 @@ export class Level {
         for (const updraft of this.updrafts) {
             if (updraft.isActiveState()) {
                 // Use the update method to check and apply updraft physics
-                updraft.update(player);
+                updraft.updateForPlayer(player);
             }
         }
     }

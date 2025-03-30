@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { ConvexShape } from '../../shared/ConvexShape';
+import { Entity } from './Entity';
 
 /**
  * Represents a static (non-moving) body in the game world
  * Static bodies form the level geometry that players can move over
  */
-export class StaticBody {
+export class StaticBody extends Entity {
     // The convex shape used for collision detection
     shape: ConvexShape;
     
@@ -24,6 +25,7 @@ export class StaticBody {
      * @param tag Classification tag (e.g., "platform", "wall")
      */
     constructor(shape: ConvexShape, material: THREE.Material, id?: string, tag: string = "platform") {
+        super();
         this.shape = shape;
         this.id = id || Math.random().toString(36).substring(2, 9);
         this.tag = tag;
@@ -122,5 +124,13 @@ export class StaticBody {
         );
         
         return StaticBody.createBox(min, max, material, id, "platform");
+    }
+
+    public getBody(): ConvexShape {
+        return this.shape;
+    }
+
+    public getMesh(): THREE.Mesh {
+        return this.mesh;
     }
 }
