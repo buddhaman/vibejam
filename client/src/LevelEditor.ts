@@ -465,6 +465,8 @@ export class LevelEditor {
 
         // Set the shape's position to our desired world position
         platform.shape.position.copy(platformPos);
+        platform.mesh.position.copy(platformPos);
+        debugger;
         
         // Update the transform which will cascade to the mesh
         platform.shape.updateTransform();

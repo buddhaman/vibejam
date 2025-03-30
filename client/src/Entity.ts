@@ -58,4 +58,7 @@ export class Entity {
         return null;
     }
 
+    public shapeChanged(): void {
+    }
+
 }
