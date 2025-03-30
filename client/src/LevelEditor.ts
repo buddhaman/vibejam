@@ -23,6 +23,9 @@ export class LevelEditor {
 
     // New property
     private platforms: any[] = [];
+    
+    // Add a ropes array
+    private ropes: any[] = [];
 
     // Add properties to track the transform panel
     private transformPanel: HTMLDivElement | null = null;
@@ -429,8 +432,8 @@ export class LevelEditor {
         const platform = LevelBuilder.createHorizontalPlatform(
             this.level,
             new THREE.Vector3(0, 0, 0),
-            5, // width
-            5, // depth
+            1, // width
+            1, // depth
             1, // height
             new THREE.MeshStandardMaterial({ 
                 color: color,
@@ -486,6 +489,9 @@ export class LevelEditor {
         
         // Add rope to level and scene
         this.level.ropes.push(rope);
+        
+        // Add to our ropes array too
+        this.ropes.push(rope);
         
         // We should ideally select the rope, but we need to extend our selection logic
         // to handle ropes, which have different structure than platforms
@@ -641,8 +647,8 @@ export class LevelEditor {
                             const platform = LevelBuilder.createHorizontalPlatform(
                                 this.level,
                                 new THREE.Vector3(0, 0, 0), // Create at origin first
-                                5, // Default width 
-                                5, // Default depth
+                                1, // Default width 
+                                1, // Default depth
                                 1, // Default height
                                 new THREE.MeshStandardMaterial({ 
                                     color: new THREE.Color(platformData.color || '#FF0000'),
