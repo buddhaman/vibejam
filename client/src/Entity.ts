@@ -1,11 +1,9 @@
 import * as THREE from 'three';
 import { LevelRenderer } from './LevelRenderer';
+import { Body } from '../../shared/Body';
 
 export class Entity {
-    // Center position of bounding box
-    public position: THREE.Vector3 = new THREE.Vector3();
-    public dims: THREE.Vector3 = new THREE.Vector3();
-
+    public body: Body | null = null;
     constructor() {
 
     }
@@ -14,5 +12,9 @@ export class Entity {
     }
 
     public render(renderer: LevelRenderer): void {
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.body?.getBoundingBox() ?? new THREE.Box3();
     }
 }

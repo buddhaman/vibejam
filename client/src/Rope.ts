@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { VerletBody, Verlet } from '../../shared/Verlet';
+import { LevelRenderer } from './LevelRenderer';
+import { Entity } from './Entity';
 
-export class Rope {
+export class Rope extends Entity {
     private verletBody: VerletBody;
     private fixedPoint: THREE.Vector3;
     private segments: number;
     private segmentLength: number;
     private totalLength: number;
+    private color: number = 0xffffff;   
     
     // Store the first and last particles for easy access
     public startParticle!: Verlet;
@@ -18,6 +21,7 @@ export class Rope {
         totalLength: number = 5,
         particleRadius: number = 0.1
     ) {
+        super();
         this.verletBody = new VerletBody();
         this.fixedPoint = fixedPoint.clone();
         this.segments = segments;
@@ -102,7 +106,9 @@ export class Rope {
     }
     
     // Helper method to render the rope using the instanced renderer
-    public render(instancedRenderer: any, color: number = 0xffffff): void {
+    public render(levelRenderer: LevelRenderer): void {
+        let instancedRenderer = levelRenderer.instancedRenderer;
+
         const particles = this.verletBody.getParticles();
         
         // Render particles and connections
@@ -117,14 +123,14 @@ export class Rope {
                 particles[i].radius,
                 particles[i + 1].radius,
                 undefined,
-                color
+                this.color
             );
             
             // Optionally render particles at the joints
             instancedRenderer.renderSphere(
                 start,
                 particles[i].radius,
-                color
+                this.color
             );
         }
         
@@ -132,7 +138,7 @@ export class Rope {
         instancedRenderer.renderSphere(
             particles[particles.length - 1].position,
             particles[particles.length - 1].radius,
-            color
+            this.color
         );
     }
 }

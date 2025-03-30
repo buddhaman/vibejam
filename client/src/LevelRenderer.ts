@@ -314,7 +314,7 @@ export class LevelRenderer {
 
         // Render all ropes
         this.level.ropes.forEach(rope => {
-            rope.render(this.instancedRenderer, 0xffff22); // Default yellow rope like color
+            rope.render(this); // Default yellow rope like color
         });
 
         // Render all updrafts

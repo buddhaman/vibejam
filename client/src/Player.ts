@@ -436,9 +436,6 @@ export class Player extends Entity {
      */
     public render(levelRenderer: LevelRenderer): void {
         let renderer = levelRenderer.instancedRenderer;
-        if(!renderer){
-            return;
-        }
 
         const particles = this.verletBody.getParticles();
         const constraints = this.verletBody.getConstraints();
