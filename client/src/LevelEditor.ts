@@ -644,13 +644,7 @@ export class LevelEditor {
             obj => obj.name === "player_start_position" || (obj.userData && obj.userData.isPlayerStart)
         ) as THREE.Mesh;
         
-        if (playerStartMarker) {
-            // Update the level's player start position from the marker
-            this.level.playerStartPosition = playerStartMarker.position.clone();
-        } else if (!this.level.playerStartPosition) {
-            // Default player start if none exists
-            this.level.playerStartPosition = new THREE.Vector3(0, 50, 0);
-        }
+        this.level.playerStartPosition = playerStartMarker.position.clone();
         
         // Use the Serialize class to download the level
         Serialize.downloadLevel(this.level);
