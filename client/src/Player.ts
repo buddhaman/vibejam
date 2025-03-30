@@ -3,6 +3,8 @@ import { Verlet, VerletBody } from '../../shared/Verlet';
 import { InstancedRenderer } from './Render';
 import { Rope } from './Rope';
 import { SimpleText } from './SimpleText';
+import { Entity } from './Entity';
+import { LevelRenderer } from './LevelRenderer';
 
 export enum MovementState {
     OnGround,
@@ -10,7 +12,7 @@ export enum MovementState {
     OnRope,
 }
 
-export class Player {
+export class Player extends Entity {
     public id: string;
     public verletBody: VerletBody;
     public moveSpeed: number = 0.14;
@@ -25,7 +27,6 @@ export class Player {
     private blinkDuration: number = 0;
     private nextBlinkTime: number = Math.random() * 60 + 20; // 20-80 frames
     private isBlinking: boolean = false;
-    private rendererInitialized: boolean = false;
     // Current rope the player is holding
     public rope: Rope | null = null;
     public notOnGroundTimer: number = 0;
@@ -48,6 +49,7 @@ export class Player {
     private scene: THREE.Scene | null = null;
 
     constructor(id: string, localPlayer: boolean, username: string = "") { 
+        super();
         this.id = id;
         this.verletBody = new VerletBody();
         this.localPlayer = localPlayer;
@@ -432,12 +434,12 @@ export class Player {
      * This draws spheres for particles and beams for connections
      * @param renderer The instanced renderer to use
      */
-    public render(renderer: InstancedRenderer): void {
-        if (!this.rendererInitialized) {
-            // First-time initialization if needed
-            this.rendererInitialized = true;
+    public render(levelRenderer: LevelRenderer): void {
+        let renderer = levelRenderer.instancedRenderer;
+        if(!renderer){
+            return;
         }
-        
+
         const particles = this.verletBody.getParticles();
         const constraints = this.verletBody.getConstraints();
         const headParticle = particles[0]; // First particle is the head
