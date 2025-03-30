@@ -63,6 +63,7 @@ export class Rope extends Entity {
     }
     
     public update(): void {
+        debugger;
         // Fix the start particle to the fixed point
         this.startParticle.position.copy(this.fixedPoint);
         this.startParticle.previousPosition.copy(this.fixedPoint);
@@ -155,6 +156,7 @@ export class Rope extends Entity {
         if (!this.editShape) {
             // Create a unit box around the first position (fixed point)
             this.editShape = ConvexShape.createBox(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5)); // Unit box
+            console.log("Setting up editor UI...");
             this.editShape.position.copy(this.fixedPoint);
             this.editShape.updateTransform();
         }

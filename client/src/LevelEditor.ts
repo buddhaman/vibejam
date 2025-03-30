@@ -88,6 +88,7 @@ export class LevelEditor {
         this.setupEditorUI();
         this.createTransformPanel();
         this.setupSelectionControls();
+        this.game.doLevelUpdate = false;
 
         // Add this line to start the update loop
         requestAnimationFrame(this.update.bind(this));
@@ -504,6 +505,8 @@ export class LevelEditor {
         
         // Add rope to level and scene
         let rope = this.level.addRope(startPos, 10, distanceToEnd, 0.1);
+        this.levelRenderer.scene.add(rope.getCollisionMesh());
+        rope.update();
         
         console.log(`Added new rope: ${ropeName}`);
     }
@@ -736,11 +739,6 @@ export class LevelEditor {
             if (this.selectedObject) {
                 // First try to find in regular entities
                 let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
-                
-                // If not found, check if it's a rope
-                if (!entity) {
-                    entity = this.level.ropes.find(r => r.getCollisionMesh() === this.selectedObject);
-                }
                 
                 if (entity) {
                     const shape = entity.getShape();

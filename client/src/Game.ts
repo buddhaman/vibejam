@@ -20,6 +20,7 @@ interface CustomWindow extends Window {
 
 export class Game {
 
+    public doLevelUpdate: boolean = true;
     public level: Level | null = null;
     public levelRenderer: LevelRenderer | null = null;
     public userName: string = "";
@@ -528,7 +529,10 @@ export class Game {
             const inputs = this.collectInputs();
             
             // Execute the fixed update with inputs
-            this.level!.fixedUpdate(inputs);
+            if(doLevelUpdate)
+            {
+                this.level!.fixedUpdate(inputs);
+            }
             updated = true;
             
             // Prevent spiral of death by capping accumulated time
