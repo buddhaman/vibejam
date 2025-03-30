@@ -22,11 +22,6 @@ export class LevelEditor {
     private mouse: THREE.Vector2 = new THREE.Vector2();
     private isDragging: boolean = false;
 
-    // New property
-    private platforms: any[] = [];
-    
-    // Add a ropes array
-    private ropes: any[] = [];
 
     // Add properties to track the transform panel
     private transformPanel: HTMLDivElement | null = null;
@@ -443,27 +438,25 @@ export class LevelEditor {
             platformName
         );
         
-        // Now set the shape's position without updating the mesh
-        if (platform && platform.shape) {
-            // Set the shape's position to our desired world position
-            platform.shape.position.copy(platformPos);
-            
-            // Update the transform which will cascade to the mesh
-            platform.shape.updateTransform();
-            
-            // Add to our platforms array
-            this.platforms.push(platform);
-            
-            // Add to scene if needed
-            if (!platform.mesh.parent) {
-                this.levelRenderer.scene.add(platform.mesh);
-            }
-            
-            // Select the new platform
-            this.selectObject(platform.mesh);
+        // Set the shape's position to our desired world position
+        platform.shape.position.copy(platformPos);
+        
+        // Update the transform which will cascade to the mesh
+        platform.shape.updateTransform();
+        
+        // Add to scene if needed
+        if (!platform.mesh.parent) {
+            this.levelRenderer.scene.add(platform.mesh);
         }
         
+        // Select the new platform
+        this.selectObject(platform.mesh);
+
+        this.level.addStaticBody(platform);
+        
         console.log(`Added new platform: ${platformName}`);
+        
+        this.levelRenderer.render();
     }
     
     /**
@@ -486,56 +479,18 @@ export class LevelEditor {
         
         // Create the rope with correct parameters
         const distanceToEnd = startPos.distanceTo(endPos);
-        const rope = new Rope(startPos, 10, distanceToEnd, 0.1);
         
         // Add rope to level and scene
-        this.level.ropes.push(rope);
-        
-        // Add to our ropes array too
-        this.ropes.push(rope);
-        
-        // We should ideally select the rope, but we need to extend our selection logic
-        // to handle ropes, which have different structure than platforms
+        let rope = this.level.addRope(startPos, 10, distanceToEnd, 0.1);
         
         console.log(`Added new rope: ${ropeName}`);
+        
     }
     
     /**
      * Delete the currently selected object
      */
     private deleteSelected(): void {
-        if (!this.selectedObject) return;
-        
-        // Find which platform this is
-        const platformIndex = this.platforms.findIndex(p => p.mesh === this.selectedObject);
-        
-        if (platformIndex >= 0) {
-            // Get the platform
-            const platform = this.platforms[platformIndex];
-            
-            // Remove mesh from scene directly instead of calling removeFromScene
-            if (platform.mesh && platform.mesh.parent) {
-                platform.mesh.parent.remove(platform.mesh);
-            } else if (this.selectedObject.parent) {
-                this.selectedObject.parent.remove(this.selectedObject);
-            }
-            
-            // Remove from level data if it's tracked there
-            if (this.level.staticBodies) {
-                const rigidBodyIndex = this.level.staticBodies.indexOf(platform);
-                if (rigidBodyIndex >= 0) {
-                    this.level.staticBodies.splice(rigidBodyIndex, 1);
-                }
-            }
-            
-            // Remove from platforms array
-            this.platforms.splice(platformIndex, 1);
-            
-            console.log(`Deleted platform: ${platform.mesh.name || 'Unnamed Platform'}`);
-            
-            // Deselect
-            this.deselectObject();
-        }
     }
     
     /**
@@ -548,7 +503,7 @@ export class LevelEditor {
             author: "Level Editor",
             version: 1,
             created: new Date().toISOString(),
-            platforms: this.platforms.map(platform => ({
+            platforms: this.level.staticBodies.map(platform => ({
                 position: [
                     platform.mesh.position.x,
                     platform.mesh.position.y,
@@ -569,24 +524,24 @@ export class LevelEditor {
                     : '#888888',
                 name: platform.mesh.name || ''
             })),
-            ropes: this.ropes.map(rope => {
-                // Get the start position from the fixedPoint property
-                const startPos = rope.fixedPoint ? [rope.fixedPoint.x, rope.fixedPoint.y, rope.fixedPoint.z] 
-                    : [0, 0, 0];
+            // ropes: this.level.ropes.map(rope => {
+            //     // Get the start position from the fixedPoint property
+            //     const startPos = rope.fixedPoint ? [rope.fixedPoint.x, rope.fixedPoint.y, rope.fixedPoint.z] 
+            //         : [0, 0, 0];
                 
-                // For end position, try using verletBody.endParticle if it exists
-                const endParticle = rope.endParticle || (rope.verletBody && rope.verletBody.getParticles().slice(-1)[0]);
-                const endPos = endParticle ? [endParticle.position.x, endParticle.position.y, endParticle.position.z]
-                    : [0, 0, 0];
+            //     // For end position, try using verletBody.endParticle if it exists
+            //     const endParticle = rope.endParticle || (rope.verletBody && rope.verletBody.getParticles().slice(-1)[0]);
+            //     const endPos = endParticle ? [endParticle.position.x, endParticle.position.y, endParticle.position.z]
+            //         : [0, 0, 0];
                 
-                return {
-                    startPos: startPos,
-                    endPos: endPos,
-                    length: rope.totalLength || rope.getTotalLength?.() || 5,
-                    segments: rope.segments || rope.getSegments?.() || 10,
-                    name: rope.name || ''
-                };
-            })
+            //     return {
+            //         startPos: startPos,
+            //         endPos: endPos,
+            //         length: rope.totalLength || rope.getTotalLength?.() || 5,
+            //         segments: rope.segments || rope.getSegments?.() || 10,
+            //         name: rope.name || ''
+            //     };
+            // })
         };
         
         // Convert to JSON string
@@ -691,7 +646,7 @@ export class LevelEditor {
                                 }
                                 
                                 // Add to platforms array
-                                this.platforms.push(platform);
+                                this.level.addStaticBody(platform);
                             }
                         });
                         
@@ -720,7 +675,7 @@ export class LevelEditor {
                             this.level.ropes.push(rope);
                             
                             // Add to our ropes array
-                            this.ropes.push(rope);
+                            //this.ropes.push(rope);
                         });
                         
                         console.log(`Loaded level with ${levelData.platforms.length} platforms and ${levelData.ropes.length} ropes`);
@@ -748,35 +703,7 @@ export class LevelEditor {
      * Clear the current level
      */
     private clearLevel(): void {
-        // Deselect any selected object
-        this.deselectObject();
-        
-        // Remove all platforms from scene
-        this.platforms.forEach(platform => {
-            if (platform.mesh && platform.mesh.parent) {
-                platform.mesh.parent.remove(platform.mesh);
-            }
-        });
-        
-        // Clear platforms array
-        this.platforms = [];
-        
-        // Add ground platform back
-        const groundPlatform = LevelBuilder.createHorizontalPlatform(this.level, 
-            new THREE.Vector3(0, -2, 0), 
-            50, 
-            50, 
-            1, 
-            new THREE.MeshStandardMaterial({ 
-                color: 0x888888,
-                roughness: 0.8,
-            }), 
-            "ground_platform");
-        
-        // Add to platforms array if created successfully
-        if (groundPlatform) {
-            this.platforms.push(groundPlatform);
-        }
+        this.level = new Level(this.game, -1);
     }
 
     private setupTransformControlsEvents(): void {
@@ -786,7 +713,7 @@ export class LevelEditor {
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
                 // Find the platform
-                const platform = this.platforms.find(p => p.mesh === this.selectedObject);
+                const platform = this.level.staticBodies.find(p => p.mesh === this.selectedObject);
                 if (platform && platform.shape) {
                     // Update the shape's transform properties to match the mesh
                     platform.shape.position.copy(this.selectedObject.position);
@@ -958,7 +885,7 @@ export class LevelEditor {
             this.selectedObject.scale.set(scaleX, scaleY, scaleZ);
             
             // Update the platform's shape
-            const platform = this.platforms.find(p => p.mesh === this.selectedObject);
+            const platform = this.level.staticBodies.find(p => p.mesh === this.selectedObject);
             if (platform && platform.shape) {
                 platform.shape.position.copy(this.selectedObject.position);
                 platform.shape.orientation.setFromEuler(new THREE.Euler(rotX, rotY, rotZ));
