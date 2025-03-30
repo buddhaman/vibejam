@@ -13,7 +13,6 @@ import { Game } from './Game';
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
-
     public game: Game;
     public levelIdx: number;
     // Static bodies collection for collision detection
