@@ -737,9 +737,8 @@ export class LevelEditor {
         // When object is transformed, update the underlying shape
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
-                // First try to find in regular entities
+                // Try to find in regular entities
                 let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
-                
                 if (entity) {
                     const shape = entity.getShape();
                     if (shape) {
@@ -747,10 +746,11 @@ export class LevelEditor {
                         shape.orientation.copy(this.selectedObject.quaternion);
                         shape.scaling.copy(this.selectedObject.scale);
                         shape.updateTransform();
-                        
-                        // If it's a rope, update the fixed point
-                        if (entity instanceof Rope) {
-                            entity.setFixedPoint(shape.position.clone());
+                        entity.shapeChanged();
+                        if(entity instanceof Rope)
+                        {
+                            for(let i = 0; i < 10; i++)
+                                entity.update();
                         }
                     }
                 }

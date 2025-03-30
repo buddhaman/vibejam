@@ -5,14 +5,16 @@ import { Entity } from './Entity';
 import { ConvexShape } from '../../shared/ConvexShape';
 
 export class Rope extends Entity {
-    private verletBody: VerletBody;
-    private fixedPoint: THREE.Vector3;
-    private segments: number;
-    private segmentLength: number;
-    private totalLength: number;
-    private color: number = 0xffffff;   
+    public  verletBody: VerletBody;
+    public  fixedPoint: THREE.Vector3;
+    public  segments: number;
+    public  segmentLength: number;
+    public  totalLength: number;
+    public  color: number = 0xffffff;   
     
-    // Add editShape property for level editor
+    // Add editMesh     
+    private editMesh: THREE.Mesh | null = null;
+    // Add editShape property
     private editShape: ConvexShape | null = null;
     
     // Store the first and last particles for easy access
@@ -63,7 +65,6 @@ export class Rope extends Entity {
     }
     
     public update(): void {
-        debugger;
         // Fix the start particle to the fixed point
         this.startParticle.position.copy(this.fixedPoint);
         this.startParticle.previousPosition.copy(this.fixedPoint);
@@ -80,7 +81,15 @@ export class Rope extends Entity {
     }
 
     public getCollisionMesh(): THREE.Mesh {
-        return super.getCollisionMesh();
+        if (!this.editMesh) {
+            // Create a simple mesh for the rope's fixed point if not exists
+            const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const material = new THREE.MeshStandardMaterial({ color: 0xFFFF00 });
+            this.editMesh = new THREE.Mesh(geometry, material);
+            this.editMesh.position.copy(this.fixedPoint);
+        }
+        
+        return this.editMesh;
     }
 
     public getEndPosition(): THREE.Vector3 {
@@ -167,9 +176,7 @@ export class Rope extends Entity {
     // Add a method to update the shape's transform when the rope is modified
     public shapeChanged(): void {
         if (this.editShape) {
-            // Update the shape position to match the fixed point
-            this.editShape.position.copy(this.fixedPoint);
-            this.editShape.updateTransform();
+            this.fixedPoint.copy(this.editShape.position);
         }
     }
 }

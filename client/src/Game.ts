@@ -529,7 +529,7 @@ export class Game {
             const inputs = this.collectInputs();
             
             // Execute the fixed update with inputs
-            if(doLevelUpdate)
+            if(this.doLevelUpdate)
             {
                 this.level!.fixedUpdate(inputs);
             }
