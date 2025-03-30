@@ -9,6 +9,7 @@ import { RigidBody } from './RigidBody';
 import { StaticBody } from './StaticBody';
 import { Rope } from './Rope';
 import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
+import { Box3, Box3Helper } from 'three';
 
 export class LevelEditor {
     private game: Game;
@@ -34,6 +35,10 @@ export class LevelEditor {
     private scaleXInput: HTMLInputElement | null = null;
     private scaleYInput: HTMLInputElement | null = null;
     private scaleZInput: HTMLInputElement | null = null;
+
+    // Add this property to your class
+    private boundingBoxHelpers: THREE.Box3Helper[] = [];
+    private showBoundingBoxes: boolean = false;
 
     /**
      * Check if the editor should be activated based on URL parameters
@@ -83,6 +88,9 @@ export class LevelEditor {
         this.setupEditorUI();
         this.createTransformPanel();
         this.setupSelectionControls();
+
+        // Add this line to start the update loop
+        requestAnimationFrame(this.update.bind(this));
     }
 
     /**
@@ -218,6 +226,10 @@ export class LevelEditor {
         const loadBtn = this.createButton('Load Level', () => this.loadLevel());
         toolbar.appendChild(loadBtn);
         
+        // Add toggle for bounding boxes
+        const toggleBoxesBtn = this.createButton('Toggle Bounding Boxes', () => this.toggleBoundingBoxes());
+        toolbar.appendChild(toggleBoxesBtn);
+        
         document.body.appendChild(toolbar);
     }
     
@@ -320,11 +332,9 @@ export class LevelEditor {
             this.raycaster.setFromCamera(this.mouse, this.levelRenderer.camera.threeCamera);
             
             // Create a list of all selectable objects
-            // const selectables = [
-            //     ...this.platforms.map(p => p.mesh)
-            // ];
-
-            const selectables = this.level.entities.map(entity => entity.getCollisionMesh());
+            const selectables = [
+                ...this.level.entities.map(entity => entity.getCollisionMesh()),
+            ].filter(Boolean);
             
             // Check for intersections
             const intersects = this.raycaster.intersectObjects(selectables, false);
@@ -437,6 +447,8 @@ export class LevelEditor {
             }),
             platformName
         );
+
+        debugger;
         
         // Set the shape's position to our desired world position
         platform.shape.position.copy(platformPos);
@@ -480,6 +492,7 @@ export class LevelEditor {
         
         // Add rope to level and scene
         let rope = this.level.addRope(startPos, 10, distanceToEnd, 0.1);
+        debugger
         
         console.log(`Added new rope: ${ropeName}`);
         
@@ -711,18 +724,26 @@ export class LevelEditor {
         // When object is transformed, update the underlying shape
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
-                // Find the entity that owns this mesh
-                const entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+                // First try to find in regular entities
+                let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+                
+                // If not found, check if it's a rope
+                if (!entity) {
+                    entity = this.level.ropes.find(r => r.getCollisionMesh() === this.selectedObject);
+                }
                 
                 if (entity) {
-                    // Get the shape from the entity and update its transform
                     const shape = entity.getShape();
                     if (shape) {
-                        // Update the shape's transform properties to match the mesh
                         shape.position.copy(this.selectedObject.position);
                         shape.orientation.copy(this.selectedObject.quaternion);
                         shape.scaling.copy(this.selectedObject.scale);
                         shape.updateTransform();
+                        
+                        // If it's a rope, update the fixed point
+                        if (entity instanceof Rope) {
+                            entity.setFixedPoint(shape.position.clone());
+                        }
                     }
                 }
                 
@@ -923,6 +944,71 @@ export class LevelEditor {
         if (this.scaleXInput) this.scaleXInput.value = this.selectedObject.scale.x.toFixed(2);
         if (this.scaleYInput) this.scaleYInput.value = this.selectedObject.scale.y.toFixed(2);
         if (this.scaleZInput) this.scaleZInput.value = this.selectedObject.scale.z.toFixed(2);
+    }
+
+    // Add this method to toggle bounding boxes
+    private toggleBoundingBoxes(): void {
+        this.showBoundingBoxes = !this.showBoundingBoxes;
+        
+        if (this.showBoundingBoxes) {
+            this.showAllBoundingBoxes();
+        } else {
+            this.hideAllBoundingBoxes();
+        }
+        
+        console.log(`Bounding boxes: ${this.showBoundingBoxes ? 'SHOWN' : 'HIDDEN'}`);
+    }
+
+    // Method to show all bounding boxes
+    private showAllBoundingBoxes(): void {
+        // Clear any existing helpers
+        this.hideAllBoundingBoxes();
+        
+        // Get all entities including ropes
+        const allEntities = [
+            ...this.level.entities,
+            ...this.level.ropes
+        ];
+        
+        // Create box helpers for each entity
+        allEntities.forEach(entity => {
+            const mesh = entity.getCollisionMesh();
+            if (!mesh) return;
+            
+            // Create a bounding box
+            const box = new Box3().setFromObject(mesh);
+            
+            // Create a helper to visualize the box (with a green color)
+            const helper = new Box3Helper(box, 0x00ff00);
+            
+            // Add the helper to the scene
+            this.levelRenderer.scene.add(helper);
+            
+            // Save reference to the helper for removal later
+            this.boundingBoxHelpers.push(helper);
+        });
+    }
+
+    // Method to hide all bounding boxes
+    private hideAllBoundingBoxes(): void {
+        // Remove all existing helpers from the scene
+        this.boundingBoxHelpers.forEach(helper => {
+            this.levelRenderer.scene.remove(helper);
+        });
+        
+        // Clear the array
+        this.boundingBoxHelpers = [];
+    }
+
+    // Add this method to update bounding boxes
+    private update(): void {
+        // Update bounding boxes if they're visible
+        if (this.showBoundingBoxes && this.boundingBoxHelpers.length > 0) {
+            // Clear and recreate all boxes
+            this.showAllBoundingBoxes();
+        }
+        
+        requestAnimationFrame(this.update.bind(this));
     }
 }
 

@@ -154,7 +154,7 @@ export class Rope extends Entity {
         // Create the edit shape lazily only when requested
         if (!this.editShape) {
             // Create a unit box around the first position (fixed point)
-            this.editShape = ConvexShape.createBox(this.fixedPoint, this.fixedPoint.clone().add(new THREE.Vector3(1, 1, 1))); // Unit box
+            this.editShape = ConvexShape.createBox(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5)); // Unit box
             this.editShape.position.copy(this.fixedPoint);
             this.editShape.updateTransform();
         }
