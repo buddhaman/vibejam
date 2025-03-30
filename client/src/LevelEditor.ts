@@ -435,16 +435,29 @@ export class LevelEditor {
     }
     
     /**
-     * Add a new platform at the camera's position
+     * Get a position to place new objects based on camera position
+     * @param distance Distance in front of camera to place the object
+     * @param yOffset Vertical offset from camera position
+     * @returns Position vector for the new object
      */
-    private addPlatform(): void {
+    private getPlacePosition(distance: number = 10, yOffset: number = -1): THREE.Vector3 {
         // Get camera position and forward direction
         const cameraPos = this.levelRenderer.camera.getPosition();
         const forwardDir = this.levelRenderer.camera.getForwardVector();
         
-        // Position the platform 10 units in front of the camera
-        const platformPos = cameraPos.clone().add(forwardDir.multiplyScalar(10));
-        platformPos.y -= 1; // Slightly below camera view for better visibility
+        // Position the object at specified distance in front of the camera
+        const position = cameraPos.clone().add(forwardDir.multiplyScalar(distance));
+        position.y += yOffset; // Apply vertical offset
+        
+        return position;
+    }
+
+    /**
+     * Add a new platform at the camera's position
+     */
+    private addPlatform(): void {
+        // Get position for the new platform
+        const platformPos = this.getPlacePosition(10, -1);
         
         // Use the standard red color from LevelBuilder
         const color = new THREE.Color(0xFF0000); // Red color
@@ -488,16 +501,12 @@ export class LevelEditor {
      * Add a new rope
      */
     private addRope(): void {
-        // Get camera position and forward direction
-        const cameraPos = this.levelRenderer.camera.getPosition();
-        const forwardDir = this.levelRenderer.camera.getForwardVector();
+        // Get position for the rope start point
+        const startPos = this.getPlacePosition(10, -1);
         
-        // Position the rope start point at camera position
-        const startPos = cameraPos.clone();
-        
-        // Position the rope end point 10 units in front of and below the camera
-        const endPos = cameraPos.clone().add(forwardDir.multiplyScalar(5));
-        endPos.y -= 5; // Make it hang down from camera position
+        // Get position for the rope end point
+        const endPos = startPos.clone();
+        endPos.y -= 10;
         
         // Create a unique name
         const ropeName = `rope_${Date.now()}`;
