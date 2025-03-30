@@ -54,9 +54,8 @@ export class LevelEditor {
         this.game = game;
         
         // Create a level specifically for the editor
-        this.level = new Level(this.game, -1); // Use -1 to indicate editor mode
         this.levelRenderer = this.game.levelRenderer!;
-        this.level.levelRenderer = this.levelRenderer;
+        this.level = this.game.level!;
 
         // Add a ground platform to start with
         LevelBuilder.createHorizontalPlatform(this.level, 
@@ -322,9 +321,11 @@ export class LevelEditor {
             this.raycaster.setFromCamera(this.mouse, this.levelRenderer.camera.threeCamera);
             
             // Create a list of all selectable objects
-            const selectables = [
-                ...this.platforms.map(p => p.mesh)
-            ];
+            // const selectables = [
+            //     ...this.platforms.map(p => p.mesh)
+            // ];
+
+            const selectables = this.level.entities.map(entity => entity.getCollisionMesh());
             
             // Check for intersections
             const intersects = this.raycaster.intersectObjects(selectables, false);
@@ -455,8 +456,6 @@ export class LevelEditor {
         this.level.addStaticBody(platform);
         
         console.log(`Added new platform: ${platformName}`);
-        
-        this.levelRenderer.render();
     }
     
     /**
@@ -704,6 +703,7 @@ export class LevelEditor {
      */
     private clearLevel(): void {
         this.level = new Level(this.game, -1);
+        this.levelRenderer.reset(this.level);
     }
 
     private setupTransformControlsEvents(): void {

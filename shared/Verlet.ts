@@ -92,12 +92,13 @@ export class VerletBody extends Body {
     }
 
     public updateBoundingBox(): void {
-        // Get the min and max of the particles
+        // Get the min and max of the particles and expand by particle radius as well
         let min = new THREE.Vector3();
         let max = new THREE.Vector3();
         this.particles.forEach(particle => {
-            min.min(particle.position);
-            max.max(particle.position);
+            // Expand the bounding box by the particle radius
+            min.min(particle.position.clone().sub(new THREE.Vector3(particle.radius, particle.radius, particle.radius)));
+            max.max(particle.position.clone().add(new THREE.Vector3(particle.radius, particle.radius, particle.radius)));
         });
         this.boundingBox.set(min, max);
     }

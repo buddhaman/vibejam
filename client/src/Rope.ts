@@ -73,7 +73,11 @@ export class Rope extends Entity {
     public setFixedPoint(point: THREE.Vector3): void {
         this.fixedPoint.copy(point);
     }
-    
+
+    public getCollisionMesh(): THREE.Mesh {
+        return super.getCollisionMesh();
+    }
+
     public getEndPosition(): THREE.Vector3 {
         return this.endParticle.position.clone();
     }
@@ -101,16 +105,16 @@ export class Rope extends Entity {
         return this.totalLength;
     }
     
-    public getVerletBody(): VerletBody {
+    public getBody(): VerletBody {
         return this.verletBody;
     }
-    
+
     // Helper method to render the rope using the instanced renderer
     public render(levelRenderer: LevelRenderer): void {
         let instancedRenderer = levelRenderer.instancedRenderer;
 
         const particles = this.verletBody.getParticles();
-        
+
         // Render particles and connections
         for (let i = 0; i < particles.length - 1; i++) {
             const start = particles[i].position;

@@ -536,7 +536,7 @@ export class Game {
                 this.accumulatedTime = this.timestep * 5;
             }
         }
-        
+
         // Only render if we did at least one fixed update
         if (updated) {
             // Update camera

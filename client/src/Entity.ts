@@ -16,7 +16,8 @@ export class Entity {
     }
 
     public getBody(): Body {
-        console.error("getBody not implemented for Entity");
+        // Print the type of the entity
+        console.error("getBody not implemented for Entity " + this.constructor.name);
         return new Body();
     }
 
