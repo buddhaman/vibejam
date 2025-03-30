@@ -99,8 +99,6 @@ export class LevelEditor {
         this.setupSelectionControls();
         this.game.doLevelUpdate = false;
 
-        // Add this line to start the update loop
-        requestAnimationFrame(this.update.bind(this));
     }
 
     /**
@@ -985,17 +983,6 @@ export class LevelEditor {
         this.boundingBoxHelpers = [];
     }
 
-    // Add this method to update bounding boxes
-    private update(): void {
-        // Update bounding boxes if they're visible
-        if (this.showBoundingBoxes && this.boundingBoxHelpers.length > 0) {
-            // Clear and recreate all boxes
-            this.showAllBoundingBoxes();
-        }
-        
-        requestAnimationFrame(this.update.bind(this));
-    }
-
     /**
      * Toggle between edit mode and test mode
      */
@@ -1031,7 +1018,7 @@ export class LevelEditor {
         // Spawn player at start position
         const player = this.level.addPlayer('local-player', true);
         player.setPosition(this.level.playerStartPosition.clone());
-        this.levelRenderer.scene.add(player.getCollisionMesh());
+        // this.levelRenderer.scene.add(player.getCollisionMesh());
         
         // Enable physics
         this.game.doLevelUpdate = true;

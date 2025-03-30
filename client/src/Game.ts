@@ -88,7 +88,7 @@ export class Game {
             
             // Start a simple render loop for the editor
             this.lastUpdateTime = performance.now();
-            requestAnimationFrame(this.updateEditor.bind(this));
+            //requestAnimationFrame(this.updateEditor.bind(this));
             
             return; // Skip the rest of the initialization
         }
@@ -508,12 +508,6 @@ export class Game {
     public update(): void {
         const currentTime = performance.now();
         
-        if (this.lastUpdateTime === 0) {
-            this.lastUpdateTime = currentTime;
-            requestAnimationFrame(this.update.bind(this));
-            return;
-        }
-        
         // Calculate elapsed time since last update
         const elapsedTime = currentTime - this.lastUpdateTime;
         this.accumulatedTime += elapsedTime;
@@ -521,6 +515,7 @@ export class Game {
         
         // Process as many fixed updates as needed to catch up
         let updated = false;
+        console.log("here");
         while (this.accumulatedTime >= this.timestep) {
             // Consume one timestep's worth of accumulated time
             this.accumulatedTime -= this.timestep;
@@ -1368,20 +1363,20 @@ export class Game {
     /**
      * Simple update method for editor mode (no physics, just rendering)
      */
-    private updateEditor(): void {
-        const currentTime = performance.now();
-        const deltaTime = currentTime - this.lastUpdateTime;
-        this.lastUpdateTime = currentTime;
+    // private updateEditor(): void {
+    //     const currentTime = performance.now();
+    //     const deltaTime = currentTime - this.lastUpdateTime;
+    //     this.lastUpdateTime = currentTime;
         
-        // Update camera - this will now handle the first-person flying motion
-        if (this.levelRenderer) {
-            this.levelRenderer.camera.update();
-            this.levelRenderer.render();
-        }
+    //     // Update camera - this will now handle the first-person flying motion
+    //     if (this.levelRenderer) {
+    //         this.levelRenderer.camera.update();
+    //         this.levelRenderer.render();
+    //     }
         
-        // Continue the editor loop
-        requestAnimationFrame(this.updateEditor.bind(this));
-    }
+    //     // Continue the editor loop
+    //     requestAnimationFrame(this.updateEditor.bind(this));
+    // }
 
     // Add this method:
     private handleCameraMovementKey(key: string, isDown: boolean): void {
