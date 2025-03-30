@@ -749,7 +749,7 @@ export class LevelEditor {
                         entity.shapeChanged();
                         if(entity instanceof Rope)
                         {
-                            for(let i = 0; i < 10; i++)
+                            for(let i = 0; i < 3; i++)
                                 entity.update();
                         }
                     }
