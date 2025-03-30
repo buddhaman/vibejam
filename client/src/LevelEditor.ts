@@ -711,13 +711,19 @@ export class LevelEditor {
         // When object is transformed, update the underlying shape
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
-                // Find the platform
-                const platform = this.level.staticBodies.find(p => p.mesh === this.selectedObject);
-                if (platform && platform.shape) {
-                    // Update the shape's transform properties to match the mesh
-                    platform.shape.position.copy(this.selectedObject.position);
-                    platform.shape.orientation.copy(this.selectedObject.quaternion);
-                    // Don't update scale unless you need to
+                // Find the entity that owns this mesh
+                const entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+                
+                if (entity) {
+                    // Get the shape from the entity and update its transform
+                    const shape = entity.getShape();
+                    if (shape) {
+                        // Update the shape's transform properties to match the mesh
+                        shape.position.copy(this.selectedObject.position);
+                        shape.orientation.copy(this.selectedObject.quaternion);
+                        shape.scaling.copy(this.selectedObject.scale);
+                        shape.updateTransform();
+                    }
                 }
                 
                 // Update the transform panel to reflect new values

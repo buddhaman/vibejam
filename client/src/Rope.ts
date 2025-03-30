@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { VerletBody, Verlet } from '../../shared/Verlet';
 import { LevelRenderer } from './LevelRenderer';
 import { Entity } from './Entity';
+import { ConvexShape } from '../../shared/ConvexShape';
 
 export class Rope extends Entity {
     private verletBody: VerletBody;
@@ -10,6 +11,9 @@ export class Rope extends Entity {
     private segmentLength: number;
     private totalLength: number;
     private color: number = 0xffffff;   
+    
+    // Add editShape property for level editor
+    private editShape: ConvexShape | null = null;
     
     // Store the first and last particles for easy access
     public startParticle!: Verlet;
@@ -144,5 +148,26 @@ export class Rope extends Entity {
             particles[particles.length - 1].radius,
             this.color
         );
+    }
+
+    public getShape(): ConvexShape | null {
+        // Create the edit shape lazily only when requested
+        if (!this.editShape) {
+            // Create a unit box around the first position (fixed point)
+            this.editShape = ConvexShape.createBox(this.fixedPoint, this.fixedPoint.clone().add(new THREE.Vector3(1, 1, 1))); // Unit box
+            this.editShape.position.copy(this.fixedPoint);
+            this.editShape.updateTransform();
+        }
+        
+        return this.editShape;
+    }
+    
+    // Add a method to update the shape's transform when the rope is modified
+    public shapeChanged(): void {
+        if (this.editShape) {
+            // Update the shape position to match the fixed point
+            this.editShape.position.copy(this.fixedPoint);
+            this.editShape.updateTransform();
+        }
     }
 }
