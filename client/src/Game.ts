@@ -515,7 +515,6 @@ export class Game {
         
         // Process as many fixed updates as needed to catch up
         let updated = false;
-        console.log("here");
         while (this.accumulatedTime >= this.timestep) {
             // Consume one timestep's worth of accumulated time
             this.accumulatedTime -= this.timestep;

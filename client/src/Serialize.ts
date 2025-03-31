@@ -197,10 +197,7 @@ export class Serialize {
                             platform.shape.updateTransform();
                         }
                         
-                        // Add to level
-                        level.addStaticBody(platform);
-                        
-                        // Add to scene if provided
+                        // Add to scene if provided (but don't add to level again)
                         if (scene && !platform.mesh.parent) {
                             scene.add(platform.mesh);
                         }
