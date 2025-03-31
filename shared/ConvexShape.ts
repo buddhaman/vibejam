@@ -128,93 +128,95 @@ export class ConvexShape extends Body {
      * @returns Minimum translation vector to resolve collision, or null if no collision
      */
     collideWithSphere(sphereCenter: THREE.Vector3, sphereRadius: number): THREE.Vector3 | null {
-        // Create a sphere bounding box for quick rejection test
+        // Quick rejection with bounding box
         const sphereBox = new THREE.Box3().setFromCenterAndSize(
             sphereCenter,
             new THREE.Vector3(sphereRadius * 2, sphereRadius * 2, sphereRadius * 2)
         );
         
-        // Quick rejection with bounding box
         if (!this.boundingBox.intersectsBox(sphereBox)) {
             return null; // No collision possible
         }
         
-        // Special handling for when faces are defined
-        if (this.faces.length > 0) {
-            // Check if sphere is inside the shape by testing all faces
-            let isInside = true;
-            let minPenetration = Number.MAX_VALUE;
-            let minNormal = new THREE.Vector3();
+        let minPenetration = Number.MAX_VALUE;
+        let minAxis = new THREE.Vector3();
+        
+        // Get all face normals as potential separating axes
+        for (const face of this.faces) {
+            const facePoints = face.indices.map(idx => this.worldPoints[idx]);
+            const normal = this.calculateFaceNormal(facePoints);
             
-            // Test each face
-            for (const face of this.faces) {
-                const facePoints = face.indices.map(idx => this.worldPoints[idx]);
-                const normal = this.calculateFaceNormal(facePoints);
-                const point = this.worldPoints[face.indices[0]];
-                
-                // Calculate distance from sphere center to face plane
-                const distToPlane = normal.dot(new THREE.Vector3().subVectors(sphereCenter, point));
-                
-                // If sphere is in front of any face, it's not fully inside
-                if (distToPlane > -sphereRadius) {
-                    isInside = false;
-                }
-                
-                // Calculate penetration
-                const penetration = sphereRadius + distToPlane;
-                
-                // If sphere overlaps with this face plane, track minimum penetration
-                if (penetration > 0 && penetration < minPenetration) {
-                    minPenetration = penetration;
-                    minNormal.copy(normal);
-                }
+            // Project ALL vertices of the convex shape onto this axis
+            let shapeMin = Number.MAX_VALUE;
+            let shapeMax = -Number.MAX_VALUE;
+            
+            for (const point of this.worldPoints) {
+                const projection = normal.dot(point);
+                shapeMin = Math.min(shapeMin, projection);
+                shapeMax = Math.max(shapeMax, projection);
             }
             
-            // If sphere is fully inside, push it out via the face with minimum penetration
-            if (isInside) {
-                return minNormal.multiplyScalar(-minPenetration);
+            // Project sphere onto the axis
+            const sphereCenter_projection = normal.dot(sphereCenter);
+            const sphereMin = sphereCenter_projection - sphereRadius;
+            const sphereMax = sphereCenter_projection + sphereRadius;
+            
+            // Check for separation
+            if (sphereMin > shapeMax || sphereMax < shapeMin) {
+                return null; // Separated along this axis
             }
             
-            // If sphere is outside but penetrating through a face, handle that case
-            if (minPenetration < Number.MAX_VALUE) {
-                // Verify that this is actually a collision by checking closest point
-                const closestPoint = this.findClosestPoint(sphereCenter);
-                const distanceToClosest = sphereCenter.distanceTo(closestPoint);
+            // Calculate penetration
+            const pen1 = shapeMax - sphereMin;
+            const pen2 = sphereMax - shapeMin;
+            
+            const penetration = Math.min(pen1, pen2);
+            
+            // Track minimum penetration and axis
+            if (penetration < minPenetration) {
+                minPenetration = penetration;
+                minAxis.copy(normal);
                 
-                if (distanceToClosest <= sphereRadius) {
-                    // Return minimum penetration vector along face normal
-                    return minNormal.multiplyScalar(-minPenetration);
+                // Ensure axis points from shape to sphere
+                if (sphereCenter_projection < (shapeMin + shapeMax) / 2) {
+                    minAxis.negate();
                 }
             }
         }
         
-        // Standard closest point approach for other cases
+        // We also need to check potential axes for edge contacts
+        // But for sphere vs convex, face normals are usually sufficient
+        
+        // If we found a separating axis with minimum penetration
+        if (minPenetration < Number.MAX_VALUE) {
+            return minAxis.multiplyScalar(minPenetration);
+        }
+        
+        // Fallback - shouldn't reach here if faces are defined correctly
+        // Use closest point as fallback
         const closestPoint = this.findClosestPoint(sphereCenter);
-        const distanceToClosest = sphereCenter.distanceTo(closestPoint);
+        const toSphere = new THREE.Vector3().subVectors(sphereCenter, closestPoint);
+        const distanceToClosest = toSphere.length();
         
         if (distanceToClosest > sphereRadius) {
-            return null; // No collision
+            return null;
         }
         
-        // Calculate penetration vector
         const penetrationDepth = sphereRadius - distanceToClosest;
-        const direction = new THREE.Vector3().subVectors(sphereCenter, closestPoint);
         
-        // Handle case where closest point is exactly at sphere center
-        if (direction.lengthSq() < 0.0001) {
-            // Use direction from shape's center to sphere center
-            direction.subVectors(sphereCenter, this.boundingBox.getCenter(new THREE.Vector3()));
-            
-            // If still too small, use arbitrary direction
-            if (direction.lengthSq() < 0.0001) {
-                direction.set(0, 1, 0);
+        // Handle zero distance case
+        if (distanceToClosest < 0.0001) {
+            // Find any face normal as fallback
+            for (const face of this.faces) {
+                const normal = this.calculateFaceNormal(face.indices.map(idx => this.worldPoints[idx]));
+                return normal.multiplyScalar(penetrationDepth);
             }
+            
+            // If no faces, use a default direction
+            return new THREE.Vector3(0, 1, 0).multiplyScalar(penetrationDepth);
         }
         
-        // Normalize and scale by penetration depth
-        direction.normalize().multiplyScalar(penetrationDepth);
-        
-        return direction;
+        return toSphere.normalize().multiplyScalar(penetrationDepth);
     }
     
     /**
