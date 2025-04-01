@@ -6,6 +6,7 @@ import { RigidBody } from './RigidBody';
 import { Saw } from './Saw';
 import { Game } from './Game';
 import { LevelBuilder } from './LevelBuilder';
+import { Sign } from './Sign';
 
 export class TestLevels {
     /**
@@ -143,6 +144,48 @@ export class TestLevels {
         this.handleIncomingPortalTraffic(level, game);
         
         console.log("Overworld hub created with portals to different levels and Vibeverse bridge");
+        
+        // Update all highscore signs after a short delay to ensure they're properly initialized
+        setTimeout(() => {
+            console.log("Updating all highscore signs...");
+            if (level.signs && level.signs.length > 0) {
+                console.log(`Found ${level.signs.length} signs to update`);
+                level.signs.forEach(sign => {
+                    const levelId = sign.getLevelId();
+                    console.log(`Updating sign for level ${levelId}`);
+                    
+                    // Make the sign more visible for debugging
+                    sign.makeVisible();
+                    
+                    // If network is available, populate with current highscores
+                    if (game.network) {
+                        const highscores = game.network.getHighscores(levelId);
+                        
+                        if (highscores && highscores.length > 0) {
+                            console.log(`Setting ${highscores.length} highscores for level ${levelId}`);
+                            sign.setHighscores(highscores);
+                        } else {
+                            console.log(`No highscores found for level ${levelId}, requesting from server`);
+                            game.network.requestHighscores(levelId);
+                            
+                            // Set empty highscores array for now
+                            sign.setHighscores([]);
+                        }
+                    } else {
+                        console.log(`Network not available, setting empty highscores for level ${levelId}`);
+                        sign.setHighscores([]);
+                    }
+                });
+                
+                // Debug all objects in the scene to help locate issues
+                if (level.levelRenderer && level.levelRenderer.scene) {
+                    console.log("Running debug checks on scene...");
+                    Sign.debugAllSigns(level.levelRenderer.scene);
+                }
+            } else {
+                console.log("No signs found to update");
+            }
+        }, 1000); // 1 second delay
     }
     
     /**

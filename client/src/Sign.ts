@@ -340,4 +340,81 @@ export class Sign extends Entity {
     public getHighscores(): Array<{username: string, timeMs: number, stars: number}> {
         return this.highscores;
     }
+    
+    /**
+     * Static debugging method to help check visibility of all signs in the scene
+     * @param scene The THREE.js scene to check for signs
+     */
+    public static debugAllSigns(scene: THREE.Scene): void {
+        console.log("Debugging all signs in scene");
+        
+        // Count of sign-like objects found
+        let signCount = 0;
+        
+        // Look through all objects in the scene
+        scene.traverse(object => {
+            // Check if object has a name containing "sign"
+            if (object.name && object.name.toLowerCase().includes("sign")) {
+                signCount++;
+                console.log(`Found object named ${object.name}`);
+                console.log(`Position: ${object.position.x}, ${object.position.y}, ${object.position.z}`);
+                console.log(`Visible: ${object.visible}`);
+            }
+            
+            // Check if this is a mesh with materials that might be signs
+            if (object instanceof THREE.Mesh) {
+                const mesh = object as THREE.Mesh;
+                
+                // Log info about this mesh
+                console.log(`Found mesh at position ${mesh.position.x}, ${mesh.position.y}, ${mesh.position.z}`);
+                console.log(`Visible: ${mesh.visible}, Scale: ${mesh.scale.x}, ${mesh.scale.y}, ${mesh.scale.z}`);
+                
+                // Check materials on this mesh
+                if (Array.isArray(mesh.material)) {
+                    console.log(`Mesh has ${mesh.material.length} materials`);
+                    mesh.material.forEach((mat, i) => {
+                        const material = mat as THREE.Material;
+                        console.log(`Material ${i} type: ${material.type}, visible: ${material.visible}`);
+                        
+                        // If it's a MeshBasicMaterial, check if it has a texture
+                        if (material.type === 'MeshBasicMaterial') {
+                            const basicMat = material as THREE.MeshBasicMaterial;
+                            console.log(`Material ${i} has texture: ${basicMat.map ? 'Yes' : 'No'}`);
+                        }
+                    });
+                } else if (mesh.material) {
+                    const material = mesh.material as THREE.Material;
+                    console.log(`Mesh has material type: ${material.type}`);
+                    
+                    // If it's a MeshBasicMaterial, check if it has a texture
+                    if (material.type === 'MeshBasicMaterial') {
+                        const basicMat = material as THREE.MeshBasicMaterial;
+                        console.log(`Material has texture: ${basicMat.map ? 'Yes' : 'No'}`);
+                    }
+                }
+            }
+        });
+        
+        console.log(`Found ${signCount} objects with 'sign' in their name`);
+    }
+    
+    /**
+     * Debug method to make this sign more visible by adding a bright colored box around it
+     */
+    public makeVisible(): void {
+        // Add a bright colored helper object
+        const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const boxMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00, // Bright green
+            wireframe: true,
+            side: THREE.DoubleSide
+        });
+        
+        const helperBox = new THREE.Mesh(boxGeometry, boxMaterial);
+        helperBox.scale.set(15, 20, 3); // Make it slightly larger than the sign
+        helperBox.position.set(0, 0, -0.5); // Position it slightly behind the sign
+        
+        this.mesh.add(helperBox);
+        console.log("Added visibility helper to sign");
+    }
 }
