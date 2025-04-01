@@ -314,7 +314,7 @@ export class LevelEditor {
             this.levelRenderer.scene.add(this.transformControls);
             
             // Set up events for the transform controls
-            //this.setupTransformControlsEvents();
+            this.setupTransformControlsEvents();
             
             // Add event listener to handle transform mode changes
             window.addEventListener('keydown', (event) => {
