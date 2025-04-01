@@ -33,7 +33,7 @@ export class TestLevels {
             level,
             game,
             new THREE.Vector3(-25, groundY + 2, -15),   // Left position
-            1,                                  // Level ID
+            3,                                  // Level ID
             "Jungle Gym",                       // Name
             "Playground",                       // Description
             "white",                            // Text color
@@ -46,7 +46,7 @@ export class TestLevels {
             level,
             game,
             new THREE.Vector3(-25, groundY + 2, -5),   // Middle position
-            3,                                  // Level ID
+            1,                                  // Level ID
             "Tutorial",                         // Name
             "For Beginners",                    // Description
             "white",                            // Text color
@@ -59,7 +59,7 @@ export class TestLevels {
             level,
             game,
             new THREE.Vector3(-25, groundY + 2, 5),   // Right position
-            4,                                  // Level ID
+            2,                                  // Level ID
             "Tutorial 2",                       // Name
             "Advanced",                         // Description
             "white",                            // Text color
@@ -78,12 +78,25 @@ export class TestLevels {
         // GAMEPLAY LEVELS SIDE - All other levels on the opposite side
         // =====================================================
         
-        // Level 2 portal - Skydiving
+        // Level 4 portal - First Level
         this.createLevelPortal(
             level,
             game,
             new THREE.Vector3(20, groundY + 2, -5),    // Position on opposite side
-            2,                                  // Level ID
+            4,                                  // Level ID
+            "Blocks",                        // Name
+            "Challenge",                        // Description
+            "white",                            // Text color
+            "#ffff88",                          // Description color
+            true                                // Show highscore
+        );
+
+        // Level 4 portal - Skydiving
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(20, groundY + 2, 10),    // Position on opposite side
+            5,                                  // Level ID
             "Skydiving",                        // Name
             "Challenge",                        // Description
             "white",                            // Text color

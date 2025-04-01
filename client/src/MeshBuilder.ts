@@ -24,11 +24,11 @@ export class MeshBuilder {
     public static createDecorativeGround(
         width: number = 300, 
         depth: number = 300, 
-        skullCount: number = 500,
+        skullCount: number = 300,
         terrainHeight: number = 3,
-        rubbleCount: number = 1000,
-        boneStackCount: number = 500,
-        skullOnStickCount: number = 250,
+        rubbleCount: number = 500,
+        boneStackCount: number = 250,
+        skullOnStickCount: number = 200,
         crossCount: number = 100
     ): THREE.Mesh {
         // Create a cache key based on the parameters

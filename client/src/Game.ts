@@ -10,7 +10,7 @@ import { RoomType } from './Network';
 import { BeginnerLevels } from './BeginnerLevels';
 import { LevelEditor } from './LevelEditor';
 import { Camera, CameraMode } from './Camera';
-import { loadJSONLevel, tutorial_level } from './JSONLevels';
+import { first_level, loadJSONLevel, tutorial_level } from './JSONLevels';
 
 /**
  * Add an interface to define the custom properties on the window object
@@ -977,16 +977,18 @@ export class Game {
                 TestLevels.createOverworld(this.level!, this);
                 break;
             case 1:
-                TestLevels.createJungleGymTest(this.level!, this);
-                break;
-            case 2:
-                TestLevels.createSkydivingChallenge(this.level!, this);
-                break;
-            case 3:
                 BeginnerLevels.createTutorialLevel(this.level!, this);
                 break;
+            case 2:
+                break;
+            case 3:
+                TestLevels.createJungleGymTest(this.level!, this);
+                break;
             case 4:
-                loadJSONLevel(this.level!, this, tutorial_level);
+                loadJSONLevel(this.level!, this, first_level, true);
+                break;
+            case 5:
+                TestLevels.createSkydivingChallenge(this.level!, this);
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);
