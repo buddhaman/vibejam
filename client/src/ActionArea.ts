@@ -68,46 +68,52 @@ export class ActionArea extends Entity {
         const baseColor = new THREE.Color(0x00ff88);
         const glowColor = new THREE.Color(0x88ffaa);
         
+        // Get bounds and dimensions once
+        const bounds = this.shape.getBoundingBox();
+        const width = bounds.max.x - bounds.min.x;
+        const depth = bounds.max.z - bounds.min.z;
+        const height = bounds.max.y - bounds.min.y;
+        
         // Reduced number of beams per side
         const beamsPerSide = 5;
         
         // Calculate spacing between beams
-        const spacingX = this.shape.getBoundingBox().max.x - this.shape.getBoundingBox().min.x / (beamsPerSide - 1);
-        const spacingZ = this.shape.getBoundingBox().max.z - this.shape.getBoundingBox().min.z / (beamsPerSide - 1);
+        const spacingX = width / (beamsPerSide - 1);
+        const spacingZ = depth / (beamsPerSide - 1);
 
         // Draw beams along the perimeter
         for (let i = 0; i < beamsPerSide; i++) {
             const t = this.time * 2 + i * 0.2;
             const heightScale = 1.0 + Math.sin(t) * 0.4; // Increased height variation
             const widthScale = 0.6 + Math.sin(t * 2) * 0.3; // Increased width pulsing
-            const beamHeight = this.shape.getBoundingBox().max.y * 3 * heightScale; // Made beams even taller
+            const beamHeight = height * 3 * heightScale; // Made beams even taller
             const beamWidth = 0.15 * widthScale; // Increased base width
 
             // Calculate positions for beams on each side
             const positions = [
                 // Front edge
                 new THREE.Vector3(
-                    this.shape.getBoundingBox().min.x + i * spacingX,
-                    this.shape.getBoundingBox().min.y,
-                    this.shape.getBoundingBox().min.z
+                    bounds.min.x + i * spacingX,
+                    bounds.min.y,
+                    bounds.min.z
                 ),
                 // Back edge
                 new THREE.Vector3(
-                    this.shape.getBoundingBox().min.x + i * spacingX,
-                    this.shape.getBoundingBox().min.y,
-                    this.shape.getBoundingBox().max.z
+                    bounds.min.x + i * spacingX,
+                    bounds.min.y,
+                    bounds.max.z
                 ),
                 // Left edge
                 new THREE.Vector3(
-                    this.shape.getBoundingBox().min.x,
-                    this.shape.getBoundingBox().min.y,
-                    this.shape.getBoundingBox().min.z + i * spacingZ
+                    bounds.min.x,
+                    bounds.min.y,
+                    bounds.min.z + i * spacingZ
                 ),
                 // Right edge
                 new THREE.Vector3(
-                    this.shape.getBoundingBox().max.x,
-                    this.shape.getBoundingBox().min.y,
-                    this.shape.getBoundingBox().min.z + i * spacingZ
+                    bounds.max.x,
+                    bounds.min.y,
+                    bounds.min.z + i * spacingZ
                 )
             ];
 
@@ -177,18 +183,18 @@ export class ActionArea extends Entity {
         }
 
         // Larger central area effect
-        const bounds = this.shape.getBoundingBox();
         const centerPos = new THREE.Vector3(
             (bounds.min.x + bounds.max.x) / 2,
             bounds.min.y + 0.1,
             (bounds.min.z + bounds.max.z) / 2
         );
         const centerScale = 1.2 + Math.sin(this.time * 1.5) * 0.3;
+
         instancedRenderer.renderLightBeam(
             centerPos,
             centerPos.clone().add(new THREE.Vector3(0, 0.3, 0)),
-            this.shape.getBoundingBox().max.x - this.shape.getBoundingBox().min.x * 0.6 * centerScale,
-            this.shape.getBoundingBox().max.z - this.shape.getBoundingBox().min.z * 0.6 * centerScale,
+            width * 0.6 * centerScale,
+            depth * 0.6 * centerScale,
             undefined,
             glowColor,
             0.25
