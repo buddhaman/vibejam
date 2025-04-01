@@ -67,7 +67,7 @@ class GameRoom extends Room<GameState> {
   // Path to highscores file
   private highscoresPath = path.join(__dirname, 'highscores.json');
   // In-memory highscores cache
-  private highscores: Highscores = {};
+  private highscores: {[levelId: string]: Array<{username: string, timeMs: number, stars: number, timestamp: number}>} = {};
 
   onCreate() {
     this.state = new GameState();
@@ -139,6 +139,7 @@ class GameRoom extends Room<GameState> {
         
         // If it's a new highscore, broadcast that too
         if (isNewHighscore) {
+          console.log(`New highscore! ${player.username} got position ${this.getHighscorePosition(data.levelId, data.timeMs)} on level ${data.levelId}`);
           this.broadcast("new_highscore", {
             username: player.username,
             levelId: data.levelId,
@@ -148,7 +149,8 @@ class GameRoom extends Room<GameState> {
           });
         }
         
-        // Send the updated highscores for this level to the client
+        // Important: Send highscores immediately after processing the completion
+        // This way we don't need a separate request
         const levelHighscores = this.getHighscores(data.levelId);
         client.send("level_highscores", {
           levelId: data.levelId,
@@ -157,10 +159,14 @@ class GameRoom extends Room<GameState> {
       }
     });
     
-    // Handle request for highscores
+    // Register get_highscores handler
     this.onMessage("get_highscores", (client, data) => {
+      console.log(`Player ${client.sessionId} requested highscores for level ${data.levelId}`);
+      
       if (data.levelId !== undefined) {
         const levelHighscores = this.getHighscores(data.levelId);
+        console.log(`Sending ${levelHighscores.length} highscores for level ${data.levelId}`);
+        
         client.send("level_highscores", {
           levelId: data.levelId,
           highscores: levelHighscores
@@ -222,7 +228,7 @@ class GameRoom extends Room<GameState> {
   }
   
   // Add a highscore and return true if it's a new top 10 entry
-  private addHighscore(levelId: number, entry: HighscoreEntry): boolean {
+  private addHighscore(levelId: number, entry: {username: string, timeMs: number, stars: number, timestamp: number}): boolean {
     const levelIdStr = levelId.toString();
     
     // Initialize array for this level if it doesn't exist
@@ -259,7 +265,7 @@ class GameRoom extends Room<GameState> {
   }
   
   // Get highscores for a level
-  private getHighscores(levelId: number): HighscoreEntry[] {
+  private getHighscores(levelId: number): Array<{username: string, timeMs: number, stars: number, timestamp: number}> {
     const levelIdStr = levelId.toString();
     return this.highscores[levelIdStr] || [];
   }
@@ -269,9 +275,12 @@ class GameRoom extends Room<GameState> {
     const levelIdStr = levelId.toString();
     const scores = this.highscores[levelIdStr] || [];
     
+    // Sort scores by time
+    const sortedScores = [...scores].sort((a, b) => a.timeMs - b.timeMs);
+    
     // Find position (1-based)
-    for (let i = 0; i < scores.length; i++) {
-      if (scores[i].timeMs === timeMs) {
+    for (let i = 0; i < sortedScores.length; i++) {
+      if (sortedScores[i].timeMs === timeMs) {
         return i + 1;
       }
     }

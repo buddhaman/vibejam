@@ -16,6 +16,8 @@ export class Network {
     private updateInterval: number | null = null;
     public playerId: string | null = null;
     private currentRoomType: RoomType | null = null;
+    private highscores: {[levelId: string]: Array<{username: string, timeMs: number, stars: number, timestamp: number}>} = {};
+    private pendingHighscoreRequests: Map<number, number> = new Map();
 
     constructor(game: Game) {
         this.game = game;
@@ -170,19 +172,26 @@ export class Network {
             console.log(`New highscore on level ${message.levelId}:`);
             console.log(`${message.username}: ${message.timeMs}ms (${message.stars} stars), position: ${message.position}`);
             
-            // Notify the game about the new highscore
-            if (this.game.level?.levelIdx === message.levelId) {
-                this.game.onNewHighscore(message.username, message.timeMs, message.stars, message.position);
-            }
+            // Show notification for the new highscore
+            this.showHighscoreNotification(
+                message.username, 
+                message.levelId,
+                message.timeMs, 
+                message.position
+            );
         });
         
-        // Handle highscores response
         this.room.onMessage("level_highscores", (message) => {
-            console.log(`Received highscores for level ${message.levelId}`);
+            console.log(`Received highscores for level ${message.levelId}:`, message.highscores);
+        });
+        
+        // Handle disconnection
+        this.room.onLeave((code) => {
+            console.log(`Left room with code: ${code}`);
             
-            // Pass the highscores to the game
-            if (this.game.level?.levelIdx === message.levelId) {
-                this.game.updateHighscores(message.levelId, message.highscores);
+            // If we have pending highscore requests, we'll need to reconnect and retry
+            if (this.pendingHighscoreRequests.size > 0) {
+                console.log(`Have ${this.pendingHighscoreRequests.size} pending highscore requests`);
             }
         });
     }
@@ -281,17 +290,122 @@ export class Network {
     }
 
     /**
+     * Show a notification when a player achieves a new highscore
+     */
+    private showHighscoreNotification(username: string, levelId: number, timeMs: number, position: number): void {
+        console.log(`Showing highscore notification for ${username}, position #${position}`);
+        
+        // Format time nicely
+        const minutes = Math.floor(timeMs / 1000 / 60);
+        const seconds = Math.floor((timeMs / 1000) % 60);
+        const milliseconds = Math.floor((timeMs % 1000) / 10);
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        
+        // Create or get the notification element
+        let notificationElement = document.getElementById('game-notification');
+        if (!notificationElement) {
+            notificationElement = document.createElement('div');
+            notificationElement.id = 'game-notification';
+            
+            // Style the notification - position below timer
+            Object.assign(notificationElement.style, {
+                position: 'fixed',
+                top: '50px', // Position below the timer
+                left: '10px',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: '#ffff00', // Bright yellow for highscores
+                padding: '8px 12px',
+                borderRadius: '5px',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '14px',
+                zIndex: '1002',
+                opacity: '0',
+                transition: 'opacity 0.3s',
+                pointerEvents: 'none',
+                maxWidth: '300px'
+            });
+            
+            document.body.appendChild(notificationElement);
+            console.log("Created notification element");
+        }
+        
+        // Set notification text based on whether it's the player or someone else
+        const isCurrentUser = username === this.game.userName;
+        let message = '';
+        
+        if (isCurrentUser) {
+            message = `🏆 You got #${position} on the leaderboard! (${timeString})`;
+        } else {
+            message = `🏆 ${username} got #${position} on the leaderboard! (${timeString})`;
+        }
+        
+        // Set the notification text
+        notificationElement.textContent = message;
+        
+        // Show the notification
+        notificationElement.style.opacity = '1';
+        
+        console.log("Notification displayed:", message);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (notificationElement) {
+                notificationElement.style.opacity = '0';
+                console.log("Hiding notification");
+            }
+        }, 5000);
+    }
+    
+    /**
+     * Get stored highscores for a level
+     */
+    public getHighscores(levelId: number): Array<{username: string, timeMs: number, stars: number, timestamp: number}> {
+        return this.highscores[levelId.toString()] || [];
+    }
+    
+    /**
      * Request highscores for a specific level
      * @param levelId The level ID to get highscores for
      */
     public requestHighscores(levelId: number): void {
+        if (!this.room || !this.playerId) {
+            console.log("Not connected to a room, deferring highscore request");
+            
+            // Store the request timestamp
+            this.pendingHighscoreRequests.set(levelId, Date.now());
+            
+            // Try to connect to the appropriate room
+            const roomType = levelId === 0 ? RoomType.OVERWORLD : RoomType.GAMEPLAY;
+            this.connectToRoom(roomType).then(() => {
+                console.log(`Connected to ${roomType}, retrying highscore request for level ${levelId}`);
+                this.sendHighscoreRequest(levelId);
+            }).catch(error => {
+                console.error(`Failed to connect to ${roomType}:`, error);
+            });
+            
+            return;
+        }
+        
+        this.sendHighscoreRequest(levelId);
+    }
+    
+    /**
+     * Actually send the highscore request
+     */
+    private sendHighscoreRequest(levelId: number): void {
         if (!this.room || !this.playerId) return;
         
         try {
+            console.log(`Sending get_highscores request for level ${levelId}`);
             this.room.send("get_highscores", { levelId });
-            console.log(`Requested highscores for level ${levelId}`);
+            
+            // Remove from pending requests
+            this.pendingHighscoreRequests.delete(levelId);
         } catch (error) {
             console.error("Failed to request highscores:", error);
+            
+            // Store as pending request
+            this.pendingHighscoreRequests.set(levelId, Date.now());
         }
     }
 } 

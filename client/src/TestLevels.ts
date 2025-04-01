@@ -953,7 +953,6 @@ export class TestLevels {
                 );
                 // Switch to overworld after showing the congratulations message
                 level.levelFinished();
-                game.switchLevel(0);
             },
             true  // Set triggerOnce to true
         );

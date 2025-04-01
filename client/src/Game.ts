@@ -1464,14 +1464,96 @@ export class Game {
             console.log(`Level ${this.level?.levelIdx} completed!`);
             console.log(`Time: ${this.levelTimerTicks} ticks (${timeInSeconds.toFixed(2)} seconds)`);
             
-            // Report to server if needed
-            if (this.level) {
-                this.reportLevelCompletion(this.level.levelIdx, this.levelTimerTicks * (1000 / this.ticksPerSecond));
-            }
+            // Store the level ID and time for later use
+            const levelId = this.level?.levelIdx || 0;
+            const timeMs = this.levelTimerTicks * (1000 / this.ticksPerSecond);
+            
+            // Report to server if needed - store result in a variable
+            const wasReported = this.reportLevelCompletionToServer(levelId, timeMs);
             
             // Show completion message with time
             this.showLevelCompletedMessage(timeInSeconds);
+            
+            // If we couldn't report to server, at least show a local notification
+            if (!wasReported) {
+                // Generate a fake notification for the player
+                this.showLocalHighscoreNotification(timeInSeconds);
+            }
         }
+    }
+
+    /**
+     * Report level completion to server
+     * Returns true if successfully reported
+     */
+    private reportLevelCompletionToServer(levelId: number, timeMs: number): boolean {
+        if (this.network && this.network.playerId) {
+            // Report level completion
+            this.reportLevelCompletion(levelId, timeMs);
+            
+            // Request highscores after reporting completion
+            setTimeout(() => {
+                if (this.network && this.network.playerId) {
+                    console.log(`Requesting highscores for level ${levelId}`);
+                    this.network.requestHighscores(levelId);
+                }
+            }, 1000); // Give server a bit more time to process
+            
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Show a local highscore notification when offline
+     */
+    private showLocalHighscoreNotification(timeInSeconds: number): void {
+        // Create or get the notification element
+        let notificationElement = document.getElementById('game-notification');
+        if (!notificationElement) {
+            notificationElement = document.createElement('div');
+            notificationElement.id = 'game-notification';
+            
+            // Style the notification - position below timer
+            Object.assign(notificationElement.style, {
+                position: 'fixed',
+                top: '50px', // Position below the timer
+                left: '10px',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: '#ffff00', // Bright yellow for highscores
+                padding: '8px 12px',
+                borderRadius: '5px',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '14px',
+                zIndex: '1002',
+                opacity: '0',
+                transition: 'opacity 0.3s',
+                pointerEvents: 'none',
+                maxWidth: '300px'
+            });
+            
+            document.body.appendChild(notificationElement);
+        }
+        
+        // Format time nicely
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        const milliseconds = Math.floor((timeInSeconds % 1) * 100);
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        
+        // Set the message
+        notificationElement.textContent = `🏁 Level complete! Time: ${timeString}`;
+        
+        // Show the notification
+        notificationElement.style.opacity = '1';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (notificationElement) {
+                notificationElement.style.opacity = '0';
+            }
+        }, 5000);
     }
 
     // Add this method:
@@ -1581,15 +1663,4 @@ export class Game {
         document.head.appendChild(style);
         
         // Set the message content
-        completeElement.textContent = `Level Complete! Final Time: ${timeString}`;
-        
-        // Add to document
-        document.body.appendChild(completeElement);
-        
-        // Remove after animation completes
-        setTimeout(() => {
-            document.body.removeChild(completeElement);
-            document.head.removeChild(style);
-        }, 4000);
-    }
-} 
+        completeElement.textContent = `
