@@ -402,16 +402,6 @@ export class Network {
         return this.highscores[levelId.toString()] || [];
     }
     
-    /**
-     * Request highscores for a specific level
-     * @param levelId The level ID to get highscores for
-     */
-    public requestHighscores(levelId: number): void {
-        // This method is now disabled to prevent connection issues
-        console.log("Highscore requests disabled - tracked server-side only");
-        return;
-    }
-
     // Replace setupGlobalNotificationHandler with a simpler version
     private setupSimpleNotificationHandler(): void {
         if (!this.room) return;

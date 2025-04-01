@@ -200,10 +200,8 @@ export class TestLevels {
                         if (highscores && highscores.length > 0) {
                             sign.setHighscores(highscores);
                         } else {
-                            game.network.requestHighscores(levelId);
-                            
-                            // Set empty highscores array for now
-                            sign.setHighscores([]);
+                            game.network.requestAllHighscores();
+                            sign.setHighscores(game.network.getHighscores(levelId));
                         }
                     } else {
                         sign.setHighscores([]);
