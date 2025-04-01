@@ -316,7 +316,7 @@ export class Sign extends Entity {
                 // Time at bottom of entry
                 ctx.textAlign = 'center';
                 ctx.font = 'bold 110px Arial, sans-serif';
-                ctx.fillText(timeString, width * 0.65, y + lineHeight - 80);
+                ctx.fillText(timeString, width * 0.65, y + lineHeight - 120);
                 
                 // Stars on right side, vertically centered
                 ctx.textAlign = 'center';
