@@ -10,10 +10,27 @@ export class MeshBuilder {
      * @param width Width of the ground plane
      * @param depth Depth of the ground plane
      * @param skullCount Number of skulls to add to the ground
+     * @param terrainHeight Maximum height variation for the terrain (default: 3)
+     * @param rubbleCount Number of rubble piles to create (default: 30)
+     * @param boneStackCount Number of bone stacks to create (default: 25)
+     * @param skullOnStickCount Number of skulls on sticks to create (default: 15)
      * @returns A single combined mesh containing ground and all decorations
      */
-    public static createDecorativeGround(width: number = 200, depth: number = 200, skullCount: number = 50): THREE.Mesh {
-        console.log("Creating decorative ground with", skullCount, "skulls");
+    public static createDecorativeGround(
+        width: number = 200, 
+        depth: number = 200, 
+        skullCount: number = 150,
+        terrainHeight: number = 3,
+        rubbleCount: number = 60,
+        boneStackCount: number = 80,
+        skullOnStickCount: number = 30
+    ): THREE.Mesh {
+        console.log("Creating decorative ground with", skullCount, "skulls,", 
+            rubbleCount, "rubble piles,", boneStackCount, "bone stacks, and", 
+            skullOnStickCount, "skulls on sticks");
+        
+        // Calculate total decorations
+        const totalDecorations = skullCount + rubbleCount + boneStackCount + skullOnStickCount;
         
         // Step 1: Create the base ground geometry
         const geometries: THREE.BufferGeometry[] = [];
@@ -31,9 +48,27 @@ export class MeshBuilder {
             
             // Terrain gets completely flat at the edges
             if (distFromCenter < 0.9) {
-                // Use a smaller amplitude (1.5 instead of 3)
+                // Use user-defined maximum height
                 const heightScale = Math.max(0, 1.0 - distFromCenter / 0.9);
-                groundPositions[i + 1] = heightScale * Math.sin(x * 0.01) * Math.cos(z * 0.01) * 1.5;
+                
+                // Multiple noise functions at different frequencies
+                const noise1 = Math.sin(x * 0.01) * Math.cos(z * 0.01);
+                const noise2 = Math.sin(x * 0.03 + z * 0.02) * 0.3;
+                const noise3 = Math.cos(x * 0.02 - z * 0.01) * 0.2;
+                
+                // Add more variation with craters
+                const crater1X = width * 0.2;
+                const crater1Z = depth * -0.15;
+                const distFromCrater1 = Math.sqrt(Math.pow(x - crater1X, 2) + Math.pow(z - crater1Z, 2));
+                const crater1 = distFromCrater1 < 15 ? -2 * Math.exp(-distFromCrater1 * 0.1) : 0;
+                
+                const crater2X = width * -0.25;
+                const crater2Z = depth * 0.3;
+                const distFromCrater2 = Math.sqrt(Math.pow(x - crater2X, 2) + Math.pow(z - crater2Z, 2));
+                const crater2 = distFromCrater2 < 20 ? -2.5 * Math.exp(-distFromCrater2 * 0.08) : 0;
+                
+                // Apply height with scale factor
+                groundPositions[i + 1] = heightScale * (noise1 + noise2 + noise3 + crater1 + crater2) * terrainHeight;
             } else {
                 // Ensure the edges are completely flat
                 groundPositions[i + 1] = 0;
@@ -79,42 +114,61 @@ export class MeshBuilder {
         geometries.push(groundGeometry);
         
         // Step 2: Create various skull and bone decorations
-        console.log("Adding skulls and bone decorations");
+        console.log("Adding decorations");
         
-        for (let i = 0; i < skullCount; i++) {
-            // Choose a random decoration type
-            const decorationType = Math.random();
-            let decoration: THREE.BufferGeometry;
+        // Track how many of each type we've created
+        let rubbleCreated = 0;
+        let boneStackCreated = 0;
+        let skullOnStickCreated = 0; 
+        let bonePileCreated = 0;
+        let regularSkullCreated = 0;
+        
+        // Calculate bone pile count as a portion of skull count
+        const bonePileCount = Math.floor(skullCount * 0.35);
+        
+        // For positioning, use a spiral pattern to avoid clumping
+        const createSpiral = (index: number, total: number) => {
+            // Use golden angle for nice distribution
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+            const angle = index * goldenAngle;
             
-            // Create different decorations with random colors based on type
-            if (decorationType < 0.4) {
-                // Regular box skulls - keep them as a base decoration
-                // Random subtle bone color variation
-                const hue = 0.08 + Math.random() * 0.03; // Slight yellow-brown hue
-                const sat = 0.1 + Math.random() * 0.1;   // Low saturation
-                const light = 0.75 + Math.random() * 0.2; // Fairly bright
+            // Calculate distance from center based on index
+            const distanceScale = Math.sqrt(index / total);
+            const distance = distanceScale * 0.85 * Math.min(width, depth) / 2;
+            
+            return {
+                x: Math.cos(angle) * distance,
+                z: Math.sin(angle) * distance
+            };
+        };
+        
+        // Create all decorations in a single loop with different positioning strategies
+        for (let i = 0; i < totalDecorations; i++) {
+            let decoration: THREE.BufferGeometry;
+            let pos = createSpiral(i, totalDecorations);
+            
+            if (i < rubbleCount) {
+                // Create rubble with stone-like colors
+                const rubbleHue = 0.06 + Math.random() * 0.04;
+                const rubbleSat = 0.15 + Math.random() * 0.2;
+                const rubbleLight = 0.4 + Math.random() * 0.2;
                 
-                const color = new THREE.Color().setHSL(hue, sat, light);
-                decoration = this.createBoxSkull(color);
-            } else if (decorationType < 0.7) {
-                // Sphere skull with eye sockets and jaw
-                const hue = 0.05 + Math.random() * 0.04; // More yellow-white hue
-                const sat = 0.05 + Math.random() * 0.1;  // Very low saturation
-                const light = 0.8 + Math.random() * 0.15; // Brighter
+                const rubbleColor = new THREE.Color().setHSL(rubbleHue, rubbleSat, rubbleLight);
+                decoration = this.createRubble(rubbleColor);
+                rubbleCreated++;
+            }
+            else if (i < rubbleCount + boneStackCount) {
+                // Create bone stack
+                const stackHue = 0.06 + Math.random() * 0.03;
+                const stackSat = 0.05 + Math.random() * 0.1;
+                const stackLight = 0.8 + Math.random() * 0.15;
                 
-                const color = new THREE.Color().setHSL(hue, sat, light);
-                decoration = this.createSphereSkull(color);
-            } else if (decorationType < 0.85) {
-                // Bone pile
-                // Darker, more aged bone color
-                const hue = 0.07 + Math.random() * 0.05; // Yellow to brown hue range
-                const sat = 0.15 + Math.random() * 0.15; // Medium saturation
-                const light = 0.6 + Math.random() * 0.2; // Less bright
-                
-                const color = new THREE.Color().setHSL(hue, sat, light);
-                decoration = this.createBonePile(color);
-            } else {
-                // Skull on a stick
+                const stackColor = new THREE.Color().setHSL(stackHue, stackSat, stackLight);
+                decoration = this.createBoneStack(stackColor);
+                boneStackCreated++;
+            }
+            else if (i < rubbleCount + boneStackCount + skullOnStickCount) {
+                // Create skull on stick
                 const skullHue = 0.08 + Math.random() * 0.03; // Skull color
                 const skullSat = 0.05 + Math.random() * 0.1;
                 const skullLight = 0.7 + Math.random() * 0.2;
@@ -127,18 +181,66 @@ export class MeshBuilder {
                 const stickColor = new THREE.Color().setHSL(stickHue, stickSat, stickLight);
                 
                 decoration = this.createSkullOnStick(skullColor, stickColor);
+                skullOnStickCreated++;
+            }
+            else if (i < rubbleCount + boneStackCount + skullOnStickCount + bonePileCount) {
+                // Create bone pile
+                const hue = 0.07 + Math.random() * 0.05; // Yellow to brown hue range
+                const sat = 0.15 + Math.random() * 0.15; // Medium saturation
+                const light = 0.6 + Math.random() * 0.2; // Less bright
+                
+                const color = new THREE.Color().setHSL(hue, sat, light);
+                decoration = this.createBonePile(color);
+                bonePileCreated++;
+            }
+            else {
+                // Create regular skulls with the remaining slots
+                // Alternate between box and sphere skulls
+                if (i % 2 === 0) {
+                    const hue = 0.08 + Math.random() * 0.03; // Slight yellow-brown hue
+                    const sat = 0.1 + Math.random() * 0.1;   // Low saturation
+                    const light = 0.75 + Math.random() * 0.2; // Fairly bright
+                    
+                    const color = new THREE.Color().setHSL(hue, sat, light);
+                    decoration = this.createBoxSkull(color);
+                } else {
+                    const hue = 0.05 + Math.random() * 0.04; // More yellow-white hue
+                    const sat = 0.05 + Math.random() * 0.1;  // Very low saturation
+                    const light = 0.8 + Math.random() * 0.15; // Brighter
+                    
+                    const color = new THREE.Color().setHSL(hue, sat, light);
+                    decoration = this.createSphereSkull(color);
+                }
+                regularSkullCreated++;
             }
             
-            // Position randomly on the ground plane
-            const x = (Math.random() - 0.5) * width * 0.8;
-            const z = (Math.random() - 0.5) * depth * 0.8;
+            // Get coordinates from spiral pattern
+            const x = pos.x;
+            const z = pos.z;
             
             // Get height at this position (approximate)
             let y = 0;
             const distFromCenter = Math.sqrt(x*x + z*z) / (width/2);
-            if (distFromCenter < 0.8) {
-                const heightScale = 1.0 - distFromCenter / 0.8;
-                y = heightScale * Math.sin(x * 0.02) * Math.cos(z * 0.02) * 3;
+            if (distFromCenter < 0.9) {
+                // Multiple noise functions to match ground generation
+                const noise1 = Math.sin(x * 0.01) * Math.cos(z * 0.01);
+                const noise2 = Math.sin(x * 0.03 + z * 0.02) * 0.3;
+                const noise3 = Math.cos(x * 0.02 - z * 0.01) * 0.2;
+                
+                // Add crater effects
+                const crater1X = width * 0.2;
+                const crater1Z = depth * -0.15;
+                const distFromCrater1 = Math.sqrt(Math.pow(x - crater1X, 2) + Math.pow(z - crater1Z, 2));
+                const crater1 = distFromCrater1 < 15 ? -2 * Math.exp(-distFromCrater1 * 0.1) : 0;
+                
+                const crater2X = width * -0.25;
+                const crater2Z = depth * 0.3;
+                const distFromCrater2 = Math.sqrt(Math.pow(x - crater2X, 2) + Math.pow(z - crater2Z, 2));
+                const crater2 = distFromCrater2 < 20 ? -2.5 * Math.exp(-distFromCrater2 * 0.08) : 0;
+                
+                // Apply height calculation matching the ground generation
+                const heightScale = Math.max(0, 1.0 - distFromCenter / 0.9);
+                y = heightScale * (noise1 + noise2 + noise3 + crater1 + crater2) * terrainHeight;
             }
             
             // Add a small offset to avoid z-fighting
@@ -151,8 +253,8 @@ export class MeshBuilder {
             const rotationY = Math.random() * Math.PI * 2;
             matrix.makeRotationY(rotationY);
             
-            // Random scale for variety
-            const scale = 0.5 + Math.random() * 1.5;
+            // Random scale for variety, but slightly smaller on average
+            const scale = 0.4 + Math.random() * 1.3;
             const scaleMatrix = new THREE.Matrix4().makeScale(scale, scale, scale);
             matrix.multiply(scaleMatrix);
             
@@ -165,6 +267,14 @@ export class MeshBuilder {
             // Add to geometries array
             geometries.push(decoration);
         }
+        
+        console.log("Created:", 
+            rubbleCreated, "rubble piles,", 
+            boneStackCreated, "bone stacks,",
+            skullOnStickCreated, "skulls on sticks,",
+            bonePileCreated, "bone piles, and",
+            regularSkullCreated, "regular skulls"
+        );
         
         // Step 3: Merge all geometries into a single BufferGeometry
         console.log("Merging", geometries.length, "geometries");
@@ -632,6 +742,10 @@ export class MeshBuilder {
         return mergedGeometry;
     }
 
+    /**
+     * Creates a pile of rubble/debris
+     * @param color Base color for the rubble
+     */
     private static createRubble(color: THREE.Color = new THREE.Color(0.6, 0.5, 0.4)): THREE.BufferGeometry {
         const parts: THREE.BufferGeometry[] = [];
         
@@ -674,6 +788,66 @@ export class MeshBuilder {
             rockGeometry.applyMatrix4(matrix);
             parts.push(rockGeometry);
         }
+        
+        return this.mergeBufferGeometries(parts);
+    }
+
+    /**
+     * Creates a neatly arranged stack of bones
+     * @param color Base color for the bone stack
+     */
+    private static createBoneStack(color: THREE.Color = new THREE.Color(0.92, 0.88, 0.82)): THREE.BufferGeometry {
+        const parts: THREE.BufferGeometry[] = [];
+        
+        // Base platform
+        const baseGeometry = new THREE.BoxGeometry(3.5, 0.2, 2);
+        this.addVertexColors(baseGeometry, color.clone().multiplyScalar(0.7), 0.05);
+        parts.push(baseGeometry);
+        
+        // Create neat stacks of long bones
+        const createBoneLayer = (y: number, horizontal: boolean, layerColor: THREE.Color) => {
+            const count = horizontal ? 4 : 2;
+            
+            for (let i = 0; i < count; i++) {
+                const bone = new THREE.CylinderGeometry(0.15, 0.2, horizontal ? 3 : 2, 6);
+                this.addVertexColors(bone, layerColor, 0.05);
+                
+                let x = 0, z = 0;
+                if (horizontal) {
+                    z = -0.7 + i * 0.5;
+                } else {
+                    x = -0.6 + i * 1.2;
+                }
+                
+                const rotation = new THREE.Euler(
+                    horizontal ? Math.PI/2 : 0,
+                    0,
+                    horizontal ? 0 : Math.PI/2
+                );
+                
+                const matrix = new THREE.Matrix4();
+                const quat = new THREE.Quaternion().setFromEuler(rotation);
+                matrix.makeRotationFromQuaternion(quat);
+                matrix.setPosition(x, y, z);
+                
+                bone.applyMatrix4(matrix);
+                parts.push(bone);
+            }
+        };
+        
+        // Create alternating layers
+        createBoneLayer(0.3, true, color.clone()); // First layer (horizontal)
+        createBoneLayer(0.7, false, color.clone().multiplyScalar(0.95)); // Second layer (vertical)
+        createBoneLayer(1.1, true, color.clone().multiplyScalar(0.9)); // Third layer (horizontal)
+        
+        // Add a small skull on top
+        const skullGeometry = this.createBoxSkull(color.clone().multiplyScalar(1.05));
+        const skullMatrix = new THREE.Matrix4()
+            .makeScale(0.4, 0.4, 0.4)
+            .setPosition(0.8, 1.3, 0);
+        
+        skullGeometry.applyMatrix4(skullMatrix);
+        parts.push(skullGeometry);
         
         return this.mergeBufferGeometries(parts);
     }

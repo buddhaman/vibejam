@@ -15,10 +15,12 @@ export class TestLevels {
      * @param game The Game instance for level switching
      */
     public static createOverworld(level: Level, game: Game): void {
+        const groundY = 4;
+
         // Main platform in the center - make it larger
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-35, 0, -35),
-            new THREE.Vector3(35, 2, 35),
+            new THREE.Vector3(35, groundY, 35),
             LevelBuilder.MAIN_PLATFORM_MATERIAL,
             "overworld-platform"
         ));
@@ -29,7 +31,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-23.5, 4, 1.5),   // Position
+            new THREE.Vector3(-23.5, groundY + 2, 1.5),   // Position
             3,                                  // Level ID
             "Tutorial",                         // Name
             "For Beginners",                    // Description
@@ -41,7 +43,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-23.5, 4, 7.5),   // Position
+            new THREE.Vector3(-23.5, groundY + 2, 7.5),   // Position
             4,                                  // Level ID
             "Tutorial 2",                       // Name
             "Advanced",                         // Description
@@ -53,7 +55,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-13.5, 4, 1.5),   // Position
+            new THREE.Vector3(-13.5, groundY + 2, 1.5),   // Position
             1,                                  // Level ID
             "Jungle Gym",                       // Name
             "",                                 // No description
@@ -64,7 +66,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(16.5, 4, 1.5),    // Position
+            new THREE.Vector3(16.5, groundY + 2, 1.5),    // Position
             2,                                  // Level ID
             "Skydiving",                        // Name
             "",                                 // No description
@@ -74,7 +76,7 @@ export class TestLevels {
         // Create a separate island for the Vibeverse portal
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-5, 0, -60),
-            new THREE.Vector3(15, 2, -40),
+            new THREE.Vector3(15, groundY, -40),
             new THREE.MeshStandardMaterial({
                 color: 0x6699ff,          // Light blue for Vibeverse island
                 roughness: 0.4,
@@ -88,7 +90,7 @@ export class TestLevels {
         // Create a bridge connecting main platform to Vibeverse island
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(0, 0, -40),
-            new THREE.Vector3(5, 2, -25),
+            new THREE.Vector3(5, groundY, -25),
             LevelBuilder.MAIN_PLATFORM_MATERIAL,
             "vibeverse-bridge"
         ));
@@ -97,16 +99,16 @@ export class TestLevels {
         for (let i = 0; i < 5; i++) {
             // Left side railings
             level.addStaticBody(StaticBody.createBox(
-                new THREE.Vector3(0, 2, -39 + i * 3),
-                new THREE.Vector3(0.5, 4, -38 + i * 3),
+                new THREE.Vector3(0, groundY, -39 + i * 3),
+                new THREE.Vector3(0.5, groundY + 2, -38 + i * 3),
                 LevelBuilder.PORTAL_MATERIAL,
                 `bridge-rail-left-${i}`
             ));
             
             // Right side railings
             level.addStaticBody(StaticBody.createBox(
-                new THREE.Vector3(4.5, 2, -39 + i * 3),
-                new THREE.Vector3(5, 4, -38 + i * 3),
+                new THREE.Vector3(4.5, groundY, -39 + i * 3),
+                new THREE.Vector3(5, groundY + 2, -38 + i * 3),
                 LevelBuilder.PORTAL_MATERIAL,
                 `bridge-rail-right-${i}`
             ));
@@ -118,14 +120,14 @@ export class TestLevels {
         // Add bridge signage
         level.levelRenderer?.addSimpleText(
             "TO VIBEVERSE",
-            new THREE.Vector3(2.5, 5, -30),
+            new THREE.Vector3(2.5, groundY + 3, -30),
             "#ffff00",
             "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
             "→",
-            new THREE.Vector3(2.5, 4, -33),
+            new THREE.Vector3(2.5, groundY + 2, -33),
             "#ffff00",
             "#000000"
         );
@@ -133,12 +135,12 @@ export class TestLevels {
         // Main overworld text
         level.levelRenderer?.addSimpleText(
             "OVERWORLD HUB",
-            new THREE.Vector3(0, 10, 0),
+            new THREE.Vector3(0, groundY + 8, 0),
             "white",
             "#000000"
         );
         
-        level.playerStartPosition = new THREE.Vector3(0, 5, 0);
+        level.playerStartPosition = new THREE.Vector3(0, groundY + 3, 0);
         
         // Check for incoming portal traffic and position player appropriately
         this.handleIncomingPortalTraffic(level, game);
