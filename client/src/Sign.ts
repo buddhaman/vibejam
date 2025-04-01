@@ -32,39 +32,17 @@ export class Sign extends Entity {
         super();
         
         this.levelId = levelId;
-        console.log(`Creating sign for level ${levelId}`);
         
         // Create a simple colored plane
         const signGeometry = new THREE.PlaneGeometry(width, height);
         
-        // Initialize canvas and texture
-        this.canvas = document.createElement('canvas');
-        this.canvas.width = 2048;  // Higher resolution for the larger sign
-        this.canvas.height = 2560; // Higher resolution for the larger sign
-        this.context = this.canvas.getContext('2d')!;
-        
-        // Fill canvas with a bright color for visibility
-        this.context.fillStyle = '#FF00FF'; // Bright pink
-        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.fillStyle = '#FFFFFF';
-        this.context.font = 'bold 240px Arial';
-        this.context.textAlign = 'center';
-        this.context.fillText(`LEVEL ${levelId}`, this.canvas.width/2, 400);
-        
-        // Create texture from canvas
-        this.texture = new THREE.CanvasTexture(this.canvas);
-        this.texture.minFilter = THREE.LinearFilter;
-        this.texture.magFilter = THREE.LinearFilter;
-        this.texture.needsUpdate = true;
-        
-        // Create a single material for simplicity
+        // Create a simple colored material that will work for sure
         const signMaterial = new THREE.MeshBasicMaterial({
-            map: this.texture,
-            color: 0xffffff,
-            side: THREE.DoubleSide // Visible from both sides
+            color: 0xffffff, // White base color
+            side: THREE.DoubleSide
         });
         
-        // Use simple flat mesh with a single material
+        // Use simple mesh with a single material
         this.mesh = new THREE.Mesh(signGeometry, signMaterial);
         
         // FIXED POSITIONING: Create a new position instead of modifying the passed one
@@ -80,13 +58,25 @@ export class Sign extends Entity {
         // SCALE UP THE SIGN BY 4x using transform
         this.mesh.scale.set(4, 4, 4);
         
-        console.log(`Sign positioned at: ${this.mesh.position.x}, ${this.mesh.position.y}, ${this.mesh.position.z}`);
-        console.log(`Sign rotation: ${this.mesh.rotation.x}, ${this.mesh.rotation.y}, ${this.mesh.rotation.z}`);
-        console.log(`Sign scale: ${this.mesh.scale.x}, ${this.mesh.scale.y}, ${this.mesh.scale.z}`);
-        
         // Add to scene
         scene.add(this.mesh);
-        console.log("Sign added to scene");
+        
+        // Initialize canvas and texture
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 2048;  // Higher resolution for the larger sign
+        this.canvas.height = 2560; // Higher resolution for the larger sign
+        this.context = this.canvas.getContext('2d')!;
+        
+        // Create texture from canvas
+        this.texture = new THREE.CanvasTexture(this.canvas);
+        this.texture.minFilter = THREE.LinearFilter;
+        this.texture.magFilter = THREE.LinearFilter;
+        
+        // Now update the mesh material with the texture
+        this.mesh.material = new THREE.MeshBasicMaterial({ 
+            map: this.texture,
+            side: THREE.DoubleSide
+        });
         
         // Initial rendering - update after adding to scene
         this.updateCanvas();
@@ -175,82 +165,147 @@ export class Sign extends Entity {
      */
     private updateCanvas(): void {
         if (!this.context || !this.canvas || !this.texture) {
-            console.log("Canvas, context or texture not initialized yet");
             return;
         }
-        
-        console.log(`Updating canvas for level ${this.levelId} with ${this.highscores.length} highscores`);
         
         const ctx = this.context;
         const width = this.canvas.width;
         const height = this.canvas.height;
         
-        // Simple bright background for maximum visibility
-        ctx.fillStyle = '#FF00FF'; // Bright pink
+        // Create a colorful gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#880088');   // Deep magenta at top
+        gradient.addColorStop(1, '#440044');   // Darker magenta at bottom
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
         
-        // Add a border
+        // Add a decorative border
         ctx.strokeStyle = '#FFCC00';  // Gold border
         ctx.lineWidth = 60;
         ctx.strokeRect(60, 60, width - 120, height - 120);
         
-        // Draw title with large text
+        // Draw title with stylized text
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 180px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
+        
+        // Add a subtle shadow to the text
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 10;
+        ctx.shadowOffsetY = 10;
         
         // Draw the level title
         ctx.fillText(`LEVEL ${this.levelId}`, width / 2, 120);
         ctx.font = 'bold 160px Arial, sans-serif';
         ctx.fillText(`HIGHSCORES`, width / 2, 320);
         
-        // Draw a separator
+        // Reset shadow for the rest of the text
+        ctx.shadowColor = 'transparent';
+        
+        // Draw a decorative separator
         ctx.beginPath();
-        ctx.moveTo(width * 0.1, 550);
-        ctx.lineTo(width * 0.9, 550);
+        ctx.moveTo(width * 0.1, 560);
+        ctx.lineTo(width * 0.9, 560);
         ctx.strokeStyle = '#FFCC00';
         ctx.lineWidth = 20;
         ctx.stroke();
         
-        // Display highscores or 'no highscores' message
+        // Display highscores
         if (this.highscores.length === 0) {
+            // No highscores message
             ctx.font = 'bold 140px Arial, sans-serif';
-            ctx.fillText('No highscores yet!', width / 2, height / 2);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('No highscores yet!', width / 2, height / 2 - 200);
             ctx.font = '100px Arial, sans-serif';
-            ctx.fillText('Be the first to complete this level!', width / 2, height / 2 + 200);
+            ctx.fillText('Be the first to complete', width / 2, height / 2);
+            ctx.fillText('this level!', width / 2, height / 2 + 160);
         } else {
             // Draw highscores - up to 5 entries
-            const startY = 650;
-            const lineHeight = 300;
+            const startY = 660;
+            const lineHeight = 320;
             const maxScores = Math.min(5, this.highscores.length);
+            
+            // Column headers
+            ctx.fillStyle = '#FFCC00';
+            ctx.font = 'bold 90px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('RANK', width * 0.15, startY - 100);
+            ctx.textAlign = 'left';
+            ctx.fillText('PLAYER', width * 0.25, startY - 100);
+            ctx.textAlign = 'center';
+            ctx.fillText('TIME', width * 0.65, startY - 100);
+            ctx.fillText('⭐', width * 0.88, startY - 100);
             
             for (let i = 0; i < maxScores; i++) {
                 const score = this.highscores[i];
                 const y = startY + i * lineHeight;
                 
-                // Background for each row
-                ctx.fillStyle = (i === 0) ? '#FFD700' : (i === 1) ? '#C0C0C0' : (i === 2) ? '#CD7F32' : '#333333';
+                // Row background with different colors for top 3
+                let bgColor = '#333333';
+                if (i === 0) bgColor = '#FFD700'; // Gold
+                else if (i === 1) bgColor = '#C0C0C0'; // Silver
+                else if (i === 2) bgColor = '#CD7F32'; // Bronze
+                
+                // Background for this row with slight rounding of corners
+                ctx.fillStyle = bgColor;
                 ctx.globalAlpha = 0.3;
-                ctx.fillRect(width * 0.1, y, width * 0.8, lineHeight - 40);
+                
+                // Draw rounded rectangle
+                const rectX = width * 0.1;
+                const rectY = y;
+                const rectWidth = width * 0.8;
+                const rectHeight = lineHeight - 40;
+                const cornerRadius = 30;
+                
+                ctx.beginPath();
+                ctx.moveTo(rectX + cornerRadius, rectY);
+                ctx.lineTo(rectX + rectWidth - cornerRadius, rectY);
+                ctx.arcTo(rectX + rectWidth, rectY, rectX + rectWidth, rectY + cornerRadius, cornerRadius);
+                ctx.lineTo(rectX + rectWidth, rectY + rectHeight - cornerRadius);
+                ctx.arcTo(rectX + rectWidth, rectY + rectHeight, rectX + rectWidth - cornerRadius, rectY + rectHeight, cornerRadius);
+                ctx.lineTo(rectX + cornerRadius, rectY + rectHeight);
+                ctx.arcTo(rectX, rectY + rectHeight, rectX, rectY + rectHeight - cornerRadius, cornerRadius);
+                ctx.lineTo(rectX, rectY + cornerRadius);
+                ctx.arcTo(rectX, rectY, rectX + cornerRadius, rectY, cornerRadius);
+                ctx.closePath();
+                ctx.fill();
+                
                 ctx.globalAlpha = 1.0;
                 
-                // Rank number
+                // Draw rank circle
+                const rankX = width * 0.15;
+                const rankY = y + lineHeight/2;
+                const rankRadius = 70;
+                
+                ctx.fillStyle = i < 3 ? bgColor : '#555555';
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(rankX, rankY, rankRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                
+                // Rank number - centered in circle
                 ctx.fillStyle = '#FFFFFF';
                 ctx.font = 'bold 120px Arial, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${i + 1}`, width * 0.2, y + 80);
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${i + 1}`, rankX, rankY);
                 
-                // Username & time
-                ctx.textAlign = 'left';
+                // Username at top of entry
+                ctx.fillStyle = '#FFFFFF';
                 ctx.font = '100px Arial, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
                 
-                // Format username
+                // Truncate long usernames
                 let username = score.username;
                 if (username.length > 15) {
                     username = username.substring(0, 13) + '...';
                 }
-                ctx.fillText(username, width * 0.3, y + 80);
+                
+                ctx.fillText(username, width * 0.25, y + 40);
                 
                 // Format time
                 const minutes = Math.floor(score.timeMs / 1000 / 60);
@@ -258,31 +313,34 @@ export class Sign extends Entity {
                 const milliseconds = Math.floor((score.timeMs % 1000) / 10);
                 const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
                 
-                ctx.fillText(timeString, width * 0.3, y + 200);
+                // Time at bottom of entry
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 110px Arial, sans-serif';
+                ctx.fillText(timeString, width * 0.65, y + lineHeight - 80);
                 
-                // Stars
+                // Stars on right side, vertically centered
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '100px Arial, sans-serif';
                 let starsText = '';
                 for (let j = 0; j < score.stars; j++) {
                     starsText += '⭐';
                 }
-                ctx.textAlign = 'right';
-                ctx.fillText(starsText, width * 0.9, y + 150);
+                ctx.fillText(starsText, width * 0.88, y + lineHeight/2);
             }
         }
         
         // Force texture update
         if (this.texture) {
             this.texture.needsUpdate = true;
-            console.log("Sign texture updated");
         }
         
-        // Make sure the material is using the texture
-        if (this.mesh && this.mesh.material) {
-            const material = this.mesh.material as THREE.MeshBasicMaterial;
-            if (material.map !== this.texture) {
-                material.map = this.texture;
-                material.needsUpdate = true;
-                console.log("Sign material updated");
+        // Update the material texture
+        if (this.mesh && Array.isArray(this.mesh.material)) {
+            const frontMaterial = this.mesh.material[0] as THREE.MeshBasicMaterial;
+            if (frontMaterial.map !== this.texture) {
+                frontMaterial.map = this.texture;
+                frontMaterial.needsUpdate = true;
             }
         }
     }
