@@ -4,9 +4,13 @@ import * as THREE from 'three';
  * MeshBuilder utility class to create various decorative and functional meshes
  */
 export class MeshBuilder {
+    // Static cache for expensive meshes
+    private static cachedMeshes: Map<string, THREE.Mesh> = new Map();
+    
     /**
      * Creates a decorative ground mesh with embedded skull decorations
      * Uses a SINGLE mesh for the entire scene to minimize draw calls
+     * The mesh is cached and reused if called multiple times with the same parameters
      * @param width Width of the ground plane
      * @param depth Depth of the ground plane
      * @param skullCount Number of skulls to add to the ground
@@ -21,10 +25,21 @@ export class MeshBuilder {
         depth: number = 300, 
         skullCount: number = 500,
         terrainHeight: number = 3,
-        rubbleCount: number = 400,
-        boneStackCount: number = 300,
-        skullOnStickCount: number = 200
+        rubbleCount: number = 1000,
+        boneStackCount: number = 500,
+        skullOnStickCount: number = 250
     ): THREE.Mesh {
+        // Create a cache key based on the parameters
+        const cacheKey = `ground_${width}_${depth}_${skullCount}_${terrainHeight}_${rubbleCount}_${boneStackCount}_${skullOnStickCount}`;
+        
+        // Check if this mesh is already cached
+        if (this.cachedMeshes.has(cacheKey)) {
+            console.log("Returning cached decorative ground");
+            // Return a clone of the cached mesh to ensure independent transforms
+            const cachedMesh = this.cachedMeshes.get(cacheKey)!;
+            return cachedMesh.clone();
+        }
+        
         console.log("Creating decorative ground with", skullCount, "skulls,", 
             rubbleCount, "rubble piles,", boneStackCount, "bone stacks, and", 
             skullOnStickCount, "skulls on sticks");
@@ -128,11 +143,9 @@ export class MeshBuilder {
         
         // Create all decorations in a single loop
         for (let i = 0; i < totalDecorations; i++) {
-            // Position randomly on the ground plane with jitter to avoid perfect grid
-            const angle = Math.random() * Math.PI * 2;
-            const radiusScale = Math.random() * 0.9; // Random distance from center (0-90% of max radius)
-            const x = Math.cos(angle) * radiusScale * width * 0.5;
-            const z = Math.sin(angle) * radiusScale * depth * 0.5;
+            // Position randomly across the entire terrain with uniform distribution
+            const x = (Math.random() * 2 - 1) * width * 0.45;  // Uniform distribution across X
+            const z = (Math.random() * 2 - 1) * depth * 0.45;  // Uniform distribution across Z
             
             // Get height at this position (approximate)
             let y = 0;
@@ -283,7 +296,28 @@ export class MeshBuilder {
         combinedMesh.name = "decorativeGround";
         
         console.log("Finished creating decorative ground");
+        
+        // Cache the mesh
+        this.cachedMeshes.set(cacheKey, combinedMesh);
+        
         return combinedMesh;
+    }
+    
+    /**
+     * Get the default decorative ground without rebuilding
+     * This provides global access to the same mesh instance
+     */
+    public static getDefaultDecorativeGround(): THREE.Mesh {
+        // Use default parameters
+        return this.createDecorativeGround();
+    }
+    
+    /**
+     * Clear any cached meshes to free memory
+     */
+    public static clearCache(): void {
+        this.cachedMeshes.clear();
+        console.log("Mesh builder cache cleared");
     }
     
     /**
