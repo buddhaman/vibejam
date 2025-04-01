@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "noEmitOnError": false
   },
   "include": ["./**/*"],
   "exclude": ["node_modules"]

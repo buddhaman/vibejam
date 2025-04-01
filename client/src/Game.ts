@@ -54,8 +54,8 @@ export class Game {
     private fromPortalRef: string | null = null;
 
     // Add a property to track our event listeners
-    private keydownListener: ((event: KeyboardEvent) => void) | null = null;
-    private keyupListener: ((event: KeyboardEvent) => void) | null = null;
+    public keydownListener: ((event: KeyboardEvent) => void) | null = null;
+    public keyupListener: ((event: KeyboardEvent) => void) | null = null;
 
     // Add network player ID tracking
     private localPlayerId: string | null = null;
@@ -1551,7 +1551,7 @@ export class Game {
     }
 
     // Add this method:
-    private handleCameraMovementKey(key: string, isDown: boolean): void {
+    public handleCameraMovementKey(key: string, isDown: boolean): void {
         if (!this.levelRenderer) return;
         
         // Update the specific key state

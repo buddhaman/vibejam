@@ -8,11 +8,16 @@ import { ConvexShape } from '../../shared/ConvexShape';
 import { RigidBody } from './RigidBody';
 import { StaticBody } from './StaticBody';
 import { Rope } from './Rope';
-import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
+// Replace the import with a type declaration
+// import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
 import { Box3, Box3Helper } from 'three';
 import { Serialize } from './Serialize';
 import { Saw } from './Saw';
 import { ActionArea } from './ActionArea';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+
+// Define a generic type for TransformControls
+type TransformControlsType = any;
 
 export class LevelEditor {
     private game: Game;
@@ -298,18 +303,18 @@ export class LevelEditor {
      * Set up selection and transformation controls
      */
     private setupSelectionControls(): void {
-        import('three/examples/jsm/controls/TransformControls').then(({ TransformControls }) => {
             // Create transform controls
             this.transformControls = new TransformControls(
                 this.levelRenderer.camera.threeCamera, 
                 this.levelRenderer.renderer.domElement
             );
+            this.transformControls
             
             // Add to scene
             this.levelRenderer.scene.add(this.transformControls);
             
             // Set up events for the transform controls
-            this.setupTransformControlsEvents();
+            //this.setupTransformControlsEvents();
             
             // Add event listener to handle transform mode changes
             window.addEventListener('keydown', (event) => {
@@ -344,10 +349,9 @@ export class LevelEditor {
             });
             
             // Make transform controls disable camera controls while dragging
-            this.transformControls.addEventListener('dragging-changed', (event) => {
+            this.transformControls.addEventListener('dragging-changed', (event: any) => {
                 this.isDragging = event.value;
             });
-        });
         
         // Add click event listener for selection
         const canvas = this.levelRenderer.renderer.domElement;
