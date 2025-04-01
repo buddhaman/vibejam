@@ -78,13 +78,6 @@ export class Network {
             // Start sending position updates (only matters in overworld)
             this.startSendingPosition();
             
-            // Show a test notification after connecting to verify notifications are working
-            setTimeout(() => {
-                const connectionMsg = `Connected to ${roomType} as ${this.game.userName}`;
-                console.log("TEST NOTIFICATION:", connectionMsg);
-                this.showTestNotification(connectionMsg);
-            }, 2000);
-            
             return this.playerId;
         } catch (error) {
             console.error(`Connection to ${roomType} failed:`, error);
@@ -410,22 +403,24 @@ export class Network {
         const notification = document.createElement('div');
         notification.className = 'game-notification';
         
-        // Basic styling that works for all notifications
+        // More elegant styling
         Object.assign(notification.style, {
             position: 'fixed',
-            top: '50px',
-            left: '10px',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            top: '20px',
+            right: '20px',
+            backgroundColor: 'rgba(30, 30, 30, 0.85)',
             color: 'white',
-            padding: '12px 15px',
-            borderRadius: '5px',
+            padding: '8px 12px',
+            borderRadius: '4px',
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            fontWeight: 'bold',
+            fontSize: '14px',
             zIndex: '9999',
-            boxShadow: '0 0 15px rgba(0, 0, 0, 0.7)',
-            border: '2px solid white',
-            maxWidth: '350px'
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+            borderLeft: '3px solid #4a90e2',
+            maxWidth: '280px',
+            opacity: '0',
+            transform: 'translateY(-10px)',
+            transition: 'opacity 0.3s ease, transform 0.3s ease'
         });
         
         // Set text content
@@ -434,11 +429,22 @@ export class Network {
         // Add to document
         document.body.appendChild(notification);
         
-        // Remove after duration
+        // Trigger animation
         setTimeout(() => {
-            if (notification.parentNode) {
-                document.body.removeChild(notification);
-            }
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Remove after duration with fade-out
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
         }, duration);
     }
 
