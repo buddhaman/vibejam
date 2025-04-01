@@ -640,12 +640,6 @@ export class LevelEditor {
     private deleteSelected(): void {
         if (!this.selectedObject) return;
         
-        // First, make sure we're not in test mode
-        if (this.inTestMode) {
-            console.log("Cannot delete objects while in test mode");
-            return;
-        }
-        
         // Check if the selected object is a player start marker
         if (this.selectedObject.userData && this.selectedObject.userData.isPlayerStart) {
             // If currently selected, deselect first
