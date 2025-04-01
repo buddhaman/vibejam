@@ -168,8 +168,22 @@ export class Network {
         
         this.room.onMessage("new_highscore", (message) => {
             console.log(`New highscore on level ${message.levelId}:`);
-            console.log(`${message.username}: ${message.timeMs}ms (${message.stars} stars)`);
-            // Could display this in-game
+            console.log(`${message.username}: ${message.timeMs}ms (${message.stars} stars), position: ${message.position}`);
+            
+            // Notify the game about the new highscore
+            if (this.game.level?.levelIdx === message.levelId) {
+                this.game.onNewHighscore(message.username, message.timeMs, message.stars, message.position);
+            }
+        });
+        
+        // Handle highscores response
+        this.room.onMessage("level_highscores", (message) => {
+            console.log(`Received highscores for level ${message.levelId}`);
+            
+            // Pass the highscores to the game
+            if (this.game.level?.levelIdx === message.levelId) {
+                this.game.updateHighscores(message.levelId, message.highscores);
+            }
         });
     }
     
@@ -263,6 +277,21 @@ export class Network {
             console.log(`Sent level completion: Level ${levelId} in ${timeMs}ms with ${stars} stars`);
         } catch (error) {
             console.error("Failed to send level completion:", error);
+        }
+    }
+
+    /**
+     * Request highscores for a specific level
+     * @param levelId The level ID to get highscores for
+     */
+    public requestHighscores(levelId: number): void {
+        if (!this.room || !this.playerId) return;
+        
+        try {
+            this.room.send("get_highscores", { levelId });
+            console.log(`Requested highscores for level ${levelId}`);
+        } catch (error) {
+            console.error("Failed to request highscores:", error);
         }
     }
 } 

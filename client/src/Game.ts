@@ -160,11 +160,11 @@ export class Game {
             this.timerElement = document.createElement('div');
             this.timerElement.id = 'game-timer-overlay';
             
-            // Style the timer overlay
+            // Style the timer overlay - move to top-left corner
             Object.assign(this.timerElement.style, {
                 position: 'fixed',
                 top: '10px',
-                right: '10px',
+                left: '10px',  // Changed from right to left
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
                 color: 'white',
                 padding: '5px 10px',
@@ -172,7 +172,7 @@ export class Game {
                 fontFamily: 'Arial, sans-serif',
                 fontSize: '16px',
                 transition: 'opacity 0.3s',
-                zIndex: '1000',
+                zIndex: '1002',  // Increased z-index to be above mobile elements but below critical UI
                 opacity: '0',  // Start hidden
                 pointerEvents: 'none'  // Don't block mouse events
             });

@@ -516,6 +516,11 @@ export class Level {
                         contactPoint,
                         bodyVelocity
                     );
+
+                    // Let loose of rope if player is holding it
+                    if (player.rope) {
+                        player.rope = null;
+                    }
                 }
             }
         }
