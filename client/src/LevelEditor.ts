@@ -638,6 +638,54 @@ export class LevelEditor {
      * Delete the currently selected object
      */
     private deleteSelected(): void {
+        if (!this.selectedObject) return;
+        
+        // First, make sure we're not in test mode
+        if (this.inTestMode) {
+            console.log("Cannot delete objects while in test mode");
+            return;
+        }
+        
+        // Check if the selected object is a player start marker
+        if (this.selectedObject.userData && this.selectedObject.userData.isPlayerStart) {
+            // If currently selected, deselect first
+            this.deselectObject();
+            
+            // Remove from scene
+            this.levelRenderer.scene.remove(this.selectedObject);
+            console.log("Removed player start marker");
+            return;
+        }
+        
+        // Find the entity associated with the selected object
+        const entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+        
+        if (entity) {
+            // Deselect the object before removing it
+            this.deselectObject();
+            
+            // Use the Level.removeEntity method to remove the entity
+            const removed = this.level.removeEntity(entity);
+            
+            if (removed) {
+                console.log(`Successfully removed ${entity.constructor.name}`);
+            } else {
+                console.error(`Failed to remove ${entity.constructor.name}`);
+            }
+        } else {
+            // If no entity was found, just remove the mesh from the scene
+            console.log("No entity found for selected object, removing mesh only");
+            this.deselectObject();
+            
+            if (this.selectedObject.parent) {
+                this.selectedObject.parent.remove(this.selectedObject);
+            }
+        }
+        
+        // Update bounding boxes if they're visible
+        if (this.showBoundingBoxes) {
+            this.showAllBoundingBoxes();
+        }
     }
     
     /**
