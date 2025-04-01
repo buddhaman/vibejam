@@ -37,6 +37,41 @@ export class MeshBuilder {
             }
         }
         
+        // Add vertex colors to ground
+        const groundVertexCount = groundGeometry.attributes.position.count;
+        const groundColors = new Float32Array(groundVertexCount * 3);
+        
+        // Create varied colors for the ground
+        for (let i = 0; i < groundVertexCount; i++) {
+            const x = groundPositions[i * 3];
+            const y = groundPositions[i * 3 + 1];
+            const z = groundPositions[i * 3 + 2];
+            
+            // Base sandy color
+            let r = 0.88;
+            let g = 0.82;
+            let b = 0.67;
+            
+            // Add variation based on position
+            r += Math.sin(x * 0.05) * 0.1;
+            g += Math.cos(z * 0.05) * 0.1;
+            b += Math.sin(x * 0.02 + z * 0.02) * 0.05;
+            
+            // Darken in depressions
+            if (y < 0) {
+                r *= (1 + y * 0.05);
+                g *= (1 + y * 0.05);
+                b *= (1 + y * 0.02);
+            }
+            
+            // Store colors
+            groundColors[i * 3] = r;
+            groundColors[i * 3 + 1] = g;
+            groundColors[i * 3 + 2] = b;
+        }
+        
+        groundGeometry.setAttribute('color', new THREE.BufferAttribute(groundColors, 3));
+        
         // Add ground to geometries array
         geometries.push(groundGeometry);
         
@@ -48,19 +83,47 @@ export class MeshBuilder {
             const decorationType = Math.random();
             let decoration: THREE.BufferGeometry;
             
-            // Create different decorations based on random value
+            // Create different decorations with random colors based on type
             if (decorationType < 0.4) {
                 // Regular box skulls - keep them as a base decoration
-                decoration = this.createBoxSkull();
+                // Random subtle bone color variation
+                const hue = 0.08 + Math.random() * 0.03; // Slight yellow-brown hue
+                const sat = 0.1 + Math.random() * 0.1;   // Low saturation
+                const light = 0.75 + Math.random() * 0.2; // Fairly bright
+                
+                const color = new THREE.Color().setHSL(hue, sat, light);
+                decoration = this.createBoxSkull(color);
             } else if (decorationType < 0.7) {
                 // Sphere skull with eye sockets and jaw
-                decoration = this.createSphereSkull();
+                const hue = 0.05 + Math.random() * 0.04; // More yellow-white hue
+                const sat = 0.05 + Math.random() * 0.1;  // Very low saturation
+                const light = 0.8 + Math.random() * 0.15; // Brighter
+                
+                const color = new THREE.Color().setHSL(hue, sat, light);
+                decoration = this.createSphereSkull(color);
             } else if (decorationType < 0.85) {
                 // Bone pile
-                decoration = this.createBonePile();
+                // Darker, more aged bone color
+                const hue = 0.07 + Math.random() * 0.05; // Yellow to brown hue range
+                const sat = 0.15 + Math.random() * 0.15; // Medium saturation
+                const light = 0.6 + Math.random() * 0.2; // Less bright
+                
+                const color = new THREE.Color().setHSL(hue, sat, light);
+                decoration = this.createBonePile(color);
             } else {
                 // Skull on a stick
-                decoration = this.createSkullOnStick();
+                const skullHue = 0.08 + Math.random() * 0.03; // Skull color
+                const skullSat = 0.05 + Math.random() * 0.1;
+                const skullLight = 0.7 + Math.random() * 0.2;
+                
+                const stickHue = 0.07 + Math.random() * 0.05; // Wooden stick color (browner)
+                const stickSat = 0.4 + Math.random() * 0.2;
+                const stickLight = 0.3 + Math.random() * 0.2;
+                
+                const skullColor = new THREE.Color().setHSL(skullHue, skullSat, skullLight);
+                const stickColor = new THREE.Color().setHSL(stickHue, stickSat, stickLight);
+                
+                decoration = this.createSkullOnStick(skullColor, stickColor);
             }
             
             // Position randomly on the ground plane
@@ -106,9 +169,9 @@ export class MeshBuilder {
         // Merge the geometries
         const mergedGeometry = this.mergeBufferGeometries(geometries);
         
-        // Create a simple material for the combined mesh
+        // Create a material that uses vertex colors
         const material = new THREE.MeshStandardMaterial({
-            color: 0xe0d8c0, // Bone/sandy color
+            vertexColors: true,  // Enable vertex colors
             roughness: 0.75,
             metalness: 0.1,
             flatShading: true // For a more stylized look
@@ -126,8 +189,9 @@ export class MeshBuilder {
     
     /**
      * Creates a simple box skull
+     * @param color Base color for the skull
      */
-    private static createBoxSkull(): THREE.BufferGeometry {
+    private static createBoxSkull(color: THREE.Color = new THREE.Color(0.9, 0.85, 0.75)): THREE.BufferGeometry {
         // Box for the head
         const headGeometry = new THREE.BoxGeometry(2, 2, 2);
         
@@ -152,6 +216,16 @@ export class MeshBuilder {
         const rightEyeGeometry = eyeSocketGeometry.clone()
             .applyMatrix4(rightEyeMatrix);
         
+        // Add colors to each part - make jaw slightly darker than head
+        const headColor = color.clone();
+        const jawColor = color.clone().multiplyScalar(0.95); // Slightly darker
+        const eyeColor = new THREE.Color(0.1, 0.1, 0.1); // Dark eye sockets
+        
+        this.addVertexColors(headGeometry, headColor);
+        this.addVertexColors(jawGeometry, jawColor);
+        this.addVertexColors(leftEyeGeometry, eyeColor);
+        this.addVertexColors(rightEyeGeometry, eyeColor);
+        
         // Create an array of geometries to merge
         const skullParts = [
             headGeometry,
@@ -166,8 +240,9 @@ export class MeshBuilder {
     
     /**
      * Creates a more rounded skull using spheres
+     * @param color Base color for the skull
      */
-    private static createSphereSkull(): THREE.BufferGeometry {
+    private static createSphereSkull(color: THREE.Color = new THREE.Color(0.95, 0.9, 0.8)): THREE.BufferGeometry {
         // Sphere for the head
         const headGeometry = new THREE.SphereGeometry(1.2, 12, 10);
         
@@ -212,6 +287,14 @@ export class MeshBuilder {
             .makeTranslation(0, -0.1, 1.0); // Position nose
         noseGeometry.applyMatrix4(noseMatrix);
         
+        // Add colors - dark for eye sockets and nose, bone color for skull
+        const darkColor = new THREE.Color(0.1, 0.1, 0.1);
+        
+        this.addVertexColors(headGeometry, color, 0.05); // More variation in skull
+        this.addVertexColors(leftEyeGeometry, darkColor);
+        this.addVertexColors(rightEyeGeometry, darkColor);
+        this.addVertexColors(noseGeometry, darkColor);
+        
         // Create an array of geometries to merge
         const skullParts = [
             headGeometry,
@@ -226,17 +309,36 @@ export class MeshBuilder {
     
     /**
      * Creates a pile of bones
+     * @param color Base color for the bone pile
      */
-    private static createBonePile(): THREE.BufferGeometry {
+    private static createBonePile(color: THREE.Color = new THREE.Color(0.85, 0.8, 0.7)): THREE.BufferGeometry {
         const boneParts: THREE.BufferGeometry[] = [];
         
         // Base - flattened box
         const baseGeometry = new THREE.BoxGeometry(3, 0.5, 3);
+        
+        // Darker color for the base
+        const baseColor = color.clone().multiplyScalar(0.8);
+        this.addVertexColors(baseGeometry, baseColor, 0.1); // Darker, dirty base
         boneParts.push(baseGeometry);
         
         // Add some long bones (cylinders)
-        const addBone = (x: number, y: number, z: number, length: number, rotation: THREE.Euler) => {
+        const addBone = (x: number, y: number, z: number, length: number, rotation: THREE.Euler, age: number = 0) => {
             const bone = new THREE.CylinderGeometry(0.2, 0.3, length, 6);
+            
+            // Bone color based on age (0=fresh, 1=ancient)
+            const boneColor = color.clone();
+            
+            // Age affects the color - older bones are darker and more yellowed
+            if (age > 0) {
+                boneColor.multiplyScalar(1.0 - age * 0.2);
+                // Add yellow/brown tint to aged bones
+                boneColor.r += age * 0.1;
+                boneColor.g -= age * 0.05;
+                boneColor.b -= age * 0.15;
+            }
+            
+            this.addVertexColors(bone, boneColor, 0.1);
             
             // Create matrix for positioning and rotation
             const matrix = new THREE.Matrix4();
@@ -257,12 +359,13 @@ export class MeshBuilder {
         };
         
         // Add several bones with different orientations
-        addBone(0.8, 0.6, 0.3, 2.5, new THREE.Euler(0, 0, Math.PI / 4));
-        addBone(-0.5, 0.5, -0.7, 2.0, new THREE.Euler(0, Math.PI / 6, -Math.PI / 3));
-        addBone(0.2, 0.7, 0.8, 1.8, new THREE.Euler(Math.PI / 5, 0, Math.PI / 7));
+        addBone(0.8, 0.6, 0.3, 2.5, new THREE.Euler(0, 0, Math.PI / 4), 0.2);
+        addBone(-0.5, 0.5, -0.7, 2.0, new THREE.Euler(0, Math.PI / 6, -Math.PI / 3), 0.5);
+        addBone(0.2, 0.7, 0.8, 1.8, new THREE.Euler(Math.PI / 5, 0, Math.PI / 7), 0.8);
         
-        // Add a small box skull on top
-        const skullGeometry = this.createBoxSkull();
+        // Add a small box skull on top with color slightly brighter than the base
+        const skullColor = color.clone().multiplyScalar(1.1);
+        const skullGeometry = this.createBoxSkull(skullColor);
         const skullMatrix = new THREE.Matrix4()
             .makeScale(0.6, 0.6, 0.6) // Make it smaller
             .setPosition(0.2, 1.0, 0.1); // Position on top of the pile
@@ -276,12 +379,18 @@ export class MeshBuilder {
     
     /**
      * Creates a skull on a stick
+     * @param skullColor Color for the skull
+     * @param stickColor Color for the stick and spikes
      */
-    private static createSkullOnStick(): THREE.BufferGeometry {
+    private static createSkullOnStick(
+        skullColor: THREE.Color = new THREE.Color(0.95, 0.9, 0.8),
+        stickColor: THREE.Color = new THREE.Color(0.6, 0.4, 0.3)
+    ): THREE.BufferGeometry {
         const parts: THREE.BufferGeometry[] = [];
         
         // The stick/pole
         const poleGeometry = new THREE.CylinderGeometry(0.2, 0.3, 6, 8);
+        this.addVertexColors(poleGeometry, stickColor, 0.15); // Wood with grain variation
         
         // Rotate to stand upright
         const poleMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
@@ -291,7 +400,7 @@ export class MeshBuilder {
         parts.push(poleGeometry);
         
         // Create a sphere skull
-        const skullGeometry = this.createSphereSkull();
+        const skullGeometry = this.createSphereSkull(skullColor);
         
         // Position on top of the pole
         const skullMatrix = new THREE.Matrix4()
@@ -310,6 +419,10 @@ export class MeshBuilder {
             
             // Create a spike (cone)
             const spikeGeometry = new THREE.ConeGeometry(0.3, 1.5, 6);
+            
+            // Slightly darker than the stick
+            const spikeColor = stickColor.clone().multiplyScalar(0.8);
+            this.addVertexColors(spikeGeometry, spikeColor, 0.05);
             
             // Create matrix for positioning and rotation
             const rotation = new THREE.Euler(Math.PI / 2, 0, 0); // Make it horizontal
@@ -333,6 +446,43 @@ export class MeshBuilder {
     }
     
     /**
+     * Helper method to add vertex colors to a geometry
+     * @param geometry The geometry to color
+     * @param color The base color
+     * @param variation Amount of random variation (0-1)
+     */
+    private static addVertexColors(
+        geometry: THREE.BufferGeometry, 
+        color: THREE.Color,
+        variation: number = 0.02
+    ): void {
+        const count = geometry.attributes.position.count;
+        const colors = new Float32Array(count * 3);
+        
+        for (let i = 0; i < count; i++) {
+            // Create a copy of the color for this vertex
+            const vertexColor = color.clone();
+            
+            // Add slight random variation
+            vertexColor.r += (Math.random() - 0.5) * variation;
+            vertexColor.g += (Math.random() - 0.5) * variation;
+            vertexColor.b += (Math.random() - 0.5) * variation;
+            
+            // Clamp to valid RGB range
+            vertexColor.r = Math.max(0, Math.min(1, vertexColor.r));
+            vertexColor.g = Math.max(0, Math.min(1, vertexColor.g));
+            vertexColor.b = Math.max(0, Math.min(1, vertexColor.b));
+            
+            // Store the rgb values
+            colors[i * 3] = vertexColor.r;
+            colors[i * 3 + 1] = vertexColor.g;
+            colors[i * 3 + 2] = vertexColor.b;
+        }
+        
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
+    
+    /**
      * Merge BufferGeometries into a single geometry
      */
     private static mergeBufferGeometries(geometries: THREE.BufferGeometry[]): THREE.BufferGeometry {
@@ -344,6 +494,7 @@ export class MeshBuilder {
         let vertexCount = 0;
         let indexCount = 0;
         let hasIndex = true;
+        let hasColors = false;
         
         // Count total vertices and check if all geometries have indices
         for (const geo of geometries) {
@@ -357,6 +508,11 @@ export class MeshBuilder {
                 // If no index, we'll create triangles from the vertices (3 vertices per face)
                 indexCount += posAttr.count;
             }
+            
+            // Check if any geometry has colors
+            if (geo.getAttribute('color')) {
+                hasColors = true;
+            }
         }
         
         // Create the merged geometry
@@ -367,6 +523,9 @@ export class MeshBuilder {
         
         // Create normals buffer
         const normals = new Float32Array(vertexCount * 3);
+        
+        // Create colors buffer if any geometry has colors
+        const colors = hasColors ? new Float32Array(vertexCount * 3) : null;
         
         // Create UVs buffer if needed
         const uvs = new Float32Array(vertexCount * 2);
@@ -398,6 +557,22 @@ export class MeshBuilder {
                 geo.computeVertexNormals();
                 const computedNormAttr = geo.getAttribute('normal');
                 normals.set(computedNormAttr.array, vertexOffset * 3);
+            }
+            
+            // Get and copy colors if available
+            if (colors) {
+                const colorAttr = geo.getAttribute('color');
+                if (colorAttr) {
+                    colors.set(colorAttr.array, vertexOffset * 3);
+                } else {
+                    // If this geometry doesn't have colors but others do, 
+                    // add white as a fallback (shouldn't happen with our setup)
+                    for (let i = 0; i < posAttr.count; i++) {
+                        colors[vertexOffset * 3 + i * 3] = 1;
+                        colors[vertexOffset * 3 + i * 3 + 1] = 1;
+                        colors[vertexOffset * 3 + i * 3 + 2] = 1;
+                    }
+                }
             }
             
             // Get and copy UVs if available
@@ -438,6 +613,11 @@ export class MeshBuilder {
         mergedGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         mergedGeometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
         mergedGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        
+        // Set color attribute if colors exist
+        if (colors) {
+            mergedGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        }
         
         // Set index if all geometries were indexed
         if (hasIndex && indices) {

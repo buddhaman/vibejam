@@ -44,6 +44,12 @@
     },
     {
       "username": "tim",
+      "timeMs": 8083.333333333334,
+      "stars": 0,
+      "timestamp": 1743520767316
+    },
+    {
+      "username": "tim",
       "timeMs": 8400,
       "stars": 0,
       "timestamp": 1743520476234
@@ -53,12 +59,6 @@
       "timeMs": 8433.333333333334,
       "stars": 0,
       "timestamp": 1743508553192
-    },
-    {
-      "username": "TurboWarrior",
-      "timeMs": 8516.666666666668,
-      "stars": 0,
-      "timestamp": 1743508441750
     }
   ]
 }
