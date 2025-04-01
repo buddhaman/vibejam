@@ -954,7 +954,7 @@ export class TestLevels {
             // Position for the sign (accounting for the 4x scale in Sign.ts)
             const signPos = new THREE.Vector3(
                 position.x + 8,                // Position to the right of the portal
-                position.y,                    // Ground level
+                position.y + 8,                    // Ground level
                 position.z                     // Same z as portal
             );
 
