@@ -64,6 +64,12 @@ export class Game {
     // Add a property to the Game class
     public editorDraggingObject: boolean = false;
 
+    // Add timer properties
+    private levelTimerTicks: number = 0;
+    private isLevelTimerRunning: boolean = false;
+    private ticksPerSecond: number = 60; // Based on targetFPS
+    private timerElement: HTMLElement | null = null;
+
     constructor() {
         // Set up basic components
         this.detectDeviceCapabilities();
@@ -142,6 +148,36 @@ export class Game {
             this.connectInBackground();
         } catch (error) {
             console.error("Game initialization error:", error);
+        }
+    }
+
+    /**
+     * Create the timer overlay element
+     */
+    private createTimerOverlay(): void {
+        // Create the timer element if it doesn't exist
+        if (!this.timerElement) {
+            this.timerElement = document.createElement('div');
+            this.timerElement.id = 'game-timer-overlay';
+            
+            // Style the timer overlay
+            Object.assign(this.timerElement.style, {
+                position: 'fixed',
+                top: '10px',
+                right: '10px',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                color: 'white',
+                padding: '5px 10px',
+                borderRadius: '5px',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                transition: 'opacity 0.3s',
+                zIndex: '1000',
+                opacity: '0',  // Start hidden
+                pointerEvents: 'none'  // Don't block mouse events
+            });
+            
+            document.body.appendChild(this.timerElement);
         }
     }
 
@@ -436,6 +472,9 @@ export class Game {
         // Renderer setup
         document.body.appendChild(this.getDomElement());
         
+        // Create the timer overlay
+        this.createTimerOverlay();
+        
         // Add fullscreen button for desktop users
         if (!this.isMobile) {
             this.addDesktopFullscreenButton();
@@ -456,7 +495,6 @@ export class Game {
         // It should be above the 3D scene but below the mobile controls
         this.screenTransition.getElement().style.zIndex = '999';
     }
-
 
     public getDomElement(): HTMLElement {
         return this.levelRenderer!.renderer.domElement;
@@ -520,6 +558,16 @@ export class Game {
         while (this.accumulatedTime >= this.timestep) {
             // Consume one timestep's worth of accumulated time
             this.accumulatedTime -= this.timestep;
+            
+            // Increment level timer if running
+            if (this.isLevelTimerRunning) {
+                this.levelTimerTicks++;
+                
+                // Update timer display every 5 ticks (12 times per second at 60fps)
+                if (this.levelTimerTicks % 5 === 0) {
+                    this.updateTimerDisplay();
+                }
+            }
             
             // Collect inputs to pass to level
             const inputs = this.collectInputs();
@@ -768,6 +816,9 @@ export class Game {
     public switchLevel(levelIndex: number): void {
         console.log(`Starting switch to level ${levelIndex}`);
         
+        // Stop current level timer
+        this.stopLevelTimer();
+        
         // Save current fullscreen and pointer lock state
         const wasInFullscreen = !!document.fullscreenElement;
         const wasPointerLocked = !!document.pointerLockElement;
@@ -840,6 +891,11 @@ export class Game {
         
         this.level.localPlayer?.setPosition(this.level.playerStartPosition);
         console.log(`Level ${levelIndex} switch complete`);
+        
+        // After level setup, reset and start timer for non-overworld levels
+        if (levelIndex !== 0) {
+            this.startLevelTimer();
+        }
     }
 
     /**
@@ -908,6 +964,13 @@ export class Game {
     private loadLevelContent(levelIndex: number): void {
         console.log(`Loading level content for level ${levelIndex}...`);
         
+        // Reset and start the level timer (except for overworld)
+        if (levelIndex !== 0) {
+            this.startLevelTimer();
+        } else {
+            this.stopLevelTimer(); // Stop timer in overworld
+        }
+        
         // Load the appropriate level content
         switch (levelIndex) {
             case 0:
@@ -935,6 +998,12 @@ export class Game {
 
     // Make sure to clean up on destroy
     public destroy(): void {
+        // Remove the timer element if it exists
+        if (this.timerElement && this.timerElement.parentNode) {
+            this.timerElement.parentNode.removeChild(this.timerElement);
+            this.timerElement = null;
+        }
+        
         // Clean up other event listeners and resources
         this.screenTransition.destroy();
     }
@@ -1382,6 +1451,28 @@ export class Game {
     //     // Continue the editor loop
     //     requestAnimationFrame(this.updateEditor.bind(this));
     // }
+   
+    public timedLevelFinished(): void {
+        if (this.isLevelTimerRunning) {
+            // Stop the timer
+            this.isLevelTimerRunning = false;
+            
+            // Calculate time in seconds
+            const timeInSeconds = this.levelTimerTicks / this.ticksPerSecond;
+            
+            // Log the results
+            console.log(`Level ${this.level?.levelIdx} completed!`);
+            console.log(`Time: ${this.levelTimerTicks} ticks (${timeInSeconds.toFixed(2)} seconds)`);
+            
+            // Report to server if needed
+            if (this.level) {
+                this.reportLevelCompletion(this.level.levelIdx, this.levelTimerTicks * (1000 / this.ticksPerSecond));
+            }
+            
+            // Show completion message with time
+            this.showLevelCompletedMessage(timeInSeconds);
+        }
+    }
 
     // Add this method:
     private handleCameraMovementKey(key: string, isDown: boolean): void {
@@ -1407,5 +1498,98 @@ export class Game {
         this.levelRenderer.camera.updateMovementState(
             forward, backward, left, right, up, down
         );
+    }
+
+    // Add new methods for timer functionality
+    public startLevelTimer(): void {
+        this.levelTimerTicks = 0;
+        this.isLevelTimerRunning = true;
+        console.log("Level timer started");
+        
+        // Update and show the timer display
+        this.updateTimerDisplay();
+        if (this.timerElement) {
+            this.timerElement.style.opacity = '0.8';
+        }
+    }
+    
+    public stopLevelTimer(): void {
+        this.isLevelTimerRunning = false;
+        
+        // Hide the timer
+        if (this.timerElement) {
+            this.timerElement.style.opacity = '0';
+        }
+    }
+    
+    // Add new method to update the timer display
+    private updateTimerDisplay(): void {
+        if (!this.timerElement) return;
+        
+        // Convert ticks to seconds and format as MM:SS.mm
+        const totalSeconds = this.levelTimerTicks / this.ticksPerSecond;
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        const milliseconds = Math.floor((totalSeconds % 1) * 100);
+        
+        // Format the time string
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        
+        // Update the timer text
+        this.timerElement.textContent = `Time: ${timeString}`;
+    }
+    
+    // Add method to show level completed message
+    private showLevelCompletedMessage(timeInSeconds: number): void {
+        // Format the time string
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        const milliseconds = Math.floor((timeInSeconds % 1) * 100);
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        
+        // Create level complete element
+        const completeElement = document.createElement('div');
+        
+        // Style the completion message
+        Object.assign(completeElement.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: '#ffff00', // Bright yellow
+            padding: '20px',
+            borderRadius: '10px',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '24px',
+            textAlign: 'center',
+            zIndex: '1001',
+            boxShadow: '0 0 20px rgba(255, 255, 0, 0.5)',
+            animation: 'fadeInOut 4s forwards'
+        });
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; }
+                20% { opacity: 1; }
+                80% { opacity: 1; }
+                100% { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Set the message content
+        completeElement.textContent = `Level Complete! Final Time: ${timeString}`;
+        
+        // Add to document
+        document.body.appendChild(completeElement);
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            document.body.removeChild(completeElement);
+            document.head.removeChild(style);
+        }, 4000);
     }
 } 

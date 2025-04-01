@@ -601,6 +601,12 @@ export class Level {
         return this.addPlayer(id, false, username);
     }
 
+    public levelFinished() : void
+    {
+        this.game.timedLevelFinished();
+        this.game.switchLevel(0);
+    }
+
     /**
      * Get all player IDs that are network players (non-local)
      * @returns Array of player IDs
