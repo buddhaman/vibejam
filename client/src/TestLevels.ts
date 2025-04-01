@@ -951,49 +951,24 @@ export class TestLevels {
             console.log(`Creating highscore sign for level ${targetLevelId}`);
             
             // Create a sign positioned next to the portal
-            // Calculate sign position (slightly to the side and behind the portal)
+            // Position for the sign (accounting for the 4x scale in Sign.ts)
             const signPos = new THREE.Vector3(
-                position.x + 4,                 // To the right of the portal
-                position.y + 1.5,               // Raised up for better visibility
-                position.z                      // Same z as portal
+                position.x + 8,                // Position to the right of the portal
+                position.y,                    // Ground level
+                position.z                     // Same z as portal
             );
-            
-            // Create rotation to face the player
-            const signRot = new THREE.Euler(0, -Math.PI / 2, 0); // Rotated 90 degrees
+
+            // Use fixed rotation to make sure the sign faces the player
+            const signRot = new THREE.Euler(0, -Math.PI / 2, 0);  // Simple 90 degree rotation
             
             // Create the sign for this level
             const sign = level.addSign(
                 signPos,
                 signRot,
-                2,                          // Width
-                2.5,                        // Height
+                3.5,                        // Width (will be scaled 4x in Sign constructor)
+                4.5,                        // Height (will be scaled 4x in Sign constructor)
                 targetLevelId               // Level ID to show highscores for
             );
-            
-            console.log(`Sign created for level ${targetLevelId}. Total signs: ${level.signs.length}`);
-            
-            // If network is available, populate the sign with highscores
-            if (game.network) {
-                const levelIdStr = targetLevelId.toString();
-                const highscores = game.network.getHighscores(targetLevelId);
-                
-                if (highscores && highscores.length > 0) {
-                    console.log(`Setting ${highscores.length} highscores for level ${targetLevelId}`);
-                    // Set the highscores directly if available
-                    sign.setHighscores(highscores);
-                } else {
-                    console.log(`No highscores found for level ${targetLevelId}, requesting from server`);
-                    // Request highscores if not already stored
-                    game.network.requestHighscores(targetLevelId);
-                }
-            } else {
-                console.log(`No network available, sign will show default "no highscores" message`);
-            }
-            
-            // Run debug check after sign creation
-            if (level.levelRenderer) {
-                level.levelRenderer.debugCheckSigns();
-            }
         }
     }
 }

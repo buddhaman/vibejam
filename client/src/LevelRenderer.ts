@@ -319,13 +319,8 @@ export class LevelRenderer {
             rope.render(this); // Default yellow rope like color
         });
 
-        // IMPORTANT: Render all signs - this is critical
+        // Render all signs
         if (this.level.signs && this.level.signs.length > 0) {
-            // Debug output only once every 100 frames to avoid console spam
-            if (this._frameCount % 100 === 0) {
-                console.log(`Level has ${this.level.signs.length} signs`);
-            }
-            
             this.level.signs.forEach(sign => {
                 sign.render(this);
             });
@@ -430,42 +425,22 @@ export class LevelRenderer {
      * Debug method to check if signs are correctly added to the scene
      */
     public debugCheckSigns(): void {
-        console.log("DEBUG: Checking signs in scene");
         if (!this.level || !this.level.signs) {
-            console.log("DEBUG: No level or signs array found");
+            console.log("No level or signs array found");
             return;
         }
         
-        console.log(`DEBUG: Level has ${this.level.signs.length} signs`);
+        console.log(`Level has ${this.level.signs.length} signs`);
         
-        // Check if each sign's mesh is in the scene
+        // Check if each sign exists
         this.level.signs.forEach((sign, index) => {
             const mesh = sign.getMesh();
             if (!mesh) {
-                console.log(`DEBUG: Sign ${index} has no mesh`);
+                console.log(`Sign ${index} has no mesh`);
                 return;
             }
             
-            console.log(`DEBUG: Sign ${index} for level ${sign.getLevelId()}`);
-            console.log(`DEBUG: - Position: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)}`);
-            console.log(`DEBUG: - Rotation: ${mesh.rotation.x.toFixed(2)}, ${mesh.rotation.y.toFixed(2)}, ${mesh.rotation.z.toFixed(2)}`);
-            
-            // Check if the sign is visible
-            console.log(`DEBUG: - Visible: ${mesh.visible}`);
-            
-            // Check if the sign has materials
-            if (mesh.material) {
-                const material = mesh.material as THREE.Material;
-                console.log(`DEBUG: - Material: ${material.type}`);
-                
-                // If it's a MeshBasicMaterial, check if it has a texture map
-                if (material.type === 'MeshBasicMaterial') {
-                    const basicMat = material as THREE.MeshBasicMaterial;
-                    console.log(`DEBUG: - Has texture: ${basicMat.map ? 'Yes' : 'No'}`);
-                }
-            } else {
-                console.log(`DEBUG: - No material`);
-            }
+            console.log(`Sign ${index} for level ${sign.getLevelId()} is present`);
         });
     }
 }
