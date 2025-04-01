@@ -19,11 +19,11 @@ export class MeshBuilder {
     public static createDecorativeGround(
         width: number = 300, 
         depth: number = 300, 
-        skullCount: number = 150,
+        skullCount: number = 500,
         terrainHeight: number = 3,
-        rubbleCount: number = 60,
-        boneStackCount: number = 80,
-        skullOnStickCount: number = 30
+        rubbleCount: number = 400,
+        boneStackCount: number = 300,
+        skullOnStickCount: number = 200
     ): THREE.Mesh {
         console.log("Creating decorative ground with", skullCount, "skulls,", 
             rubbleCount, "rubble piles,", boneStackCount, "bone stacks, and", 
@@ -126,26 +126,44 @@ export class MeshBuilder {
         // Calculate bone pile count as a portion of skull count
         const bonePileCount = Math.floor(skullCount * 0.35);
         
-        // For positioning, use a spiral pattern to avoid clumping
-        const createSpiral = (index: number, total: number) => {
-            // Use golden angle for nice distribution
-            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-            const angle = index * goldenAngle;
-            
-            // Calculate distance from center based on index
-            const distanceScale = Math.sqrt(index / total);
-            const distance = distanceScale * 0.85 * Math.min(width, depth) / 2;
-            
-            return {
-                x: Math.cos(angle) * distance,
-                z: Math.sin(angle) * distance
-            };
-        };
-        
-        // Create all decorations in a single loop with different positioning strategies
+        // Create all decorations in a single loop
         for (let i = 0; i < totalDecorations; i++) {
+            // Position randomly on the ground plane with jitter to avoid perfect grid
+            const angle = Math.random() * Math.PI * 2;
+            const radiusScale = Math.random() * 0.9; // Random distance from center (0-90% of max radius)
+            const x = Math.cos(angle) * radiusScale * width * 0.5;
+            const z = Math.sin(angle) * radiusScale * depth * 0.5;
+            
+            // Get height at this position (approximate)
+            let y = 0;
+            const distFromCenter = Math.sqrt(x*x + z*z) / (width/2);
+            if (distFromCenter < 0.9) {
+                // Multiple noise functions to match ground generation
+                const noise1 = Math.sin(x * 0.01) * Math.cos(z * 0.01);
+                const noise2 = Math.sin(x * 0.03 + z * 0.02) * 0.3;
+                const noise3 = Math.cos(x * 0.02 - z * 0.01) * 0.2;
+                
+                // Add crater effects
+                const crater1X = width * 0.2;
+                const crater1Z = depth * -0.15;
+                const distFromCrater1 = Math.sqrt(Math.pow(x - crater1X, 2) + Math.pow(z - crater1Z, 2));
+                const crater1 = distFromCrater1 < 15 ? -2 * Math.exp(-distFromCrater1 * 0.1) : 0;
+                
+                const crater2X = width * -0.25;
+                const crater2Z = depth * 0.3;
+                const distFromCrater2 = Math.sqrt(Math.pow(x - crater2X, 2) + Math.pow(z - crater2Z, 2));
+                const crater2 = distFromCrater2 < 20 ? -2.5 * Math.exp(-distFromCrater2 * 0.08) : 0;
+                
+                // Apply height calculation matching the ground generation
+                const heightScale = Math.max(0, 1.0 - distFromCenter / 0.9);
+                y = heightScale * (noise1 + noise2 + noise3 + crater1 + crater2) * terrainHeight;
+            }
+            
+            // Add a small offset to avoid z-fighting
+            y += 0.1;
+            
+            // Determine decoration type based on its position in the sequence
             let decoration: THREE.BufferGeometry;
-            let pos = createSpiral(i, totalDecorations);
             
             if (i < rubbleCount) {
                 // Create rubble with stone-like colors
@@ -213,38 +231,6 @@ export class MeshBuilder {
                 }
                 regularSkullCreated++;
             }
-            
-            // Get coordinates from spiral pattern
-            const x = pos.x;
-            const z = pos.z;
-            
-            // Get height at this position (approximate)
-            let y = 0;
-            const distFromCenter = Math.sqrt(x*x + z*z) / (width/2);
-            if (distFromCenter < 0.9) {
-                // Multiple noise functions to match ground generation
-                const noise1 = Math.sin(x * 0.01) * Math.cos(z * 0.01);
-                const noise2 = Math.sin(x * 0.03 + z * 0.02) * 0.3;
-                const noise3 = Math.cos(x * 0.02 - z * 0.01) * 0.2;
-                
-                // Add crater effects
-                const crater1X = width * 0.2;
-                const crater1Z = depth * -0.15;
-                const distFromCrater1 = Math.sqrt(Math.pow(x - crater1X, 2) + Math.pow(z - crater1Z, 2));
-                const crater1 = distFromCrater1 < 15 ? -2 * Math.exp(-distFromCrater1 * 0.1) : 0;
-                
-                const crater2X = width * -0.25;
-                const crater2Z = depth * 0.3;
-                const distFromCrater2 = Math.sqrt(Math.pow(x - crater2X, 2) + Math.pow(z - crater2Z, 2));
-                const crater2 = distFromCrater2 < 20 ? -2.5 * Math.exp(-distFromCrater2 * 0.08) : 0;
-                
-                // Apply height calculation matching the ground generation
-                const heightScale = Math.max(0, 1.0 - distFromCenter / 0.9);
-                y = heightScale * (noise1 + noise2 + noise3 + crater1 + crater2) * terrainHeight;
-            }
-            
-            // Add a small offset to avoid z-fighting
-            y += 0.1;
             
             // Create transform matrix
             const matrix = new THREE.Matrix4();

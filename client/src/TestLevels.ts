@@ -15,7 +15,7 @@ export class TestLevels {
      * @param game The Game instance for level switching
      */
     public static createOverworld(level: Level, game: Game): void {
-        const groundY = 4;
+        const groundY = 12;
 
         // Main platform in the center - make it larger
         level.addStaticBody(StaticBody.createBox(
