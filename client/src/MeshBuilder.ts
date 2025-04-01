@@ -18,6 +18,7 @@ export class MeshBuilder {
      * @param rubbleCount Number of rubble piles to create (default: 30)
      * @param boneStackCount Number of bone stacks to create (default: 25)
      * @param skullOnStickCount Number of skulls on sticks to create (default: 15)
+     * @param crossCount Number of crosses to create (default: 100)
      * @returns A single combined mesh containing ground and all decorations
      */
     public static createDecorativeGround(
@@ -27,10 +28,11 @@ export class MeshBuilder {
         terrainHeight: number = 3,
         rubbleCount: number = 1000,
         boneStackCount: number = 500,
-        skullOnStickCount: number = 250
+        skullOnStickCount: number = 250,
+        crossCount: number = 100
     ): THREE.Mesh {
         // Create a cache key based on the parameters
-        const cacheKey = `ground_${width}_${depth}_${skullCount}_${terrainHeight}_${rubbleCount}_${boneStackCount}_${skullOnStickCount}`;
+        const cacheKey = `ground_${width}_${depth}_${skullCount}_${terrainHeight}_${rubbleCount}_${boneStackCount}_${skullOnStickCount}_${crossCount}`;
         
         // Check if this mesh is already cached
         if (this.cachedMeshes.has(cacheKey)) {
@@ -45,7 +47,7 @@ export class MeshBuilder {
             skullOnStickCount, "skulls on sticks");
         
         // Calculate total decorations
-        const totalDecorations = skullCount + rubbleCount + boneStackCount + skullOnStickCount;
+        const totalDecorations = skullCount + rubbleCount + boneStackCount + skullOnStickCount + crossCount;
         
         // Step 1: Create the base ground geometry
         const geometries: THREE.BufferGeometry[] = [];
@@ -137,6 +139,7 @@ export class MeshBuilder {
         let skullOnStickCreated = 0; 
         let bonePileCreated = 0;
         let regularSkullCreated = 0;
+        let crossesCreated = 0;
         
         // Calculate bone pile count as a portion of skull count
         const bonePileCount = Math.floor(skullCount * 0.35);
@@ -214,7 +217,25 @@ export class MeshBuilder {
                 decoration = this.createSkullOnStick(skullColor, stickColor);
                 skullOnStickCreated++;
             }
-            else if (i < rubbleCount + boneStackCount + skullOnStickCount + bonePileCount) {
+            else if (i < rubbleCount + boneStackCount + skullOnStickCount + crossCount) {
+                // Create cross with skull
+                const crossHue = 0.07 + Math.random() * 0.04; // Wooden cross color
+                const crossSat = 0.3 + Math.random() * 0.2;
+                const crossLight = 0.3 + Math.random() * 0.2;
+                
+                const skullHue = 0.08 + Math.random() * 0.03; // Skull color
+                const skullSat = 0.1 + Math.random() * 0.1;
+                const skullLight = 0.7 + Math.random() * 0.2;
+                
+                const crossColor = new THREE.Color().setHSL(crossHue, crossSat, crossLight);
+                const skullColor = new THREE.Color().setHSL(skullHue, skullSat, skullLight);
+                
+                decoration = this.createCrossWithSkull(crossColor, skullColor);
+                
+                // Track for logging
+                crossesCreated++;
+            }
+            else if (i < rubbleCount + boneStackCount + skullOnStickCount + crossCount + bonePileCount) {
                 // Create bone pile
                 const hue = 0.07 + Math.random() * 0.05; // Yellow to brown hue range
                 const sat = 0.15 + Math.random() * 0.15; // Medium saturation
@@ -271,6 +292,7 @@ export class MeshBuilder {
             rubbleCreated, "rubble piles,", 
             boneStackCreated, "bone stacks,",
             skullOnStickCreated, "skulls on sticks,",
+            crossesCreated, "crosses with skulls,",
             bonePileCreated, "bone piles, and",
             regularSkullCreated, "regular skulls"
         );
@@ -869,6 +891,77 @@ export class MeshBuilder {
         skullGeometry.applyMatrix4(skullMatrix);
         parts.push(skullGeometry);
         
+        return this.mergeBufferGeometries(parts);
+    }
+
+    /**
+     * Creates a cross with a skull at its base
+     * @param crossColor Color for the cross
+     * @param skullColor Color for the skull
+     */
+    private static createCrossWithSkull(
+        crossColor: THREE.Color = new THREE.Color(0.6, 0.4, 0.3),
+        skullColor: THREE.Color = new THREE.Color(0.85, 0.8, 0.7)
+    ): THREE.BufferGeometry {
+        const parts: THREE.BufferGeometry[] = [];
+        
+        // Vertical pole of the cross
+        const poleGeometry = new THREE.BoxGeometry(0.4, 4.5, 0.4);
+        this.addVertexColors(poleGeometry, crossColor, 0.1);
+        parts.push(poleGeometry);
+        
+        // Horizontal crossbar
+        const crossbarGeometry = new THREE.BoxGeometry(2.0, 0.4, 0.4);
+        const crossbarMatrix = new THREE.Matrix4()
+            .setPosition(0, 1.0, 0); // Position crossbar near the top
+        crossbarGeometry.applyMatrix4(crossbarMatrix);
+        this.addVertexColors(crossbarGeometry, crossColor, 0.1);
+        parts.push(crossbarGeometry);
+        
+        // Add a skull looking upward at the base
+        const skullGeometry = this.createSphereSkull(skullColor);
+        
+        // Position skull at the base of the cross, rotated to look upward
+        const skullMatrix = new THREE.Matrix4()
+            .makeRotationX(-Math.PI/4) // Rotate to look up
+            .multiply(new THREE.Matrix4().makeScale(0.7, 0.7, 0.7)) // Slightly smaller
+            .setPosition(0, -2.1, 0.6); // Position at base of cross, slightly forward
+        
+        skullGeometry.applyMatrix4(skullMatrix);
+        parts.push(skullGeometry);
+        
+        // Add some debris/stones around the base
+        for (let i = 0; i < 5; i++) {
+            const stoneSize = 0.2 + Math.random() * 0.3;
+            const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize, stoneSize);
+            
+            // Position randomly around the base
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 0.5 + Math.random() * 0.8;
+            const x = Math.sin(angle) * distance;
+            const z = Math.cos(angle) * distance;
+            
+            // Stone color - darker than the cross
+            const stoneColor = crossColor.clone().multiplyScalar(0.6);
+            this.addVertexColors(stoneGeometry, stoneColor, 0.15);
+            
+            // Random rotation for the stone
+            const rotation = new THREE.Euler(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            
+            const matrix = new THREE.Matrix4();
+            const quat = new THREE.Quaternion().setFromEuler(rotation);
+            matrix.makeRotationFromQuaternion(quat);
+            matrix.setPosition(x, -2.2, z); // Position at ground level
+            
+            stoneGeometry.applyMatrix4(matrix);
+            parts.push(stoneGeometry);
+        }
+        
+        // Merge all parts
         return this.mergeBufferGeometries(parts);
     }
 }
