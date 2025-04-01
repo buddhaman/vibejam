@@ -407,7 +407,7 @@ export class Network {
         Object.assign(notification.style, {
             position: 'fixed',
             top: '20px',
-            right: '20px',
+            left: '20px',
             backgroundColor: 'rgba(30, 30, 30, 0.85)',
             color: 'white',
             padding: '8px 12px',
