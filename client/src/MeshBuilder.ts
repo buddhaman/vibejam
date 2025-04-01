@@ -392,9 +392,7 @@ export class MeshBuilder {
         const poleGeometry = new THREE.CylinderGeometry(0.2, 0.3, 6, 8);
         this.addVertexColors(poleGeometry, stickColor, 0.15); // Wood with grain variation
         
-        // Rotate to stand upright
-        const poleMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
-        poleGeometry.applyMatrix4(poleMatrix);
+        // No need to rotate - Y is already up for cylinder geometry
         
         // Add to parts
         parts.push(poleGeometry);
@@ -404,7 +402,7 @@ export class MeshBuilder {
         
         // Position on top of the pole
         const skullMatrix = new THREE.Matrix4()
-            .makeTranslation(0, 0, -3) // Top of pole
+            .makeTranslation(0, 3, 0) // Top of pole (Y is up)
             .multiply(new THREE.Matrix4().makeScale(0.8, 0.8, 0.8)); // Slightly smaller
         
         skullGeometry.applyMatrix4(skullMatrix);
@@ -415,7 +413,7 @@ export class MeshBuilder {
             // Calculate position around the circle
             const angle = (i / 4) * Math.PI * 2;
             const x = Math.sin(angle) * 1.2;
-            const y = Math.cos(angle) * 1.2;
+            const z = Math.cos(angle) * 1.2;
             
             // Create a spike (cone)
             const spikeGeometry = new THREE.ConeGeometry(0.3, 1.5, 6);
@@ -425,17 +423,18 @@ export class MeshBuilder {
             this.addVertexColors(spikeGeometry, spikeColor, 0.05);
             
             // Create matrix for positioning and rotation
-            const rotation = new THREE.Euler(Math.PI / 2, 0, 0); // Make it horizontal
-            const quaternion = new THREE.Quaternion().setFromEuler(rotation);
-            
             const matrix = new THREE.Matrix4();
+            
+            // Rotate to point outward horizontally (Z rotation to make spike point outward)
+            const rotation = new THREE.Euler(0, 0, Math.PI / 2);
+            const quaternion = new THREE.Quaternion().setFromEuler(rotation);
             matrix.makeRotationFromQuaternion(quaternion);
             
-            // Rotate to point outward
+            // Rotate around Y axis to position around the pole
             matrix.multiply(new THREE.Matrix4().makeRotationY(angle));
             
             // Position spike
-            matrix.setPosition(x, y, 2.5); // Near base of pole
+            matrix.setPosition(x, -2.5, z); // Near base of pole (Y is up)
             
             spikeGeometry.applyMatrix4(matrix);
             parts.push(spikeGeometry);
