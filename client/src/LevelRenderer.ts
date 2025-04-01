@@ -6,6 +6,7 @@ import { Level } from './Level';
 import { ParticleSystem } from './ParticleSystem';
 import { SimpleText } from './SimpleText';
 import { Camera, CameraMode } from './Camera';
+import { MeshBuilder } from './MeshBuilder';
 
 export class LevelRenderer {
     public scene: THREE.Scene;
@@ -290,6 +291,12 @@ export class LevelRenderer {
 
         // Add lighting based on performance mode
         this.setupLighting();
+
+        // Add decorative ground with skulls
+        console.log("Adding decorative ground with skulls");
+        const decorativeGround = MeshBuilder.createDecorativeGround(500, 500, 150);
+        decorativeGround.position.set(0, -0.1, 0);
+        this.scene.add(decorativeGround);
     }
 
     public render(): void {
@@ -419,6 +426,12 @@ export class LevelRenderer {
         
         // Reset lighting
         this.setupLighting();
+        
+        // Add decorative ground with skulls
+        console.log("Adding decorative ground with skulls");
+        const decorativeGround = MeshBuilder.createDecorativeGround(500, 500, 150);
+        decorativeGround.position.set(0, -0.1, 0);
+        this.scene.add(decorativeGround);
     }
 
     /**
