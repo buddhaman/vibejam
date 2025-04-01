@@ -128,12 +128,20 @@ export class Saw extends Entity {
     public getBoundingBox(): THREE.Box3 {
         return this.body.getBoundingBox();
     }
+
+    public getShape(): ConvexShape | null {
+        return this.body.shape;
+    }
+
+    public shapeChanged(): void {
+        this.body.update();
+    }
     
     static create(
         position: THREE.Vector3,
-        radius: number = 1.0,
-        thickness: number = 0.2,
-        spinSpeed: number = 0.1
+        radius: number = 4.0,
+        thickness: number = 1.0,
+        spinSpeed: number = 0.2
     ): Saw {
         return new Saw(position, radius, thickness, spinSpeed);
     }

@@ -65,7 +65,7 @@ export class ConvexShape extends Body {
         for (let i = 0; i < this.localPoints.length; i++) {
             this.worldPoints[i].copy(this.localPoints[i]).applyMatrix4(this.worldMatrix);
         }
-        
+
         // Recalculate bounding box
         this.updateBoundingBox();
     }

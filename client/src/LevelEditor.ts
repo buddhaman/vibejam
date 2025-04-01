@@ -11,6 +11,7 @@ import { Rope } from './Rope';
 import type { TransformControls as TransformControlsType } from 'three/examples/jsm/controls/TransformControls';
 import { Box3, Box3Helper } from 'three';
 import { Serialize } from './Serialize';
+import { Saw } from './Saw';
 
 export class LevelEditor {
     private game: Game;
@@ -250,6 +251,10 @@ export class LevelEditor {
         const testLevelBtn = this.createButton('Test Level', () => this.toggleTestMode());
         testLevelBtn.style.backgroundColor = '#9933CC'; // Purple color to stand out
         toolbar.appendChild(testLevelBtn);
+        
+        // Add Saw button
+        const addSawBtn = this.createButton('Add Saw', () => this.addSaw());
+        toolbar.appendChild(addSawBtn);
         
         document.body.appendChild(toolbar);
     }
@@ -717,7 +722,7 @@ export class LevelEditor {
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
                 // Try to find in regular entities
-                let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+               let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
                 if (entity) {
                     const shape = entity.getShape();
                     if (shape) {
@@ -1064,6 +1069,24 @@ export class LevelEditor {
         }
         
         console.log("Exited test mode");
+    }
+
+    /**
+     * Add a new saw at the camera's position
+     */
+    private addSaw(): void {
+        // Get position for the new saw
+        const sawPos = this.getPlacePosition(10, -1);
+        
+        const saw = Saw.create(
+            sawPos,
+            4.0,
+            1.0, // default thickness
+            0.1  // default spin speed
+        );
+        this.level.addSaw(saw);
+        this.selectObject(saw.getCollisionMesh());
+        console.log(`Added new saw at position ${sawPos.x.toFixed(2)}, ${sawPos.y.toFixed(2)}, ${sawPos.z.toFixed(2)}`);
     }
 }
 

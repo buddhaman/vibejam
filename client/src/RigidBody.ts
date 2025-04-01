@@ -70,11 +70,6 @@ export class RigidBody extends Body {
         this.syncMeshToShape();
     }
 
-    public updateBoundingBox(): void {
-        // Assume trnasform is applied and get the bounding box of the 
-        
-    }
-
     /**
      * Detect if shape is a box for optimized handling
      */
@@ -139,9 +134,6 @@ export class RigidBody extends Body {
      * Update the rigid body physics
      */
     update(): void {
-        // Skip update for static bodies
-        if (this.mass <= 0) return;
-        
         // Update position with fixed increment
         this.shape.position.add(this.velocity);
         

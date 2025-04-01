@@ -13,6 +13,7 @@ export interface LevelData {
     created: string;
     platforms: PlatformData[];
     ropes: RopeData[];
+    saws: SawData[];
     playerStartPosition?: number[];
 }
 
@@ -39,6 +40,18 @@ interface RopeData {
 }
 
 /**
+ * Interface for saw data
+ */
+interface SawData {
+    position: number[];
+    rotation: number[];
+    radius: number;
+    thickness: number;
+    spinSpeed: number;
+    name: string;
+}
+
+/**
  * Class for serializing and deserializing level data
  */
 export class Serialize {
@@ -48,6 +61,9 @@ export class Serialize {
      * @returns JSON string of the level data
      */
     public static saveLevel(level: Level): string {
+        // Import Saw dynamically to avoid circular dependencies
+        import('./Saw').then(({ Saw }) => {});
+        
         // Create level data object
         const levelData: LevelData = {
             name: "Custom Level",
@@ -91,6 +107,27 @@ export class Serialize {
                     name: rope.name || `rope_${Date.now()}`
                 };
             }),
+            saws: level.entities
+                .filter(entity => entity.constructor.name === 'Saw')
+                .map(saw => {
+                    const mesh = saw.getCollisionMesh();
+                    return {
+                        position: [
+                            mesh.position.x,
+                            mesh.position.y,
+                            mesh.position.z
+                        ],
+                        rotation: [
+                            mesh.rotation.x,
+                            mesh.rotation.y,
+                            mesh.rotation.z
+                        ],
+                        radius: 1.0, // We'll use default values since they're not easily accessible
+                        thickness: 0.2,
+                        spinSpeed: 0.1,
+                        name: mesh.name || `saw_${Date.now()}`
+                    };
+                }),
             playerStartPosition: level.playerStartPosition ? 
                 [level.playerStartPosition.x, level.playerStartPosition.y, level.playerStartPosition.z] : 
                 undefined
@@ -240,6 +277,59 @@ export class Serialize {
                 });
                 
                 console.log(`Loaded level with ${levelData.platforms.length} platforms and ${levelData.ropes.length} ropes`);
+            }
+            
+            // Load saws
+            if (levelData.saws && Array.isArray(levelData.saws)) {
+                // Import Saw dynamically
+                import('./Saw').then(({ Saw }) => {
+                    levelData.saws.forEach((sawData: SawData) => {
+                        // Create a saw
+                        const saw = Saw.create(
+                            new THREE.Vector3(
+                                sawData.position[0],
+                                sawData.position[1],
+                                sawData.position[2]
+                            ),
+                            sawData.radius || 1.0,
+                            sawData.thickness || 0.2,
+                            sawData.spinSpeed || 0.1
+                        );
+                        
+                        // Apply rotation if provided
+                        if (sawData.rotation && sawData.rotation.length === 3) {
+                            saw.mesh.rotation.set(
+                                sawData.rotation[0],
+                                sawData.rotation[1],
+                                sawData.rotation[2]
+                            );
+                            
+                            // Update the shape orientation
+                            const body = saw.getBody();
+                            if (body) {
+                                body.orientation.setFromEuler(new THREE.Euler(
+                                    sawData.rotation[0],
+                                    sawData.rotation[1],
+                                    sawData.rotation[2]
+                                ));
+                                body.updateTransform();
+                            }
+                        }
+                        
+                        // Name the saw
+                        saw.mesh.name = sawData.name || `saw_${Date.now()}`;
+                        
+                        // Add to level
+                        level.entities.push(saw);
+                        
+                        // Add to scene if provided
+                        if (scene && !saw.mesh.parent) {
+                            scene.add(saw.mesh);
+                        }
+                    });
+                    
+                    console.log(`Loaded ${levelData.saws.length} saws`);
+                });
             }
             
             // Load player start position if available
