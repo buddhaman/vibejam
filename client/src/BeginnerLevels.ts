@@ -89,7 +89,8 @@ export class BeginnerLevels {
         
         // Add rope swinging instructions
         builder.addTextHere("SWING ON ROPES TO REACH THE FINAL PLATFORM", 7, "white", "#000000")
-               .addTextHere("JUMP INTO ROPES TO GRAB THEM", 5, "#ffff00", "#000000");
+               .addTextHere("JUMP INTO ROPES TO GRAB THEM", 5, "#ffff00", "#000000")
+               .addTextHere("PRESS CTRL TO CROUCH AND RELEASE ROPE", 2, "#ffff00", "#000000");
         
         // Add first rope
         builder.moveForward(15);
@@ -110,8 +111,9 @@ export class BeginnerLevels {
         builder.addTextHere("CONGRATULATIONS!", 10, "#ffff00", "#000000")
                .addTextHere("RETURN TO OVERWORLD", 8, "white", "#000000");
         
-        // Move to position for portal
-        builder.moveRight(-4);
+        // Move to center of platform for portal placement
+        builder.moveForward(0); // Reset forward direction
+        builder.moveRight(0); // Reset to center of platform
         
         // Add portal back to overworld
         builder.addPortalHere(

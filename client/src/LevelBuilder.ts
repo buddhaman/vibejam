@@ -25,7 +25,7 @@ export class LevelBuilder {
     private level: Level;
     private position: THREE.Vector3;
     private direction: number; // Angle in radians (y-rotation)
-    private directionVector: THREE.Vector3;
+    private directionVector: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
 
     /**
      * Create a new LevelBuilder for the given level
@@ -280,9 +280,6 @@ export class LevelBuilder {
         shape.setPosition(this.position);
         shape.updateTransform();
         
-        // Create the static body
-        const portal = new StaticBody(shape, material, name);
-        this.level.addStaticBody(portal);
         
         // Add action area if callback provided
         if (callback) {
@@ -290,6 +287,7 @@ export class LevelBuilder {
             const actionAreaPosition = this.position.clone().add(
                 this.directionVector.clone().multiplyScalar(2)
             );
+            actionAreaPosition.y+=6;
             this.level.addActionArea(
                 actionAreaPosition,
                 new THREE.Vector3(width + 2, height + 2, 4),
