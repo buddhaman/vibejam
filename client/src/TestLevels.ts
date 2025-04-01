@@ -45,7 +45,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-25, groundY + 2, -10),   // Middle position
+            new THREE.Vector3(-25, groundY + 2, -5),   // Middle position
             3,                                  // Level ID
             "Tutorial",                         // Name
             "For Beginners",                    // Description
@@ -58,7 +58,7 @@ export class TestLevels {
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-25, groundY + 2, -5),   // Right position
+            new THREE.Vector3(-25, groundY + 2, 5),   // Right position
             4,                                  // Level ID
             "Tutorial 2",                       // Name
             "Advanced",                         // Description
@@ -116,25 +116,25 @@ export class TestLevels {
         // Create a bridge connecting main platform to Vibeverse island
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(0, 0, -40),
-            new THREE.Vector3(5, groundY, -25),
+            new THREE.Vector3(5, groundY, -35),  // Changed -25 to -35
             LevelBuilder.MAIN_PLATFORM_MATERIAL,
             "vibeverse-bridge"
         ));
         
         // Add some decorative elements to the bridge
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 3; i++) {  // Reduced from 5 to 3 elements to fit the shorter bridge
             // Left side railings
             level.addStaticBody(StaticBody.createBox(
-                new THREE.Vector3(0, groundY, -39 + i * 3),
-                new THREE.Vector3(0.5, groundY + 2, -38 + i * 3),
+                new THREE.Vector3(0, groundY, -39 + i * 1.5),  // Changed spacing from 3 to 1.5
+                new THREE.Vector3(0.5, groundY + 2, -38 + i * 1.5),
                 LevelBuilder.PORTAL_MATERIAL,
                 `bridge-rail-left-${i}`
             ));
             
             // Right side railings
             level.addStaticBody(StaticBody.createBox(
-                new THREE.Vector3(4.5, groundY, -39 + i * 3),
-                new THREE.Vector3(5, groundY + 2, -38 + i * 3),
+                new THREE.Vector3(4.5, groundY, -39 + i * 1.5),  // Changed spacing from 3 to 1.5
+                new THREE.Vector3(5, groundY + 2, -38 + i * 1.5),
                 LevelBuilder.PORTAL_MATERIAL,
                 `bridge-rail-right-${i}`
             ));
@@ -146,14 +146,14 @@ export class TestLevels {
         // Add bridge signage
         level.levelRenderer?.addSimpleText(
             "TO VIBEVERSE",
-            new THREE.Vector3(2.5, groundY + 3, -30),
+            new THREE.Vector3(2.5, groundY + 3, -37),  // Changed from -30 to -37
             "#ffff00",
             "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
             "→",
-            new THREE.Vector3(2.5, groundY + 2, -33),
+            new THREE.Vector3(2.5, groundY + 2, -38.5),  // Changed from -33 to -38.5
             "#ffff00",
             "#000000"
         );
@@ -206,6 +206,9 @@ export class TestLevels {
      * @param game The Game instance for handling portal interactions
      */
     private static createVibeVersePortal(level: Level, game: Game): void {
+        // Get the groundY value from the level
+        const groundY = 12; // This should match the value used in createOverworld
+        
         // Create a special material for the Vibeverse portal
         const vibeverseMaterial = new THREE.MeshStandardMaterial({
             color: 0x00ffff,          // Cyan color
@@ -215,41 +218,45 @@ export class TestLevels {
             emissiveIntensity: 0.8,   // Brighter glow
         });
         
+        // Calculate center position of the island
+        const islandCenterX = 5;  // Center of island from -5 to 15
+        const islandCenterZ = -50; // Center of island from -60 to -40
+        
         // Create a smaller central portal structure on the Vibeverse island
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(4, 2, -49.5),     // Adjusted position
-            new THREE.Vector3(6, 8, -47.5),     // Smaller width (2 units instead of 4)
+            new THREE.Vector3(islandCenterX - 1, groundY, islandCenterZ - 1),
+            new THREE.Vector3(islandCenterX + 1, groundY + 6, islandCenterZ + 1),
             vibeverseMaterial,
             "vibeverse-portal"
         ));
         
-        // Left pillar - keep the same
+        // Left pillar - positioned relative to portal center
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(1, 2, -48.5),
-            new THREE.Vector3(2, 12, -47.5),
+            new THREE.Vector3(islandCenterX - 4, groundY, islandCenterZ - 1),
+            new THREE.Vector3(islandCenterX - 3, groundY + 10, islandCenterZ + 1),
             LevelBuilder.PORTAL_MATERIAL,
             "vibeverse-pillar-left"
         ));
         
-        // Right pillar - keep the same
+        // Right pillar - positioned relative to portal center
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(8, 2, -48.5),
-            new THREE.Vector3(9, 12, -47.5),
+            new THREE.Vector3(islandCenterX + 3, groundY, islandCenterZ - 1),
+            new THREE.Vector3(islandCenterX + 4, groundY + 10, islandCenterZ + 1),
             LevelBuilder.PORTAL_MATERIAL,
             "vibeverse-pillar-right"
         ));
         
-        // Top arch - keep the same
+        // Top arch - connecting both pillars
         level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(1, 11, -48.5),
-            new THREE.Vector3(9, 12, -47.5),
+            new THREE.Vector3(islandCenterX - 4, groundY + 9, islandCenterZ - 1),
+            new THREE.Vector3(islandCenterX + 4, groundY + 10, islandCenterZ + 1),
             LevelBuilder.PORTAL_MATERIAL,
             "vibeverse-arch"
         ));
         
         // Make the action area larger to make it easier to enter
         level.addActionArea(
-            new THREE.Vector3(5, 6, -48.5),   // Center of the portal
+            new THREE.Vector3(islandCenterX, groundY + 4, islandCenterZ),  // Center of the portal
             new THREE.Vector3(10, 12, 6),     // Larger interaction area (was 8,10,4)
             () => {
                 console.log("Entering Vibeverse Portal");
@@ -333,20 +340,20 @@ export class TestLevels {
         // Add descriptive text and floating elements
         level.levelRenderer?.addSimpleText(
             "VIBEVERSE PORTAL",
-            new THREE.Vector3(5, 13, -48.5),
+            new THREE.Vector3(islandCenterX, groundY + 11, islandCenterZ),
             "#00ffff", // Cyan
             "#000000"
         );
         
         level.levelRenderer?.addSimpleText(
             "CONNECT TO THE METAVERSE",
-            new THREE.Vector3(5, 11.5, -48.5),
+            new THREE.Vector3(islandCenterX, groundY + 9.5, islandCenterZ),
             "white",
             "#000000"
         );
         
         // Add floating arrow pointing down at the portal
-        this.createFloatingArrow(level, new THREE.Vector3(5, 14, -48.5));
+        this.createFloatingArrow(level, new THREE.Vector3(islandCenterX, groundY + 12, islandCenterZ));
     }
     
     /**
@@ -973,9 +980,11 @@ export class TestLevels {
         ));
         
         // Make action area for portal
+        const actionAreaSize = new THREE.Vector3(6, 8, 6);
         level.addActionArea(
-            position,                       // Center of the portal
-            new THREE.Vector3(6, 8, 6),     // Interaction area
+            // Calculate center so ground = position.y
+            new THREE.Vector3(position.x, position.y + actionAreaSize.y / 4, position.z),
+            actionAreaSize,
             () => {
                 console.log(`Switching to Level ${targetLevelId} (${portalName})`);
                 if (game) {
