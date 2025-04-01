@@ -1,0 +1,5 @@
+{
+  "ignore": ["*.json", "highscores.json", "dist/*"],
+  "verbose": true,
+  "ext": "ts"
+} 

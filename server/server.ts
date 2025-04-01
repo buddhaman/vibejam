@@ -4,6 +4,7 @@ import { Server, Room, Client } from 'colyseus';
 import { Schema, type, MapSchema } from "@colyseus/schema";
 import fs from 'fs';
 import path from 'path';
+import { GlobalDispatcher } from './GlobalDispatcher';
 
 // Define room types enum to match client-side definition
 enum RoomType {
@@ -71,7 +72,10 @@ class GameRoom extends Room<GameState> {
 
   onCreate() {
     this.state = new GameState();
-    console.log("Game room created!");
+    console.log(`Game room created! Room ID: ${this.roomId}`);
+    
+    // Register with the GlobalDispatcher
+    GlobalDispatcher.register(this);
     
     // Load existing highscores
     this.loadHighscores();
@@ -104,58 +108,45 @@ class GameRoom extends Room<GameState> {
       }
     });
 
-    // Handle level completions
+    // Handle level completions with GlobalDispatcher
     this.onMessage("level_complete", (client, data) => {
       const player = this.state.players.get(client.sessionId);
       if (player && data.levelId !== undefined && data.timeMs !== undefined) {
-        // Store the completion
-        const completion: LevelCompletion = {
-          playerId: client.sessionId,
-          username: player.username,
-          levelId: data.levelId,
-          timeMs: data.timeMs,
-          stars: data.stars || 0,
-          timestamp: Date.now()
-        };
+        console.log(`Player ${player.username} completed level ${data.levelId} in ${data.timeMs}ms with ${data.stars || 0} stars`);
         
-        this.levelCompletions.push(completion);
-        console.log(`Player ${player.username} (${client.sessionId}) completed level ${data.levelId} in ${data.timeMs}ms with ${data.stars} stars`);
-        
-        // Check if this is a new highscore
-        const isNewHighscore = this.addHighscore(data.levelId, {
-          username: player.username,
-          timeMs: data.timeMs,
-          stars: data.stars || 0,
-          timestamp: Date.now()
-        });
-        
-        // Broadcast to all players
-        this.broadcast("level_completed_by", {
+        // Create the completion data
+        const completionData = {
           username: player.username,
           levelId: data.levelId,
           timeMs: data.timeMs,
           stars: data.stars || 0
+        };
+        
+        // ALWAYS broadcast level completion to ALL rooms using GlobalDispatcher
+        console.log(`Broadcasting level completion for ${player.username} on level ${data.levelId}`);
+        GlobalDispatcher.broadcast("level_completion", completionData);
+        
+        // Check for highscore separately
+        const highscoreResult = this.addHighscore(data.levelId, {
+          username: player.username,
+          timeMs: data.timeMs,
+          stars: data.stars || 0,
+          timestamp: Date.now()
         });
         
-        // If it's a new highscore, broadcast that too
-        if (isNewHighscore) {
-          console.log(`New highscore! ${player.username} got position ${this.getHighscorePosition(data.levelId, data.timeMs)} on level ${data.levelId}`);
-          this.broadcast("new_highscore", {
-            username: player.username,
-            levelId: data.levelId,
-            timeMs: data.timeMs,
-            stars: data.stars || 0,
-            position: this.getHighscorePosition(data.levelId, data.timeMs)
-          });
+        // If it's a highscore, broadcast that separately
+        if (highscoreResult.isTopTen) {
+          const position = highscoreResult.position;
+          console.log(`HIGHSCORE: ${player.username} got position #${position} on level ${data.levelId}`);
+          
+          const highscoreData = {
+            ...completionData,
+            position: position
+          };
+          
+          // Broadcast highscore using GlobalDispatcher
+          GlobalDispatcher.broadcast("highscore", highscoreData);
         }
-        
-        // Important: Send highscores immediately after processing the completion
-        // This way we don't need a separate request
-        const levelHighscores = this.getHighscores(data.levelId);
-        client.send("level_highscores", {
-          levelId: data.levelId,
-          highscores: levelHighscores
-        });
       }
     });
     
@@ -172,6 +163,24 @@ class GameRoom extends Room<GameState> {
           highscores: levelHighscores
         });
       }
+    });
+
+    // Add global notification handler with GlobalDispatcher
+    this.onMessage("send_global_notification", (client, data) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && data.text) {
+        console.log(`Global notification from ${player.username}: ${data.text}`);
+        
+        // Broadcast simple text message to all rooms using GlobalDispatcher
+        GlobalDispatcher.broadcast("broadcast", data.text);
+      }
+    });
+
+    // Simplify to a basic text-only notification system
+    this.presence.subscribe("broadcast", (message: string) => {
+      console.log(`[${this.roomId}] Received broadcast message: ${message}`);
+      // Forward the simple text message to all clients in this room
+      this.broadcast("notification", message);
     });
   }
 
@@ -200,6 +209,12 @@ class GameRoom extends Room<GameState> {
     this.broadcast("player_count", { count: this.state.players.size });
   }
   
+  onDispose() {
+    // Unregister from GlobalDispatcher when room is disposed
+    GlobalDispatcher.unregister(this);
+    console.log(`Game room disposed: ${this.roomId}`);
+  }
+  
   // Load highscores from disk
   private loadHighscores(): void {
     try {
@@ -220,15 +235,28 @@ class GameRoom extends Room<GameState> {
   // Save highscores to disk
   private saveHighscores(): void {
     try {
-      fs.writeFileSync(this.highscoresPath, JSON.stringify(this.highscores, null, 2), 'utf8');
-      console.log("Highscores saved to disk");
-    } catch (error) {
-      console.error("Error saving highscores:", error);
+      // Save to a temp file first to avoid nodemon restart
+      const tempFile = path.join(__dirname, '.tmp_highscores.json');
+      const data = JSON.stringify(this.highscores, null, 2);
+      
+      // Write to temp file
+      fs.writeFileSync(tempFile, data, 'utf8');
+      
+      // Then rename (atomic operation) to avoid nodemon watching the write
+      fs.renameSync(tempFile, this.highscoresPath);
+      
+      console.log(`Highscores saved to ${this.highscoresPath}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(`Error saving highscores: ${error.message}`);
+      } else {
+        console.error('Error saving highscores: Unknown error type');
+      }
     }
   }
   
-  // Add a highscore and return true if it's a new top 10 entry
-  private addHighscore(levelId: number, entry: {username: string, timeMs: number, stars: number, timestamp: number}): boolean {
+  // Update the addHighscore method to return both whether it's a top 10 score and its position
+  private addHighscore(levelId: number, entry: {username: string, timeMs: number, stars: number, timestamp: number}): {isTopTen: boolean, position: number} {
     const levelIdStr = levelId.toString();
     
     // Initialize array for this level if it doesn't exist
@@ -237,55 +265,47 @@ class GameRoom extends Room<GameState> {
     }
     
     // Get current highscores for this level
-    const levelScores = this.highscores[levelIdStr];
+    const levelScores = [...this.highscores[levelIdStr]]; // Clone array
     
-    // Check if this score qualifies for top 10
-    const worstTopScore = levelScores.length >= 10 ? 
-      levelScores.sort((a, b) => a.timeMs - b.timeMs)[9] : 
-      { timeMs: Infinity };
+    // Add the new score
+    levelScores.push(entry);
     
-    const isTopTen = entry.timeMs < worstTopScore.timeMs || levelScores.length < 10;
+    // Sort by time (fastest first)
+    levelScores.sort((a, b) => a.timeMs - b.timeMs);
+    
+    // Find position (1-based)
+    let position = 0;
+    for (let i = 0; i < levelScores.length; i++) {
+      if (levelScores[i].timeMs === entry.timeMs && 
+          levelScores[i].username === entry.username &&
+          levelScores[i].timestamp === entry.timestamp) {
+        position = i + 1;
+        break;
+      }
+    }
+    
+    // Check if it's in the top 10
+    const isTopTen = position <= 10;
     
     if (isTopTen) {
-      // Add the new score
-      levelScores.push(entry);
-      
-      // Sort by time (fastest first) and keep only top 10
-      this.highscores[levelIdStr] = levelScores
-        .sort((a, b) => a.timeMs - b.timeMs)
-        .slice(0, 10);
+      // Keep only top 10
+      this.highscores[levelIdStr] = levelScores.slice(0, 10);
       
       // Save to disk
       this.saveHighscores();
       
-      return true;
+      console.log(`Added highscore for ${entry.username} at position #${position} (time: ${entry.timeMs}ms)`);
+    } else {
+      console.log(`Score for ${entry.username} (${entry.timeMs}ms) not in top 10`);
     }
     
-    return false;
+    return { isTopTen, position };
   }
   
   // Get highscores for a level
   private getHighscores(levelId: number): Array<{username: string, timeMs: number, stars: number, timestamp: number}> {
     const levelIdStr = levelId.toString();
     return this.highscores[levelIdStr] || [];
-  }
-  
-  // Get position of a score in the highscore list (1-based)
-  private getHighscorePosition(levelId: number, timeMs: number): number {
-    const levelIdStr = levelId.toString();
-    const scores = this.highscores[levelIdStr] || [];
-    
-    // Sort scores by time
-    const sortedScores = [...scores].sort((a, b) => a.timeMs - b.timeMs);
-    
-    // Find position (1-based)
-    for (let i = 0; i < sortedScores.length; i++) {
-      if (sortedScores[i].timeMs === timeMs) {
-        return i + 1;
-      }
-    }
-    
-    return -1; // Not found
   }
 }
 

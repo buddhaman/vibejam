@@ -65,7 +65,10 @@ export class Network {
             this.currentRoomType = roomType;
             console.log(`Connected to ${roomType} with ID: ${this.playerId}`);
             
-            // Setup appropriate handlers based on room type
+            // Set up the simple notification handler
+            this.setupSimpleNotificationHandler();
+            
+            // Setup room-specific handlers
             if (roomType === RoomType.OVERWORLD) {
                 this.setupOverworldHandlers();
             } else {
@@ -74,6 +77,13 @@ export class Network {
             
             // Start sending position updates (only matters in overworld)
             this.startSendingPosition();
+            
+            // Show a test notification after connecting to verify notifications are working
+            setTimeout(() => {
+                const connectionMsg = `Connected to ${roomType} as ${this.game.userName}`;
+                console.log("TEST NOTIFICATION:", connectionMsg);
+                this.showTestNotification(connectionMsg);
+            }, 2000);
             
             return this.playerId;
         } catch (error) {
@@ -99,6 +109,8 @@ export class Network {
     // Connect overworld-specific handlers
     private setupOverworldHandlers(): void {
         if (!this.room) return;
+        
+        // No need for setupNotificationSystem anymore
         
         this.room.onStateChange((state) => {
             if (!this.game.level) return;
@@ -160,8 +172,7 @@ export class Network {
     private setupGameplayHandlers(): void {
         if (!this.room) return;
         
-        // We don't need position updates for other players in gameplay rooms
-        // Just listen for specific events like highscores
+        // No need for setupNotificationSystem anymore
         
         this.room.onMessage("level_completed_by", (message) => {
             console.log(`Player ${message.username} completed level ${message.levelId} in ${message.timeMs}ms with ${message.stars} stars`);
@@ -371,5 +382,110 @@ export class Network {
         // This method is now disabled to prevent connection issues
         console.log("Highscore requests disabled - tracked server-side only");
         return;
+    }
+
+    // Replace setupGlobalNotificationHandler with a simpler version
+    private setupSimpleNotificationHandler(): void {
+        if (!this.room) return;
+        
+        // Listen for the single notification message type
+        this.room.onMessage("notification", (data) => {
+            if (typeof data === 'string') {
+                // Handle plain string notifications
+                console.log("NOTIFICATION:", data);
+                this.showNotification(data);
+            } else if (data.text) {
+                // Handle object with text property for backward compatibility
+                console.log("NOTIFICATION:", data.text);
+                this.showNotification(data.text);
+            }
+        });
+    }
+
+    // Simplify the showNotification method to just handle text
+    public showNotification(text: string, duration: number = 5000): void {
+        console.log(`NOTIFICATION: ${text}`);
+        
+        // Create a completely new element each time
+        const notification = document.createElement('div');
+        notification.className = 'game-notification';
+        
+        // Basic styling that works for all notifications
+        Object.assign(notification.style, {
+            position: 'fixed',
+            top: '50px',
+            left: '10px',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '12px 15px',
+            borderRadius: '5px',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            zIndex: '9999',
+            boxShadow: '0 0 15px rgba(0, 0, 0, 0.7)',
+            border: '2px solid white',
+            maxWidth: '350px'
+        });
+        
+        // Set text content
+        notification.textContent = text;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after duration
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, duration);
+    }
+
+    private showTestNotification(message: string): void {
+        // Create the notification with a very obvious style
+        const testNotif = document.createElement('div');
+        
+        // Style it to be impossible to miss
+        Object.assign(testNotif.style, {
+            position: 'fixed',
+            top: '100px',
+            left: '10px',
+            backgroundColor: 'red',
+            color: 'white',
+            padding: '15px',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            zIndex: '10000',
+            border: '3px solid white',
+            borderRadius: '5px',
+            boxShadow: '0 0 20px black'
+        });
+        
+        // Set content
+        testNotif.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(testNotif);
+        
+        console.log("Added test notification to DOM:", message);
+        
+        // Remove after 10 seconds
+        setTimeout(() => {
+            document.body.removeChild(testNotif);
+        }, 10000);
+    }
+
+    // Send a notification to all players
+    public sendNotification(text: string): void {
+        if (!this.room || !this.playerId) return;
+        
+        try {
+            console.log(`Sending notification: ${text}`);
+            this.room.send("send_notification", { text });
+        } catch (error) {
+            console.error("Failed to send notification:", error);
+        }
     }
 } 

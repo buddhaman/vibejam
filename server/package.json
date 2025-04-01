@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon server.ts"
+    "dev": "nodemon --ignore 'highscores.json' --ignore '*.json' server.ts"
   },
   "dependencies": {
     "@colyseus/monitor": "^0.16.6",
