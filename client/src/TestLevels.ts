@@ -25,52 +25,78 @@ export class TestLevels {
             "overworld-platform"
         ));
         
-        // Create portals to different levels using the utility function
+        // TUTORIAL SIDE - All tutorials and Jungle Gym in one row
+        // =====================================================
         
-        // Tutorial level portal
+        // Level 1 portal - Jungle Gym (first in line)
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-23.5, groundY + 2, 1.5),   // Position
+            new THREE.Vector3(-25, groundY + 2, -15),   // Left position
+            1,                                  // Level ID
+            "Jungle Gym",                       // Name
+            "Playground",                       // Description
+            "white",                            // Text color
+            "#aaffaa",                          // Description color
+            false,                                // Show highscore
+        );
+        
+        // Tutorial level portal (middle)
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(-25, groundY + 2, -10),   // Middle position
             3,                                  // Level ID
             "Tutorial",                         // Name
             "For Beginners",                    // Description
             "white",                            // Text color
-            "#aaffaa"                           // Description color
+            "#aaffaa",                          // Description color
+            false                               // No highscore for tutorial
         );
         
-        // Advanced tutorial level portal
+        // Advanced tutorial level portal (right)
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(-23.5, groundY + 2, 7.5),   // Position
+            new THREE.Vector3(-25, groundY + 2, -5),   // Right position
             4,                                  // Level ID
             "Tutorial 2",                       // Name
             "Advanced",                         // Description
             "white",                            // Text color
-            "#ffaaaa"                           // Description color
+            "#ffaaaa",                          // Description color
+            false                               // No highscore for tutorial
         );
         
-        // Level 1 portal - Jungle Gym
-        this.createLevelPortal(
-            level,
-            game,
-            new THREE.Vector3(-13.5, groundY + 2, 1.5),   // Position
-            1,                                  // Level ID
-            "Jungle Gym",                       // Name
-            "",                                 // No description
-            "white"                             // Text color
+        // Add text above the tutorial section
+        level.levelRenderer?.addSimpleText(
+            "TUTORIALS & PLAYGROUND",
+            new THREE.Vector3(-15, groundY + 6, -15),
+            "white",
+            "#000000"
         );
+        
+        // GAMEPLAY LEVELS SIDE - All other levels on the opposite side
+        // =====================================================
         
         // Level 2 portal - Skydiving
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(16.5, groundY + 2, 1.5),    // Position
+            new THREE.Vector3(20, groundY + 2, -5),    // Position on opposite side
             2,                                  // Level ID
             "Skydiving",                        // Name
-            "",                                 // No description
-            "white"                             // Text color
+            "Challenge",                        // Description
+            "white",                            // Text color
+            "#ffff88",                          // Description color
+            true                                // Show highscore
+        );
+        
+        // Add text above game levels section
+        level.levelRenderer?.addSimpleText(
+            "GAME LEVELS",
+            new THREE.Vector3(15, groundY + 6, 15),
+            "white",
+            "#000000"
         );
         
         // Create a separate island for the Vibeverse portal
@@ -925,6 +951,7 @@ export class TestLevels {
      * @param description Optional additional description text
      * @param textColor Optional color for the portal name text
      * @param descColor Optional color for the description text
+     * @param showHighscore Optional boolean to control highscore sign creation
      */
     private static createLevelPortal(
         level: Level,
@@ -934,7 +961,8 @@ export class TestLevels {
         portalName: string,
         description: string = "",
         textColor: string = "white",
-        descColor: string = "#aaffaa"
+        descColor: string = "#aaffaa",
+        showHighscore: boolean = true  // New parameter to control highscore sign creation
     ): void {
         // Create portal cube (3x4x3 size centered on position)
         level.addStaticBody(StaticBody.createBox(
@@ -974,16 +1002,15 @@ export class TestLevels {
             );
         }
         
-        // Create highscore sign for this level if we're in the overworld
-        // Only create the sign if level ID is greater than 0 (not for tutorial levels, etc.)
-        if (level.levelIdx === 0 && targetLevelId > 0) {
+        // Create highscore sign for this level if we're in the overworld and showHighscore is true
+        if (level.levelIdx === 0 && targetLevelId > 0 && showHighscore) {
             console.log(`Creating highscore sign for level ${targetLevelId}`);
             
             // Create a sign positioned next to the portal
             // Position for the sign (accounting for the 4x scale in Sign.ts)
             const signPos = new THREE.Vector3(
                 position.x + 8,                // Position to the right of the portal
-                position.y + 8,                    // Ground level
+                position.y + 8,                // Ground level
                 position.z                     // Same z as portal
             );
 
