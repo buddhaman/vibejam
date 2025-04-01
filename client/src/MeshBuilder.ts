@@ -17,8 +17,8 @@ export class MeshBuilder {
      * @returns A single combined mesh containing ground and all decorations
      */
     public static createDecorativeGround(
-        width: number = 200, 
-        depth: number = 200, 
+        width: number = 300, 
+        depth: number = 300, 
         skullCount: number = 150,
         terrainHeight: number = 3,
         rubbleCount: number = 60,
