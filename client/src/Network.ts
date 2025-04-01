@@ -122,6 +122,7 @@ export class Network {
                 if (!level.hasPlayer(id)) {
                     console.log(`Adding remote player: ${id} with username: ${username}`);
                     const newPlayer = level.addNetworkPlayer(id, username);
+                    newPlayer.setPosition(new THREE.Vector3(player.position.x, 13, player.position.z));
                     newPlayer.username = username;
                 }
                 

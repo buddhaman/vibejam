@@ -9,6 +9,9 @@ import { LevelBuilder } from './LevelBuilder';
 import { Sign } from './Sign';
 
 export class TestLevels {
+    // Parameter for main platform length that can be adjusted as needed
+    private static mainPlatformLength = 50; // Default value to fit all portals (furthest is at z=40)
+    
     /**
      * Creates an overworld hub with portals to different levels
      * @param level The Level instance to add level elements to
@@ -17,10 +20,10 @@ export class TestLevels {
     public static createOverworld(level: Level, game: Game): void {
         const groundY = 12;
 
-        // Main platform in the center - make it larger
+        // Main platform in the center - using the configurable mainPlatformLength
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-35, 0, -35),
-            new THREE.Vector3(35, groundY, 35),
+            new THREE.Vector3(35, groundY, this.mainPlatformLength),
             LevelBuilder.MAIN_PLATFORM_MATERIAL,
             "overworld-platform"
         ));
@@ -98,6 +101,32 @@ export class TestLevels {
             new THREE.Vector3(20, groundY + 2, 10),    // Position on opposite side
             5,                                  // Level ID
             "Skydiving",                        // Name
+            "Challenge",                        // Description
+            "white",                            // Text color
+            "#ffff88",                          // Description color
+            true                                // Show highscore
+        );
+
+        // Level 6
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(20, groundY + 2, 25),    // Position on opposite side
+            6,                                  // Level ID
+            "Simple Finish",                        // Name
+            "Challenge",                        // Description
+            "white",                            // Text color
+            "#ffff88",                          // Description color
+            true                                // Show highscore
+        );
+
+        // Level 6
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(20, groundY + 2, 40),    // Position on opposite side
+            7,                                  // Level ID
+            "Simple Finish",                        // Name
             "Challenge",                        // Description
             "white",                            // Text color
             "#ffff88",                          // Description color
@@ -851,6 +880,8 @@ export class TestLevels {
         );
         level.addSaw(testSaw);
     }
+
+
 
     /**
      * Creates a simple test level with two platforms and a rope for swinging

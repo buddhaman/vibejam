@@ -5,6 +5,12 @@
       "timeMs": 9683.333333333334,
       "stars": 0,
       "timestamp": 1743533476445
+    },
+    {
+      "username": "tim",
+      "timeMs": 9950,
+      "stars": 0,
+      "timestamp": 1743543443670
     }
   ],
   "5": [
@@ -13,6 +19,58 @@
       "timeMs": 7500.000000000001,
       "stars": 0,
       "timestamp": 1743533429157
+    },
+    {
+      "username": "tim",
+      "timeMs": 8233.333333333334,
+      "stars": 0,
+      "timestamp": 1743539331188
+    },
+    {
+      "username": "tim",
+      "timeMs": 8816.666666666668,
+      "stars": 0,
+      "timestamp": 1743543456882
+    }
+  ],
+  "6": [
+    {
+      "username": "tim",
+      "timeMs": 9050,
+      "stars": 0,
+      "timestamp": 1743543347540
+    },
+    {
+      "username": "tim",
+      "timeMs": 9650,
+      "stars": 0,
+      "timestamp": 1743539351137
+    },
+    {
+      "username": "tim",
+      "timeMs": 15850.000000000002,
+      "stars": 0,
+      "timestamp": 1743538985617
+    },
+    {
+      "username": "tim",
+      "timeMs": 19933.333333333336,
+      "stars": 0,
+      "timestamp": 1743543504923
+    }
+  ],
+  "7": [
+    {
+      "username": "tim",
+      "timeMs": 16700,
+      "stars": 0,
+      "timestamp": 1743543289208
+    },
+    {
+      "username": "tim",
+      "timeMs": 16883.333333333336,
+      "stars": 0,
+      "timestamp": 1743543577548
     }
   ]
 }

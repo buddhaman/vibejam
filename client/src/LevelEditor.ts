@@ -229,6 +229,11 @@ export class LevelEditor {
         addActionAreaBtn.style.backgroundColor = '#00AAFF';
         toolbar.appendChild(addActionAreaBtn);
         
+        // Add Updraft button
+        const addUpdraftBtn = this.createButton('Add Updraft', () => this.addUpdraft());
+        addUpdraftBtn.style.backgroundColor = '#66CCFF'; // Light blue to match updraft color
+        toolbar.appendChild(addUpdraftBtn);
+        
         // Add Saw button
         const addSawBtn = this.createButton('Add Saw', () => this.addSaw());
         toolbar.appendChild(addSawBtn);
@@ -743,6 +748,7 @@ export class LevelEditor {
         this.level.ropes = [];
         this.level.actionAreas = [];
         this.level.saws = [];
+        this.level.updrafts = [];
         this.levelRenderer.reset(this.level);
         
         // Very important: deselect any currently selected object
@@ -1164,6 +1170,36 @@ export class LevelEditor {
         if (this.showBoundingBoxes) {
             this.showAllBoundingBoxes();
         }
+    }
+
+    /**
+     * Add a new updraft at the camera's position
+     */
+    private addUpdraft(): void {
+        // Get position for the new updraft
+        const updraftPos = this.getPlacePosition(10, -1);
+        
+        // Default size for updraft - make it tall for visibility
+        const size = new THREE.Vector3(8, 20, 8);
+        
+        // Default strength for the updraft
+        const strength = 0.08;
+        
+        // Add the updraft to the level
+        const updraft = this.level.addUpdraft(updraftPos, size, strength);
+        
+        // Add the updraft to the levelRenderer such that it can be selected in the editor
+        this.levelRenderer.scene.add(updraft.getCollisionMesh());
+        
+        console.log(`Added new updraft at position ${updraftPos.x.toFixed(2)}, ${updraftPos.y.toFixed(2)}, ${updraftPos.z.toFixed(2)}`);
+
+        // Update bounding boxes if they're visible to immediately show the new updraft
+        if (this.showBoundingBoxes) {
+            this.showAllBoundingBoxes();
+        }
+        
+        // Select the new updraft
+        this.selectObject(updraft.getCollisionMesh());
     }
 }
 

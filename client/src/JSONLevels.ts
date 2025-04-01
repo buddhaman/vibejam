@@ -2,6 +2,453 @@ import { Level } from './Level';
 import { Game } from './Game';
 import { Serialize } from './Serialize';
 
+export const long_level = {
+  "name": "Custom Level",
+  "author": "Level Editor",
+  "version": 1,
+  "created": "2025-04-01T21:33:34.154Z",
+  "platforms": [
+    {
+      "position": [
+        -35,
+        3,
+        -71
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        28.400000000000002,
+        4,
+        28.8
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -11,
+        2.5,
+        -72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        22.5,
+        4,
+        24.8
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -83.5,
+        111,
+        -72.65942869408705
+      ],
+      "rotation": [
+        0,
+        0,
+        0.08726646259971647
+      ],
+      "scale": [
+        119.80000000000001,
+        4,
+        27.200000000000003
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -133.5,
+        85,
+        -70.5
+      ],
+      "rotation": [
+        -2.7052603405912112,
+        0,
+        0
+      ],
+      "scale": [
+        22,
+        4,
+        13
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -105.5,
+        74.5,
+        -70.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        11.700000000000001,
+        4,
+        12.200000000000001
+      ],
+      "color": "#ff0000",
+      "name": ""
+    }
+  ],
+  "ropes": [
+    {
+      "startPos": [
+        -156.5,
+        115.5,
+        -73.24680573566488
+      ],
+      "endPos": [
+        -156.95104052718085,
+        93.1970695464085,
+        -73.40751296088511
+      ],
+      "length": 20,
+      "segments": 14,
+      "name": "Rope"
+    }
+  ],
+  "saws": [
+    {
+      "position": [
+        -43.91640022602501,
+        121,
+        -68.3033431828249
+      ],
+      "rotation": [
+        0,
+        0,
+        -2.3050274980012246
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -52.46696807060077,
+        119.5,
+        -64.82214676041902
+      ],
+      "rotation": [
+        0,
+        0,
+        -1.1572478903074273
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -65,
+        119,
+        -70
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.4076919687686683
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -80,
+        118.5,
+        -76
+      ],
+      "rotation": [
+        0,
+        0,
+        -2.8245066615890817
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -91,
+        117.5,
+        -82.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0.2418639527700914
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -105.5,
+        113.5,
+        -78.75240113081817
+      ],
+      "rotation": [
+        0,
+        0,
+        2.7250492599496776
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -125.5,
+        115,
+        -66
+      ],
+      "rotation": [
+        0,
+        0,
+        0.8914198743088512
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    },
+    {
+      "position": [
+        -118,
+        113.5,
+        -80.5
+      ],
+      "rotation": [
+        0,
+        0,
+        -2.9750110287570566
+      ],
+      "radius": 4,
+      "thickness": 1,
+      "spinSpeed": 0.1,
+      "name": "saw_1743543143157"
+    }
+  ],
+  "actionAreas": [
+    {
+      "position": [
+        -106.35221738856512,
+        80.5,
+        -71
+      ],
+      "size": [
+        8,
+        8,
+        8
+      ],
+      "triggerOnce": false,
+      "name": "actionarea_1743543214154"
+    }
+  ],
+  "updrafts": [
+    {
+      "position": [
+        -11.5,
+        88.5,
+        -73
+      ],
+      "size": [
+        15.399999999999999,
+        165.3,
+        14.5
+      ],
+      "strength": 0.1,
+      "name": "updraft_1743543214154"
+    }
+  ],
+  "playerStartPosition": [
+    -33.5,
+    14,
+    -71.27141271430021
+  ]
+}
+
+export const simple_finish = {
+  "name": "Simple Finish",
+  "author": "Level Editor",
+  "version": 1,
+  "created": "2025-04-01T20:19:44.343Z",
+  "platforms": [
+    {
+      "position": [
+        -71,
+        6.5,
+        -10.399345372924998
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        49.900000000000006,
+        4,
+        48.400000000000006
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -35.5,
+        6,
+        -12.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        22.400000000000002,
+        4,
+        18.7
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -9,
+        18,
+        -106.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        28.1,
+        5,
+        12.7
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -10,
+        55.5,
+        -42
+      ],
+      "rotation": [
+        0.3490658503988661,
+        -0.7853981633974487,
+        3.9252311467094385e-17
+      ],
+      "scale": [
+        30,
+        5,
+        30
+      ],
+      "color": "#ff0000",
+      "name": ""
+    },
+    {
+      "position": [
+        -17,
+        58.5,
+        -75
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        20,
+        5,
+        20.1
+      ],
+      "color": "#ff0000",
+      "name": ""
+    }
+  ],
+  "ropes": [
+    {
+      "startPos": [
+        -31.281919161974724,
+        79.36260447403293,
+        -25.14120154684962
+      ],
+      "endPos": [
+        -31.281923285286425,
+        57.053792998864694,
+        -25.14107860216618
+      ],
+      "length": 20,
+      "segments": 14,
+      "name": "Rope"
+    }
+  ],
+  "saws": [],
+  "actionAreas": [
+    {
+      "position": [
+        -2.5,
+        24.5,
+        -105.5
+      ],
+      "size": [
+        8.000000000000002,
+        8,
+        8
+      ],
+      "triggerOnce": false,
+      "name": "actionarea_1743538784344"
+    }
+  ],
+  "updrafts": [
+    {
+      "position": [
+        -35.5,
+        37.5,
+        -12.5
+      ],
+      "size": [
+        10.200000000000003,
+        60.099999999999994,
+        8
+      ],
+      "strength": 0.1,
+      "name": "updraft_1743538784344"
+    }
+  ],
+  "playerStartPosition": [
+    -69,
+    15.5,
+    -13.5
+  ]
+}
+
 export const first_level = {
   "name": "First Level",
   "author": "Level Editor",

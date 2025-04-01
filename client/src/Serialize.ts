@@ -3,6 +3,7 @@ import { Level } from './Level';
 import { LevelBuilder } from './LevelBuilder';
 import { Rope } from './Rope';
 import { ActionArea } from './ActionArea';
+import { Updraft } from './Updraft';
 
 /**
  * Interface for level data
@@ -16,6 +17,7 @@ export interface LevelData {
     ropes: RopeData[];
     saws: SawData[];
     actionAreas: ActionAreaData[];
+    updrafts: UpdraftData[];
     playerStartPosition?: number[];
 }
 
@@ -60,6 +62,16 @@ interface ActionAreaData {
     position: number[];
     size: number[];
     triggerOnce: boolean;
+    name: string;
+}
+
+/**
+ * Interface for updraft data
+ */
+interface UpdraftData {
+    position: number[];
+    size: number[];
+    strength: number;
     name: string;
 }
 
@@ -174,6 +186,40 @@ export class Serialize {
                     name: `actionarea_${Date.now()}`
                 };
             }),
+            updrafts: level.updrafts.map(updraft => {
+                const shape = updraft.getShape();
+                if (!shape) {
+                    // Fallback if shape is null
+                    return {
+                        position: [0, 0, 0],
+                        size: [1, 20, 1],
+                        strength: 0.1,
+                        name: `updraft_${Date.now()}`
+                    };
+                }
+                
+                const bounds = shape.getBoundingBox();
+                const size = new THREE.Vector3(
+                    bounds.max.x - bounds.min.x,
+                    bounds.max.y - bounds.min.y,
+                    bounds.max.z - bounds.min.z
+                );
+                
+                return {
+                    position: [
+                        shape.position.x,
+                        shape.position.y,
+                        shape.position.z
+                    ],
+                    size: [
+                        size.x,
+                        size.y,
+                        size.z
+                    ],
+                    strength: 0.1, // Default since we can't access private property
+                    name: `updraft_${Date.now()}`
+                };
+            }),
             playerStartPosition: level.playerStartPosition ? 
                 [level.playerStartPosition.x, level.playerStartPosition.y, level.playerStartPosition.z] : 
                 undefined
@@ -232,6 +278,7 @@ export class Serialize {
             level.entities = [];
             level.ropes = [];
             level.actionAreas = [];
+            level.updrafts = [];
             
             // Load platforms
             if (levelData.platforms && Array.isArray(levelData.platforms)) {
@@ -412,6 +459,37 @@ export class Serialize {
                 });
                 
                 console.log(`Loaded ${levelData.actionAreas.length} action areas`);
+            }
+            
+            // Load updrafts
+            if (levelData.updrafts && Array.isArray(levelData.updrafts)) {
+                levelData.updrafts.forEach((updraftData: UpdraftData) => {
+                    const position = new THREE.Vector3(
+                        updraftData.position[0],
+                        updraftData.position[1],
+                        updraftData.position[2]
+                    );
+                    
+                    const size = new THREE.Vector3(
+                        updraftData.size[0],
+                        updraftData.size[1],
+                        updraftData.size[2]
+                    );
+                    
+                    // Create the updraft
+                    const updraft = level.addUpdraft(
+                        position,
+                        size,
+                        updraftData.strength
+                    );
+                    
+                    // Add to scene for editor selection
+                    if (scene) {
+                        scene.add(updraft.getCollisionMesh());
+                    }
+                });
+                
+                console.log(`Loaded ${levelData.updrafts ? levelData.updrafts.length : 0} updrafts`);
             }
             
             // Load player start position if available

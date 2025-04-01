@@ -5,15 +5,20 @@ import { Room } from 'colyseus';
  */
 export class GlobalDispatcher {
   // Store all active rooms
-  private static rooms: Room[] = [];
+  private static rooms: Set<Room> = new Set();
 
   /**
    * Register a room with the dispatcher
    */
   static register(room: Room): void {
-    if (!this.rooms.includes(room)) {
-      this.rooms.push(room);
+    if (!this.rooms.has(room)) {
+      this.rooms.add(room);
       console.log(`Room ${room.roomId} registered with GlobalDispatcher`);
+      
+      // Store roomId for unregistering later
+      const roomId = room.roomId;
+      
+      // Manually unregister in server.ts onDispose() instead
     }
   }
 
@@ -21,21 +26,23 @@ export class GlobalDispatcher {
    * Unregister a room from the dispatcher
    */
   static unregister(room: Room): void {
-    const index = this.rooms.indexOf(room);
-    if (index !== -1) {
-      this.rooms.splice(index, 1);
+    if (this.rooms.has(room)) {
+      this.rooms.delete(room);
       console.log(`Room ${room.roomId} unregistered from GlobalDispatcher`);
     }
   }
 
   /**
-   * Broadcast a message to all registered rooms
+   * Broadcast a message to all registered rooms with active clients
    */
   static broadcast(messageType: string, data: any): void {
-    console.log(`Broadcasting ${messageType} to ${this.rooms.length} rooms`);
+    // Only broadcast to rooms that have clients
+    const activeRooms = Array.from(this.rooms).filter(room => room.clients.length > 0);
     
-    // For each registered room, use its presence channel to broadcast
-    this.rooms.forEach(room => {
+    console.log(`Broadcasting ${messageType} to ${activeRooms.length} active rooms (out of ${this.rooms.size} total)`);
+    
+    // For each active room, broadcast directly to clients
+    activeRooms.forEach(room => {
       if (room && room.presence) {
         room.presence.publish(messageType, data);
       }

@@ -273,6 +273,13 @@ export class Updraft extends Entity {
     //         }
     //     }
     // }
+    public getShape(): ConvexShape | null {
+        return this.shape;
+    }
+
+    public shapeChanged(): void {
+        this.shape.updateTransform();
+    }
 
     public getBody(): Body {
         return this.shape;

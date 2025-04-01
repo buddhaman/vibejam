@@ -1,26 +1,31 @@
 import * as THREE from 'three';
 import { ConvexShape } from '../../shared/ConvexShape';
 import { Body } from '../../shared/Body';
+import { LevelBuilder } from './LevelBuilder';
+import { StaticBody } from './StaticBody';
 
 /**
  * Represents a rigid body with physics properties
  */
 export class RigidBody extends Body {
     // Underlying shape for collision
-    shape: ConvexShape;
+    public shape: ConvexShape;
     
     // Physics properties
-    mass: number;
-    invMass: number;
-    velocity: THREE.Vector3;
-    angularVelocity: THREE.Vector3;
+    public mass: number;
+    public invMass: number;
+    public velocity: THREE.Vector3;
+    public angularVelocity: THREE.Vector3;
     
     // Inertia tensor (simplified as diagonal matrix for basic cases)
-    inertia: THREE.Vector3;
-    invInertia: THREE.Vector3;
+    public inertia: THREE.Vector3;
+    public invInertia: THREE.Vector3;
     
     // Visual representation
-    mesh: THREE.Mesh = new THREE.Mesh();
+    public mesh: THREE.Mesh = new THREE.Mesh();
+    public time: number = 0;
+
+    public customUpdate: (time: number, self: RigidBody) => void = () => {};
     
     /**
      * Create a rigid body
@@ -134,6 +139,9 @@ export class RigidBody extends Body {
      * Update the rigid body physics
      */
     update(): void {
+        this.time += 0.016;
+        this.customUpdate(this.time, this);
+
         // Update position with fixed increment
         this.shape.position.add(this.velocity);
         
