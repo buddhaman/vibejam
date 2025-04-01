@@ -71,20 +71,6 @@ export class LevelEditor {
         this.levelRenderer = this.game.levelRenderer!;
         this.level = this.game.level!;
 
-        // Add a ground platform to start with
-        let platform = LevelBuilder.createHorizontalPlatform(this.level, 
-            new THREE.Vector3(0,0,0), 
-            1,
-            1,
-            1, 
-            new THREE.MeshStandardMaterial({ 
-                color: 0xFF8888,
-                roughness: 0.8,
-            }), 
-            "ground_platform");
-        platform.mesh.scale.set(100,3,100);
-        
-
         // Set camera to first-person flying mode for the editor
         this.levelRenderer.camera.setMode(CameraMode.FIRST_PERSON_FLYING);
         

@@ -18,22 +18,25 @@ export class MeshBuilder {
         // Step 1: Create the base ground geometry
         const geometries: THREE.BufferGeometry[] = [];
         
-        // Create the ground plane
-        const groundGeometry = new THREE.PlaneGeometry(width, depth, 20, 20);
-        groundGeometry.rotateX(-Math.PI / 2); // Rotate to be horizontal
+        // Create higher resolution ground for more detail
+        const groundGeometry = new THREE.PlaneGeometry(width, depth, 40, 40);
+        groundGeometry.rotateX(-Math.PI / 2); // Make sure to rotate the plane to be horizontal
         
-        // Add gentle terrain variation
+        // Use multiple noise functions at different frequencies for more natural terrain
         const groundPositions = groundGeometry.attributes.position.array;
         for (let i = 0; i < groundPositions.length; i += 3) {
-            // Add gentle height variation, but keep edges flat
             const x = groundPositions[i];
             const z = groundPositions[i + 2];
             const distFromCenter = Math.sqrt(x*x + z*z) / (width/2);
             
-            // Terrain gets flatter as it approaches the edges
-            if (distFromCenter < 0.8) {
-                const heightScale = 1.0 - distFromCenter / 0.8;
-                groundPositions[i + 1] = heightScale * Math.sin(x * 0.02) * Math.cos(z * 0.02) * 3;
+            // Terrain gets completely flat at the edges
+            if (distFromCenter < 0.9) {
+                // Use a smaller amplitude (1.5 instead of 3)
+                const heightScale = Math.max(0, 1.0 - distFromCenter / 0.9);
+                groundPositions[i + 1] = heightScale * Math.sin(x * 0.01) * Math.cos(z * 0.01) * 1.5;
+            } else {
+                // Ensure the edges are completely flat
+                groundPositions[i + 1] = 0;
             }
         }
         
@@ -127,8 +130,8 @@ export class MeshBuilder {
             }
             
             // Position randomly on the ground plane
-            const x = (Math.random() - 0.5) * width * 0.9;
-            const z = (Math.random() - 0.5) * depth * 0.9;
+            const x = (Math.random() - 0.5) * width * 0.8;
+            const z = (Math.random() - 0.5) * depth * 0.8;
             
             // Get height at this position (approximate)
             let y = 0;
@@ -627,5 +630,51 @@ export class MeshBuilder {
         mergedGeometry.computeVertexNormals();
         
         return mergedGeometry;
+    }
+
+    private static createRubble(color: THREE.Color = new THREE.Color(0.6, 0.5, 0.4)): THREE.BufferGeometry {
+        const parts: THREE.BufferGeometry[] = [];
+        
+        // Create base
+        const baseGeometry = new THREE.BoxGeometry(3, 0.4, 3);
+        this.addVertexColors(baseGeometry, color.clone().multiplyScalar(0.7));
+        parts.push(baseGeometry);
+        
+        // Add 8-12 rock pieces
+        const rockCount = 8 + Math.floor(Math.random() * 5);
+        
+        for (let i = 0; i < rockCount; i++) {
+            // Random rock size and shape
+            const width = 0.3 + Math.random() * 0.8;
+            const height = 0.2 + Math.random() * 0.4;
+            const depth = 0.3 + Math.random() * 0.6;
+            
+            const rockGeometry = new THREE.BoxGeometry(width, height, depth);
+            
+            // Slightly vary rock color
+            const rockColor = color.clone();
+            rockColor.r += (Math.random() - 0.5) * 0.15;
+            rockColor.g += (Math.random() - 0.5) * 0.15;
+            rockColor.b += (Math.random() - 0.5) * 0.1;
+            
+            this.addVertexColors(rockGeometry, rockColor, 0.1);
+            
+            // Random position on base
+            const x = (Math.random() - 0.5) * 2;
+            const y = height/2 + 0.2 + Math.random() * 0.4;
+            const z = (Math.random() - 0.5) * 2;
+            
+            // Random rotation
+            const matrix = new THREE.Matrix4()
+                .makeRotationX(Math.random() * Math.PI)
+                .multiply(new THREE.Matrix4().makeRotationY(Math.random() * Math.PI))
+                .multiply(new THREE.Matrix4().makeRotationZ(Math.random() * Math.PI))
+                .setPosition(x, y, z);
+            
+            rockGeometry.applyMatrix4(matrix);
+            parts.push(rockGeometry);
+        }
+        
+        return this.mergeBufferGeometries(parts);
     }
 }
