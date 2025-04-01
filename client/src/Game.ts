@@ -1491,14 +1491,6 @@ export class Game {
             // Report level completion
             this.reportLevelCompletion(levelId, timeMs);
             
-            // Request highscores after reporting completion
-            setTimeout(() => {
-                if (this.network && this.network.playerId) {
-                    console.log(`Requesting highscores for level ${levelId}`);
-                    this.network.requestHighscores(levelId);
-                }
-            }, 1000); // Give server a bit more time to process
-            
             return true;
         }
         
@@ -1663,4 +1655,9 @@ export class Game {
         document.head.appendChild(style);
         
         // Set the message content
-        completeElement.textContent = `
+        completeElement.textContent = `Level Complete! Final Time: ${timeString}`;
+        
+        // Add to document
+        document.body.appendChild(completeElement);
+    }
+}

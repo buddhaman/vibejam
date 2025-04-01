@@ -368,44 +368,8 @@ export class Network {
      * @param levelId The level ID to get highscores for
      */
     public requestHighscores(levelId: number): void {
-        if (!this.room || !this.playerId) {
-            console.log("Not connected to a room, deferring highscore request");
-            
-            // Store the request timestamp
-            this.pendingHighscoreRequests.set(levelId, Date.now());
-            
-            // Try to connect to the appropriate room
-            const roomType = levelId === 0 ? RoomType.OVERWORLD : RoomType.GAMEPLAY;
-            this.connectToRoom(roomType).then(() => {
-                console.log(`Connected to ${roomType}, retrying highscore request for level ${levelId}`);
-                this.sendHighscoreRequest(levelId);
-            }).catch(error => {
-                console.error(`Failed to connect to ${roomType}:`, error);
-            });
-            
-            return;
-        }
-        
-        this.sendHighscoreRequest(levelId);
-    }
-    
-    /**
-     * Actually send the highscore request
-     */
-    private sendHighscoreRequest(levelId: number): void {
-        if (!this.room || !this.playerId) return;
-        
-        try {
-            console.log(`Sending get_highscores request for level ${levelId}`);
-            this.room.send("get_highscores", { levelId });
-            
-            // Remove from pending requests
-            this.pendingHighscoreRequests.delete(levelId);
-        } catch (error) {
-            console.error("Failed to request highscores:", error);
-            
-            // Store as pending request
-            this.pendingHighscoreRequests.set(levelId, Date.now());
-        }
+        // This method is now disabled to prevent connection issues
+        console.log("Highscore requests disabled - tracked server-side only");
+        return;
     }
 } 
