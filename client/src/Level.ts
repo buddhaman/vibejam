@@ -648,6 +648,80 @@ export class Level {
         console.log(`Changed player ID from ${oldId} to ${newId} (username: ${username})`);
         return true;
     }
+
+    /**
+     * Remove an entity from the level and all relevant collections
+     * @param entity The entity to remove
+     * @returns True if the entity was removed, false otherwise
+     */
+    public removeEntity(entity: Entity): boolean {
+        // First, find and remove from the main entities array
+        const entityIndex = this.entities.findIndex(e => e === entity);
+        if (entityIndex === -1) {
+            return false; // Entity not found
+        }
+        
+        // Remove from entities array
+        this.entities.splice(entityIndex, 1);
+        
+        // Check entity type and remove from specific collections
+        if (entity instanceof StaticBody) {
+            // Remove from static bodies
+            const sbIndex = this.staticBodies.findIndex(sb => sb === entity);
+            if (sbIndex !== -1) {
+                this.staticBodies.splice(sbIndex, 1);
+            }
+        } else if (entity instanceof Rope) {
+            // Remove from ropes
+            const ropeIndex = this.ropes.findIndex(r => r === entity);
+            if (ropeIndex !== -1) {
+                this.ropes.splice(ropeIndex, 1);
+            }
+        } else if (entity instanceof Saw) {
+            // Remove from saws
+            const sawIndex = this.saws.findIndex(s => s === entity);
+            if (sawIndex !== -1) {
+                this.saws.splice(sawIndex, 1);
+            }
+        } else if (entity instanceof Player) {
+            // For players, use the existing removePlayer method
+            if (entity.id) {
+                this.removePlayer(entity.id);
+            }
+            return true; // Player removal is handled by removePlayer
+        } else if (entity instanceof RigidBody) {
+            // Remove from dynamic bodies
+            const rbIndex = this.dynamicBodies.findIndex(rb => rb === entity);
+            if (rbIndex !== -1) {
+                this.dynamicBodies.splice(rbIndex, 1);
+            }
+        } else if (entity instanceof ActionArea) {
+            // Remove from action areas
+            const aaIndex = this.actionAreas.findIndex(aa => aa === entity);
+            if (aaIndex !== -1) {
+                this.actionAreas.splice(aaIndex, 1);
+            }
+        } else if (entity instanceof Updraft) {
+            // Remove from updrafts
+            const upIndex = this.updrafts.findIndex(up => up === entity);
+            if (upIndex !== -1) {
+                this.updrafts.splice(upIndex, 1);
+            }
+        }
+        
+        // Remove mesh from scene if it exists
+        const mesh = entity.getCollisionMesh();
+        if (mesh && mesh.parent) {
+            mesh.parent.remove(mesh);
+        }
+        
+        // Call any cleanup method if it exists
+        if ('cleanup' in entity && typeof entity.cleanup === 'function') {
+            entity.cleanup();
+        }
+        
+        return true;
+    }
 }
 
 
