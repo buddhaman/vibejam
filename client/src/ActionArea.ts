@@ -5,10 +5,10 @@ import { ConvexShape } from '../../shared/ConvexShape';
 import { Body } from 'shared/Body';
 
 export class ActionArea extends Entity {
-    private callback: () => void;
+    public callback: () => void;
     private isActive: boolean = true;
     private time: number = 0;
-    private triggerOnce: boolean = true;
+    public triggerOnce: boolean = true;
     public shape: ConvexShape;
 
     constructor(
@@ -40,10 +40,6 @@ export class ActionArea extends Entity {
         return this.shape.getBoundingBox();
     }
 
-    public getBody(): Body {
-        return this.shape;
-    }
-
     public trigger(): void {
         if (this.isActive) {
             this.callback();
@@ -59,6 +55,17 @@ export class ActionArea extends Entity {
 
     public isActiveState(): boolean {
         return this.isActive;
+    }
+
+    public getShape(): ConvexShape | null {
+        return this.shape;
+    }
+
+    public shapeChanged(): void {
+        if(this.boxCollisionMesh) {
+            this.shape.position.copy(this.boxCollisionMesh.position);
+        }
+        this.shape.updateTransform();
     }
 
     public render(levelRenderer: LevelRenderer): void {

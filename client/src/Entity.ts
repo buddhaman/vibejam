@@ -44,21 +44,19 @@ export class Entity {
             });
             
             this.boxCollisionMesh = new THREE.Mesh(geometry, material);
+            // Update position and scale to match current bounding box
+            this.boxCollisionMesh.position.copy(center);
+            this.boxCollisionMesh.scale.copy(size);
         }
-        
-        // Update position and scale to match current bounding box
-        this.boxCollisionMesh.position.copy(center);
-        this.boxCollisionMesh.scale.copy(size);
         
         return this.boxCollisionMesh;
     }
 
-    public getShape() : ConvexShape | null
+   public getShape() : ConvexShape | null
     {
         return null;
     }
 
     public shapeChanged(): void {
     }
-
 }

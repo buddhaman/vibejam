@@ -12,6 +12,7 @@ import type { TransformControls as TransformControlsType } from 'three/examples/
 import { Box3, Box3Helper } from 'three';
 import { Serialize } from './Serialize';
 import { Saw } from './Saw';
+import { ActionArea } from './ActionArea';
 
 export class LevelEditor {
     private game: Game;
@@ -232,6 +233,15 @@ export class LevelEditor {
         const addPlayerStartBtn = this.createButton('Add Player Start', () => this.addPlayerStart());
         toolbar.appendChild(addPlayerStartBtn);
         
+        // Add Action Area button
+        const addActionAreaBtn = this.createButton('Add Action Area', () => this.addActionArea());
+        addActionAreaBtn.style.backgroundColor = '#00AAFF';
+        toolbar.appendChild(addActionAreaBtn);
+        
+        // Add Saw button
+        const addSawBtn = this.createButton('Add Saw', () => this.addSaw());
+        toolbar.appendChild(addSawBtn);
+        
         // Add delete button 
         const deleteBtn = this.createButton('Delete Selected', () => this.deleteSelected());
         toolbar.appendChild(deleteBtn);
@@ -251,10 +261,6 @@ export class LevelEditor {
         const testLevelBtn = this.createButton('Test Level', () => this.toggleTestMode());
         testLevelBtn.style.backgroundColor = '#9933CC'; // Purple color to stand out
         toolbar.appendChild(testLevelBtn);
-        
-        // Add Saw button
-        const addSawBtn = this.createButton('Add Saw', () => this.addSaw());
-        toolbar.appendChild(addSawBtn);
         
         document.body.appendChild(toolbar);
     }
@@ -745,6 +751,8 @@ export class LevelEditor {
         this.level.staticBodies = [];
         this.level.entities = [];
         this.level.ropes = [];
+        this.level.actionAreas = [];
+        this.level.saws = [];
         this.levelRenderer.reset(this.level);
         
         // Very important: deselect any currently selected object
@@ -764,7 +772,7 @@ export class LevelEditor {
         this.transformControls.addEventListener('objectChange', () => {
             if (this.selectedObject) {
                 // Try to find in regular entities
-               let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
+                let entity = this.level.entities.find(e => e.getCollisionMesh() === this.selectedObject);
                 if (entity) {
                     const shape = entity.getShape();
                     if (shape) {
@@ -778,6 +786,15 @@ export class LevelEditor {
                             for(let i = 0; i < 3; i++)
                                 entity.update();
                         }
+                    }
+                } else {
+                    // Check if it's a platform from staticBodies
+                    const platform = this.level.staticBodies.find(p => p.mesh === this.selectedObject);
+                    if (platform && platform.shape) {
+                        platform.shape.position.copy(this.selectedObject.position);
+                        platform.shape.orientation.copy(this.selectedObject.quaternion);
+                        platform.shape.scaling.copy(this.selectedObject.scale);
+                        platform.shape.updateTransform();
                     }
                 }
                 
@@ -1129,6 +1146,34 @@ export class LevelEditor {
         this.level.addSaw(saw);
         this.selectObject(saw.getCollisionMesh());
         console.log(`Added new saw at position ${sawPos.x.toFixed(2)}, ${sawPos.y.toFixed(2)}, ${sawPos.z.toFixed(2)}`);
+    }
+
+    /**
+     * Add a new action area at the camera's position
+     */
+    private addActionArea(): void {
+        // Get position for the new action area
+        const areaPos = this.getPlacePosition(10, -1);
+        
+        // Default size for action area - make it larger by default for visibility
+        const size = new THREE.Vector3(8, 8, 8);
+        
+        // Create a placeholder callback that just logs to console
+        const placeholderCallback = () => {
+            console.log("Action area triggered (placeholder)");
+        };
+        
+        const actionArea = this.level.addActionArea(areaPos, size, placeholderCallback, false);
+        
+        // Add the action area to the levelRenderer such that it can be selected in the editor
+        this.levelRenderer.scene.add(actionArea.getCollisionMesh());
+        
+        console.log(`Added new action area at position ${areaPos.x.toFixed(2)}, ${areaPos.y.toFixed(2)}, ${areaPos.z.toFixed(2)}`);
+
+        // Update bounding boxes if they're visible to immediately show the new action area
+        if (this.showBoundingBoxes) {
+            this.showAllBoundingBoxes();
+        }
     }
 }
 

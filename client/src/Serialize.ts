@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Level } from './Level';
 import { LevelBuilder } from './LevelBuilder';
 import { Rope } from './Rope';
+import { ActionArea } from './ActionArea';
 
 /**
  * Interface for level data
@@ -14,6 +15,7 @@ export interface LevelData {
     platforms: PlatformData[];
     ropes: RopeData[];
     saws: SawData[];
+    actionAreas: ActionAreaData[];
     playerStartPosition?: number[];
 }
 
@@ -48,6 +50,16 @@ interface SawData {
     radius: number;
     thickness: number;
     spinSpeed: number;
+    name: string;
+}
+
+/**
+ * Interface for action area data
+ */
+interface ActionAreaData {
+    position: number[];
+    size: number[];
+    triggerOnce: boolean;
     name: string;
 }
 
@@ -128,6 +140,40 @@ export class Serialize {
                         name: mesh.name || `saw_${Date.now()}`
                     };
                 }),
+            actionAreas: level.actionAreas.map(area => {
+                const shape = area.getShape();
+                if (!shape) {
+                    // Fallback if shape is null
+                    return {
+                        position: [0, 0, 0],
+                        size: [1, 1, 1],
+                        triggerOnce: false,
+                        name: `actionarea_${Date.now()}`
+                    };
+                }
+                
+                const bounds = shape.getBoundingBox();
+                const size = new THREE.Vector3(
+                    bounds.max.x - bounds.min.x,
+                    bounds.max.y - bounds.min.y,
+                    bounds.max.z - bounds.min.z
+                );
+                
+                return {
+                    position: [
+                        shape.position.x,
+                        shape.position.y,
+                        shape.position.z
+                    ],
+                    size: [
+                        size.x,
+                        size.y,
+                        size.z
+                    ],
+                    triggerOnce: false, // We can't access this private property, so default to false
+                    name: `actionarea_${Date.now()}`
+                };
+            }),
             playerStartPosition: level.playerStartPosition ? 
                 [level.playerStartPosition.x, level.playerStartPosition.y, level.playerStartPosition.z] : 
                 undefined
@@ -148,8 +194,9 @@ export class Serialize {
         // Create a text input for the level name if not provided
         let levelName = filename;
         if (!levelName) {
-            levelName = prompt("Enter a name for your level:", "level1");
-            if (!levelName) return; // User cancelled
+            const promptResult = prompt("Enter a name for your level:", "level1");
+            if (!promptResult) return; // User cancelled
+            levelName = promptResult;
         }
         
         // Create filename
@@ -184,6 +231,7 @@ export class Serialize {
             level.staticBodies = [];
             level.entities = [];
             level.ropes = [];
+            level.actionAreas = [];
             
             // Load platforms
             if (levelData.platforms && Array.isArray(levelData.platforms)) {
@@ -294,8 +342,8 @@ export class Serialize {
                         // Create the saw with the correct position
                         const saw = Saw.create(
                             position,
-                            sawData.radius * 4.0,
-                            sawData.thickness*1.0,
+                            sawData.radius,
+                            sawData.thickness,
                             sawData.spinSpeed,
                         );
                         
@@ -327,6 +375,43 @@ export class Serialize {
                     
                     console.log(`Loaded ${levelData.saws.length} saws`);
                 });
+            }
+            
+            // Load action areas
+            if (levelData.actionAreas && Array.isArray(levelData.actionAreas)) {
+                levelData.actionAreas.forEach((areaData: ActionAreaData) => {
+                    const position = new THREE.Vector3(
+                        areaData.position[0],
+                        areaData.position[1],
+                        areaData.position[2]
+                    );
+                    
+                    const size = new THREE.Vector3(
+                        areaData.size[0],
+                        areaData.size[1],
+                        areaData.size[2]
+                    );
+                    
+                    // Create a placeholder callback
+                    const placeholderCallback = () => {
+                        console.log(`Action area "${areaData.name}" triggered`);
+                    };
+                    
+                    // Create the action area
+                    const actionArea = level.addActionArea(
+                        position,
+                        size,
+                        placeholderCallback,
+                        areaData.triggerOnce
+                    );
+                    
+                    // Add to scene for editor selection
+                    if (scene) {
+                        scene.add(actionArea.getCollisionMesh());
+                    }
+                });
+                
+                console.log(`Loaded ${levelData.actionAreas.length} action areas`);
             }
             
             // Load player start position if available

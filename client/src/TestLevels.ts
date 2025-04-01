@@ -30,6 +30,14 @@ export class TestLevels {
             "portal-tutorial"
         ));
         
+        // Add new portal to second tutorial level (level 4)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(-25, 2, 6),  // Positioned next to the other tutorial portal
+            new THREE.Vector3(-22, 6, 9),
+            LevelBuilder.PORTAL_MATERIAL,
+            "portal-tutorial2"
+        ));
+        
         // Regular level portals on the main platform
         level.addStaticBody(StaticBody.createBox(
             new THREE.Vector3(-15, 2, 0),
@@ -101,6 +109,18 @@ export class TestLevels {
             }
         );
         
+        // Make action area for the new tutorial level portal
+        level.addActionArea(
+            new THREE.Vector3(-23.5, 4, 7.5),    // Center of the new portal
+            new THREE.Vector3(6, 8, 6),          // Interaction area
+            () => {
+                console.log("Switching to Advanced Tutorial Level");
+                if (game) {
+                    game.switchLevel(4); // Using level 4 as specified
+                }
+            }
+        );
+        
         // Make action areas for regular level portals
         level.addActionArea(
             new THREE.Vector3(-13.5, 4, 1.5),    // Center of the portal
@@ -147,11 +167,27 @@ export class TestLevels {
             "#000000"
         );
         
+        // Add descriptive text for new tutorial portal
+        level.levelRenderer?.addSimpleText(
+            "TUTORIAL 2",
+            new THREE.Vector3(-23.5, 7, 7.5),
+            "white",
+            "#000000"
+        );
+        
         // Add extra text explaining it's for beginners
         level.levelRenderer?.addSimpleText(
             "FOR BEGINNERS",
             new THREE.Vector3(-23.5, 6, 1.5),
             "#aaffaa", // Light green
+            "#000000"
+        );
+        
+        // Add extra text explaining it's advanced
+        level.levelRenderer?.addSimpleText(
+            "ADVANCED",
+            new THREE.Vector3(-23.5, 6, 7.5),
+            "#ffaaaa", // Light red
             "#000000"
         );
         
