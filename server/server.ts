@@ -114,17 +114,21 @@ class GameRoom extends Room<GameState> {
       if (player && data.levelId !== undefined && data.timeMs !== undefined) {
         console.log(`Player ${player.username} completed level ${data.levelId} in ${data.timeMs}ms with ${data.stars || 0} stars`);
         
-        // Create the completion data
+        // Format a simple completion message
+        const formattedTime = (data.timeMs / 1000).toFixed(2);
+        const completionText = `${player.username} completed level ${data.levelId} in ${formattedTime}s with ${data.stars || 0} stars!`;
+        console.log(`Broadcasting notification: ${completionText}`);
+        
+        // Always broadcast ANY level completion as a simple text notification
+        GlobalDispatcher.broadcast("broadcast", completionText);
+        
+        // Create the completion data for highscore checking
         const completionData = {
           username: player.username,
           levelId: data.levelId,
           timeMs: data.timeMs,
           stars: data.stars || 0
         };
-        
-        // ALWAYS broadcast level completion to ALL rooms using GlobalDispatcher
-        console.log(`Broadcasting level completion for ${player.username} on level ${data.levelId}`);
-        GlobalDispatcher.broadcast("level_completion", completionData);
         
         // Check for highscore separately
         const highscoreResult = this.addHighscore(data.levelId, {
@@ -134,18 +138,16 @@ class GameRoom extends Room<GameState> {
           timestamp: Date.now()
         });
         
-        // If it's a highscore, broadcast that separately
+        // If it's a highscore, broadcast that as a special notification too
         if (highscoreResult.isTopTen) {
           const position = highscoreResult.position;
           console.log(`HIGHSCORE: ${player.username} got position #${position} on level ${data.levelId}`);
           
-          const highscoreData = {
-            ...completionData,
-            position: position
-          };
+          const highscoreText = `🏆 ${player.username} got position #${position} on level ${data.levelId} leaderboard!`;
+          console.log(`Broadcasting highscore notification: ${highscoreText}`);
           
-          // Broadcast highscore using GlobalDispatcher
-          GlobalDispatcher.broadcast("highscore", highscoreData);
+          // Broadcast highscore as a simple text notification
+          GlobalDispatcher.broadcast("broadcast", highscoreText);
         }
       }
     });
@@ -176,9 +178,9 @@ class GameRoom extends Room<GameState> {
       }
     });
 
-    // Simplify to a basic text-only notification system
+    // Simplify to a basic text-only notification system with better logging
     this.presence.subscribe("broadcast", (message: string) => {
-      console.log(`[${this.roomId}] Received broadcast message: ${message}`);
+      console.log(`[${this.roomId}] ⭐⭐⭐ Broadcasting notification to all clients: "${message}"`);
       // Forward the simple text message to all clients in this room
       this.broadcast("notification", message);
     });
