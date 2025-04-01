@@ -10,7 +10,7 @@ import { Sign } from './Sign';
 
 export class TestLevels {
     // Parameter for main platform length that can be adjusted as needed
-    private static mainPlatformLength = 50; // Default value to fit all portals (furthest is at z=40)
+    private static mainPlatformLength = 80; // Default value to fit all portals (furthest is at z=40)
     
     /**
      * Creates an overworld hub with portals to different levels
@@ -80,19 +80,20 @@ export class TestLevels {
         
         // GAMEPLAY LEVELS SIDE - All other levels on the opposite side
         // =====================================================
-        
-        // Level 4 portal - First Level
+
+        // Level 4
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(20, groundY + 2, -5),    // Position on opposite side
+            new THREE.Vector3(20, groundY + 2, 25),    // Position on opposite side
             4,                                  // Level ID
-            "Blocks",                        // Name
-            "Challenge",                        // Description
+            "Simple level",                        // Name
+            ":)",                        // Description
             "white",                            // Text color
             "#ffff88",                          // Description color
             true                                // Show highscore
         );
+        
 
         // Level 4 portal - Skydiving
         this.createLevelPortal(
@@ -100,34 +101,47 @@ export class TestLevels {
             game,
             new THREE.Vector3(20, groundY + 2, 10),    // Position on opposite side
             5,                                  // Level ID
-            "Skydiving",                        // Name
-            "Challenge",                        // Description
+            "Drop level",                        // Name
+            "Okay",                        // Description
             "white",                            // Text color
             "#ffff88",                          // Description color
             true                                // Show highscore
         );
 
-        // Level 6
+        // Level 4 portal - First Level
         this.createLevelPortal(
             level,
             game,
-            new THREE.Vector3(20, groundY + 2, 25),    // Position on opposite side
+            new THREE.Vector3(20, groundY + 2, -5),    // Position on opposite side
             6,                                  // Level ID
-            "Simple Finish",                        // Name
-            "Challenge",                        // Description
+            "Blocks",                        // Name
+            "Tricky between saws",                        // Description
             "white",                            // Text color
             "#ffff88",                          // Description color
             true                                // Show highscore
         );
 
-        // Level 6
+        // Level 7
         this.createLevelPortal(
             level,
             game,
             new THREE.Vector3(20, groundY + 2, 40),    // Position on opposite side
             7,                                  // Level ID
-            "Simple Finish",                        // Name
-            "Challenge",                        // Description
+            "Long level",                        // Name
+            "But doable",                        // Description
+            "white",                            // Text color
+            "#ffff88",                          // Description color
+            true                                // Show highscore
+        );
+
+        // Level skydiving
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(20, groundY + 2, 55),    // Position on opposite side
+            8,                                  // Level ID 
+            "Sky diving",                        // Name
+            "DIFFICULT",                        // Description
             "white",                            // Text color
             "#ffff88",                          // Description color
             true                                // Show highscore

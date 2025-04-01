@@ -10,7 +10,7 @@ import { RoomType } from './Network';
 import { BeginnerLevels } from './BeginnerLevels';
 import { LevelEditor } from './LevelEditor';
 import { Camera, CameraMode } from './Camera';
-import { first_level, loadJSONLevel, long_level, simple_finish, tutorial_level } from './JSONLevels';
+import { drop_level, first_level, loadJSONLevel, long_level, simple_finish, tutorial_level } from './JSONLevels';
 import { DynamicLevel } from './DynamicLevel';
 
 /**
@@ -987,16 +987,19 @@ export class Game {
                 TestLevels.createJungleGymTest(this.level!, this);
                 break;
             case 4:
-                loadJSONLevel(this.level!, this, first_level, true);
+                loadJSONLevel(this.level!, this, simple_finish, true);
                 break;
             case 5:
-                TestLevels.createSkydivingChallenge(this.level!, this);
+                loadJSONLevel(this.level!, this, drop_level, true)
                 break;
             case 6:
-                loadJSONLevel(this.level!, this, simple_finish, true);
+                loadJSONLevel(this.level!, this, first_level, true);
                 break;
             case 7:
                 loadJSONLevel(this.level!, this, long_level, true)
+                break;
+            case 8:
+                TestLevels.createSkydivingChallenge(this.level!, this);
                 break;
             default:
                 console.error(`Unknown level index: ${levelIndex}`);
