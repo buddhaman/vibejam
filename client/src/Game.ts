@@ -130,6 +130,7 @@ export class Game {
             const localId = `local-${Date.now()}`;
             this.level.addPlayer(localId, true, this.userName);
             this.localPlayerId = localId;
+            this.level.localPlayer?.setPosition(this.level.playerStartPosition);
             
             // IMPORTANT: Start the game loop immediately
             this.lastUpdateTime = performance.now();
@@ -836,6 +837,7 @@ export class Game {
 
         this.loadLevelContent(levelIndex);
         
+        this.level.localPlayer?.setPosition(this.level.playerStartPosition);
         console.log(`Level ${levelIndex} switch complete`);
     }
 
