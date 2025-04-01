@@ -363,10 +363,12 @@ export class MobileControls {
                 const deltaY = currentPos.y - this.previousCameraPos.y;
                 
                 // Only process meaningful movements
-                if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+                if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
                     if (this.cameraRotateCallback) {
-                        this.cameraRotateCallback(deltaX, deltaY);
-                        console.log(`Camera moved: dx=${deltaX}, dy=${deltaY}`);
+                        // Apply sensitivity multiplier for faster camera movement
+                        const sensitivity = 250;
+                        this.cameraRotateCallback(deltaX * sensitivity, deltaY * sensitivity);
+                        console.log(`Camera moved: dx=${deltaX * sensitivity}, dy=${deltaY * sensitivity}`);
                     }
                     
                     // Update debug info
