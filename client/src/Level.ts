@@ -468,6 +468,7 @@ export class Level {
         this.saws.push(saw);
         this.levelRenderer?.scene.add(saw.mesh);
         this.entities.push(saw);
+        saw.body.shape.updateTransform();
         return saw;
     }
     

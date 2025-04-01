@@ -122,8 +122,8 @@ export class Serialize {
                             mesh.rotation.y,
                             mesh.rotation.z
                         ],
-                        radius: 1.0, // We'll use default values since they're not easily accessible
-                        thickness: 0.2,
+                        radius: 4.0, // We'll use default values since they're not easily accessible
+                        thickness: 1.0,
                         spinSpeed: 0.1,
                         name: mesh.name || `saw_${Date.now()}`
                     };
@@ -284,16 +284,19 @@ export class Serialize {
                 // Import Saw dynamically
                 import('./Saw').then(({ Saw }) => {
                     levelData.saws.forEach((sawData: SawData) => {
-                        // Create a saw
+                        // Create a saw at the correct position directly
+                        const position = new THREE.Vector3(
+                            sawData.position[0],
+                            sawData.position[1],
+                            sawData.position[2]
+                        );
+                        
+                        // Create the saw with the correct position
                         const saw = Saw.create(
-                            new THREE.Vector3(
-                                sawData.position[0],
-                                sawData.position[1],
-                                sawData.position[2]
-                            ),
-                            sawData.radius || 1.0,
-                            sawData.thickness || 0.2,
-                            sawData.spinSpeed || 0.1
+                            position,
+                            sawData.radius * 4.0,
+                            sawData.thickness*1.0,
+                            sawData.spinSpeed,
                         );
                         
                         // Apply rotation if provided
@@ -304,15 +307,14 @@ export class Serialize {
                                 sawData.rotation[2]
                             );
                             
-                            // Update the shape orientation
-                            const body = saw.getBody();
-                            if (body) {
-                                body.orientation.setFromEuler(new THREE.Euler(
+                            // Update the body's shape orientation
+                            if (saw.body && saw.body.shape) {
+                                saw.body.shape.orientation.setFromEuler(new THREE.Euler(
                                     sawData.rotation[0],
                                     sawData.rotation[1],
                                     sawData.rotation[2]
                                 ));
-                                body.updateTransform();
+                                saw.body.shape.updateTransform();
                             }
                         }
                         
@@ -320,12 +322,7 @@ export class Serialize {
                         saw.mesh.name = sawData.name || `saw_${Date.now()}`;
                         
                         // Add to level
-                        level.entities.push(saw);
-                        
-                        // Add to scene if provided
-                        if (scene && !saw.mesh.parent) {
-                            scene.add(saw.mesh);
-                        }
+                        level.addSaw(saw);
                     });
                     
                     console.log(`Loaded ${levelData.saws.length} saws`);

@@ -94,12 +94,15 @@ export class Saw extends Entity {
         // Create the rigid body (shape is centered at origin)
         this.body = new RigidBody(shape, 10.0, material);
         
-        // Position the body after creation (avoids double transformation)
-        this.body.shape.position.copy(position);
-        this.body.shape.updateTransform();
+        // Set position and scale for both mesh and shape
+        this.body.mesh.position.copy(position);
+        this.body.mesh.scale.set(1, 1, 1);  // Reset scale to 1 first
         
-        // Set initial spin
-        this.body.angularVelocity.set(0, 0, spinSpeed);
+        this.body.shape.position.copy(position);
+        this.body.shape.scaling.set(1, 1, 1);  // Reset scale to 1 first
+        
+        // Update the transform to apply changes
+        this.body.shape.updateTransform();
         
         // Use the rigid body's mesh directly
         this.mesh = this.body.mesh;
