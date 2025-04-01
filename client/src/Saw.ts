@@ -117,8 +117,12 @@ export class Saw extends Entity {
         this.body.update();
     }
 
-    public getBody(): RigidBody {
-        return this.body;
+    public getCollisionMesh(): THREE.Mesh {
+        return this.mesh;
+    }
+
+    public getBody(): ConvexShape {
+        return this.body.shape;
     }
 
     public getBoundingBox(): THREE.Box3 {

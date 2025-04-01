@@ -20,6 +20,7 @@ export class Rope extends Entity {
     // Store the first and last particles for easy access
     public startParticle!: Verlet;
     public endParticle!: Verlet;
+    public name: string = "Rope";
     
     constructor(
         fixedPoint: THREE.Vector3,
