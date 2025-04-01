@@ -167,6 +167,24 @@ class GameRoom extends Room<GameState> {
       }
     });
 
+    // Add a handler to get ALL highscores (top 5 per level)
+    this.onMessage("get_all_highscores", (client) => {
+      console.log(`Player ${client.sessionId} requested all highscores`);
+      
+      const allHighscores: {[levelId: string]: Array<{username: string, timeMs: number, stars: number, timestamp: number}>} = {};
+      
+      // Get top 5 for each level
+      Object.keys(this.highscores).forEach(levelId => {
+        allHighscores[levelId] = this.highscores[levelId].slice(0, 5);
+      });
+      
+      console.log(`Sending highscores for ${Object.keys(allHighscores).length} levels`);
+      
+      client.send("all_highscores", {
+        highscores: allHighscores
+      });
+    });
+
     // Add global notification handler with GlobalDispatcher
     this.onMessage("send_global_notification", (client, data) => {
       const player = this.state.players.get(client.sessionId);

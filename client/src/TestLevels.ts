@@ -22,36 +22,53 @@ export class TestLevels {
             "overworld-platform"
         ));
         
-        // Portal to beginner tutorial level
-        level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-25, 2, 0),
-            new THREE.Vector3(-22, 6, 3),
-            LevelBuilder.PORTAL_MATERIAL,
-            "portal-tutorial"
-        ));
+        // Create portals to different levels using the utility function
         
-        // Add new portal to second tutorial level (level 4)
-        level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-25, 2, 6),  // Positioned next to the other tutorial portal
-            new THREE.Vector3(-22, 6, 9),
-            LevelBuilder.PORTAL_MATERIAL,
-            "portal-tutorial2"
-        ));
+        // Tutorial level portal
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(-23.5, 4, 1.5),   // Position
+            3,                                  // Level ID
+            "Tutorial",                         // Name
+            "For Beginners",                    // Description
+            "white",                            // Text color
+            "#aaffaa"                           // Description color
+        );
         
-        // Regular level portals on the main platform
-        level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(-15, 2, 0),
-            new THREE.Vector3(-12, 6, 3),
-            LevelBuilder.PORTAL_MATERIAL,
-            "portal-level1"
-        ));
+        // Advanced tutorial level portal
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(-23.5, 4, 7.5),   // Position
+            4,                                  // Level ID
+            "Tutorial 2",                       // Name
+            "Advanced",                         // Description
+            "white",                            // Text color
+            "#ffaaaa"                           // Description color
+        );
         
-        level.addStaticBody(StaticBody.createBox(
-            new THREE.Vector3(15, 2, 0),
-            new THREE.Vector3(18, 6, 3),
-            LevelBuilder.PORTAL_MATERIAL,
-            "portal-level2"
-        ));
+        // Level 1 portal - Jungle Gym
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(-13.5, 4, 1.5),   // Position
+            1,                                  // Level ID
+            "Jungle Gym",                       // Name
+            "",                                 // No description
+            "white"                             // Text color
+        );
+        
+        // Level 2 portal - Skydiving
+        this.createLevelPortal(
+            level,
+            game,
+            new THREE.Vector3(16.5, 4, 1.5),    // Position
+            2,                                  // Level ID
+            "Skydiving",                        // Name
+            "",                                 // No description
+            "white"                             // Text color
+        );
         
         // Create a separate island for the Vibeverse portal
         level.addStaticBody(StaticBody.createBox(
@@ -96,100 +113,6 @@ export class TestLevels {
         
         // Add Vibeverse portal on the separate island
         this.createVibeVersePortal(level, game);
-        
-        // Make action area for beginner tutorial portal
-        level.addActionArea(
-            new THREE.Vector3(-23.5, 4, 1.5),    // Center of the portal
-            new THREE.Vector3(6, 8, 6),          // Interaction area
-            () => {
-                console.log("Switching to Tutorial Level");
-                if (game) {
-                    game.switchLevel(3); // Assuming 3 will be the index for tutorial level
-                }
-            }
-        );
-        
-        // Make action area for the new tutorial level portal
-        level.addActionArea(
-            new THREE.Vector3(-23.5, 4, 7.5),    // Center of the new portal
-            new THREE.Vector3(6, 8, 6),          // Interaction area
-            () => {
-                console.log("Switching to Advanced Tutorial Level");
-                if (game) {
-                    game.switchLevel(4); // Using level 4 as specified
-                }
-            }
-        );
-        
-        // Make action areas for regular level portals
-        level.addActionArea(
-            new THREE.Vector3(-13.5, 4, 1.5),    // Center of the portal
-            new THREE.Vector3(6, 8, 6),          // Interaction area
-            () => {
-                console.log("Switching to Level 1 (Jungle Gym)");
-                if (game) {
-                    game.switchLevel(1);
-                }
-            }
-        );
-        
-        level.addActionArea(
-            new THREE.Vector3(16.5, 4, 1.5),     // Center of the portal
-            new THREE.Vector3(6, 8, 6),          // Interaction area
-            () => {
-                console.log("Switching to Level 2 (Skydiving Challenge)");
-                if (game) {
-                    game.switchLevel(2);
-                }
-            }
-        );
-        
-        // Add descriptive text for regular level portals
-        level.levelRenderer?.addSimpleText(
-            "JUNGLE GYM",
-            new THREE.Vector3(-13.5, 7, 1.5),
-            "white",
-            "#000000"
-        );
-        
-        level.levelRenderer?.addSimpleText(
-            "SKYDIVING",
-            new THREE.Vector3(16.5, 7, 1.5),
-            "white",
-            "#000000"
-        );
-        
-        // Add descriptive text for tutorial portal
-        level.levelRenderer?.addSimpleText(
-            "TUTORIAL",
-            new THREE.Vector3(-23.5, 7, 1.5),
-            "white",
-            "#000000"
-        );
-        
-        // Add descriptive text for new tutorial portal
-        level.levelRenderer?.addSimpleText(
-            "TUTORIAL 2",
-            new THREE.Vector3(-23.5, 7, 7.5),
-            "white",
-            "#000000"
-        );
-        
-        // Add extra text explaining it's for beginners
-        level.levelRenderer?.addSimpleText(
-            "FOR BEGINNERS",
-            new THREE.Vector3(-23.5, 6, 1.5),
-            "#aaffaa", // Light green
-            "#000000"
-        );
-        
-        // Add extra text explaining it's advanced
-        level.levelRenderer?.addSimpleText(
-            "ADVANCED",
-            new THREE.Vector3(-23.5, 6, 7.5),
-            "#ffaaaa", // Light red
-            "#000000"
-        );
         
         // Add bridge signage
         level.levelRenderer?.addSimpleText(
@@ -961,5 +884,116 @@ export class TestLevels {
         level.localPlayer?.setPosition(new THREE.Vector3(0, 104, 0));
         
         console.log("Skydiving challenge level created with updrafts and rope swing");
+    }
+
+    /**
+     * Utility function to create a level portal with accompanying highscore sign
+     * @param level The Level instance to add the portal to
+     * @param game The Game instance for level switching
+     * @param position The position of the portal (center position)
+     * @param targetLevelId The level ID to switch to when portal is activated
+     * @param portalName A display name for the portal
+     * @param description Optional additional description text
+     * @param textColor Optional color for the portal name text
+     * @param descColor Optional color for the description text
+     */
+    private static createLevelPortal(
+        level: Level,
+        game: Game,
+        position: THREE.Vector3,
+        targetLevelId: number,
+        portalName: string,
+        description: string = "",
+        textColor: string = "white",
+        descColor: string = "#aaffaa"
+    ): void {
+        // Create portal cube (3x4x3 size centered on position)
+        level.addStaticBody(StaticBody.createBox(
+            new THREE.Vector3(position.x - 1.5, position.y - 2, position.z - 1.5),
+            new THREE.Vector3(position.x + 1.5, position.y + 2, position.z + 1.5),
+            LevelBuilder.PORTAL_MATERIAL,
+            `portal-level${targetLevelId}`
+        ));
+        
+        // Make action area for portal
+        level.addActionArea(
+            position,                       // Center of the portal
+            new THREE.Vector3(6, 8, 6),     // Interaction area
+            () => {
+                console.log(`Switching to Level ${targetLevelId} (${portalName})`);
+                if (game) {
+                    game.switchLevel(targetLevelId);
+                }
+            }
+        );
+        
+        // Add portal name text
+        level.levelRenderer?.addSimpleText(
+            portalName.toUpperCase(),
+            new THREE.Vector3(position.x, position.y + 3, position.z),
+            textColor,
+            "#000000"
+        );
+        
+        // Add optional description text
+        if (description) {
+            level.levelRenderer?.addSimpleText(
+                description.toUpperCase(),
+                new THREE.Vector3(position.x, position.y + 2, position.z),
+                descColor,
+                "#000000"
+            );
+        }
+        
+        // Create highscore sign for this level if we're in the overworld
+        // Only create the sign if level ID is greater than 0 (not for tutorial levels, etc.)
+        if (level.levelIdx === 0 && targetLevelId > 0) {
+            console.log(`Creating highscore sign for level ${targetLevelId}`);
+            
+            // Create a sign positioned next to the portal
+            // Calculate sign position (slightly to the side and behind the portal)
+            const signPos = new THREE.Vector3(
+                position.x + 4,                 // To the right of the portal
+                position.y + 1.5,               // Raised up for better visibility
+                position.z                      // Same z as portal
+            );
+            
+            // Create rotation to face the player
+            const signRot = new THREE.Euler(0, -Math.PI / 2, 0); // Rotated 90 degrees
+            
+            // Create the sign for this level
+            const sign = level.addSign(
+                signPos,
+                signRot,
+                2,                          // Width
+                2.5,                        // Height
+                targetLevelId               // Level ID to show highscores for
+            );
+            
+            console.log(`Sign created for level ${targetLevelId}. Total signs: ${level.signs.length}`);
+            
+            // If network is available, populate the sign with highscores
+            if (game.network) {
+                const levelIdStr = targetLevelId.toString();
+                const highscores = game.network.getHighscores(targetLevelId);
+                
+                if (highscores && highscores.length > 0) {
+                    console.log(`Setting ${highscores.length} highscores for level ${targetLevelId}`);
+                    // Set the highscores directly if available
+                    sign.setHighscores(highscores);
+                } else {
+                    console.log(`No highscores found for level ${targetLevelId}, requesting from server`);
+                    // Request highscores if not already stored
+                    game.network.requestHighscores(targetLevelId);
+                }
+            } else {
+                console.log(`No network available, sign will show default "no highscores" message`);
+            }
+            
+            // Run debug check after sign creation
+            if (level.levelRenderer) {
+                level.levelRenderer.debugCheckSigns();
+            }
+        }
     }
 }

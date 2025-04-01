@@ -103,7 +103,8 @@ export class Network {
     private setupOverworldHandlers(): void {
         if (!this.room) return;
         
-        // No need for setupNotificationSystem anymore
+        // Request all highscores when joining the overworld
+        this.requestAllHighscores();
         
         this.room.onStateChange((state) => {
             if (!this.game.level) return;
@@ -158,6 +159,40 @@ export class Network {
         // Register player count message handler
         this.room.onMessage("player_count", (message) => {
             console.log(`Connected players in overworld: ${message.count}`);
+        });
+        
+        // Register all_highscores message handler
+        this.room.onMessage("all_highscores", (message) => {
+            console.log("Received all highscores:");
+            
+            const highscores = message.highscores;
+            
+            // Store in our local cache
+            for (const levelId in highscores) {
+                this.highscores[levelId] = highscores[levelId];
+            }
+            
+            // Update any signs in the level with the new highscores
+            this.updateSignsWithHighscores();
+            
+            // Print to console nicely formatted
+            Object.keys(highscores).sort((a, b) => parseInt(a) - parseInt(b)).forEach(levelId => {
+                console.log(`\n----- Level ${levelId} Highscores -----`);
+                
+                if (highscores[levelId] && highscores[levelId].length > 0) {
+                    highscores[levelId].forEach((entry: {username: string, timeMs: number, stars: number, timestamp: number}, index: number) => {
+                        // Format time nicely
+                        const minutes = Math.floor(entry.timeMs / 1000 / 60);
+                        const seconds = Math.floor((entry.timeMs / 1000) % 60);
+                        const milliseconds = Math.floor((entry.timeMs % 1000) / 10);
+                        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+                        
+                        console.log(`${index + 1}. ${entry.username} - ${timeString} (${entry.stars} ⭐)`);
+                    });
+                } else {
+                    console.log("No highscores yet");
+                }
+            });
         });
     }
     
@@ -493,5 +528,35 @@ export class Network {
         } catch (error) {
             console.error("Failed to send notification:", error);
         }
+    }
+
+    /**
+     * Request all highscores for all levels
+     */
+    public requestAllHighscores(): void {
+        if (!this.room || !this.playerId) return;
+        
+        try {
+            console.log("Requesting all highscores");
+            this.room.send("get_all_highscores");
+        } catch (error) {
+            console.error("Failed to request all highscores:", error);
+        }
+    }
+
+    /**
+     * Update signs with highscores data
+     */
+    public updateSignsWithHighscores(): void {
+        if (!this.game.level) return;
+        
+        // For each sign in the level
+        this.game.level.signs.forEach(sign => {
+            // If we have highscores for this level ID, update the sign
+            const levelIdStr = sign.getLevelId().toString();
+            if (this.highscores[levelIdStr]) {
+                sign.setHighscores(this.highscores[levelIdStr]);
+            }
+        });
     }
 } 

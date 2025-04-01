@@ -11,6 +11,7 @@ import { ActionArea } from "./ActionArea";
 import { Updraft } from "./Updraft";
 import { Game } from './Game';
 import { Entity } from './Entity';
+import { Sign } from './Sign';
 
 // Split into pure logic such that it can be used in the backend when online mode.
 export class Level {
@@ -46,6 +47,9 @@ export class Level {
 
     // Add updrafts collection
     public updrafts: Updraft[] = [];
+
+    // Add signs collection
+    public signs: Sign[] = [];
 
     constructor(game: Game, levelIdx: number) {
         // Initialize particle system
@@ -719,6 +723,12 @@ export class Level {
             if (upIndex !== -1) {
                 this.updrafts.splice(upIndex, 1);
             }
+        } else if (entity instanceof Sign) {
+            // Remove from signs
+            const signIndex = this.signs.findIndex(s => s === entity);
+            if (signIndex !== -1) {
+                this.signs.splice(signIndex, 1);
+            }
         }
         
         // Remove mesh from scene if it exists
@@ -733,6 +743,39 @@ export class Level {
         }
         
         return true;
+    }
+
+    /**
+     * Add a highscore sign to the level
+     * @param position Position of the sign
+     * @param rotation Rotation of the sign (in radians)
+     * @param width Width of the sign (world units)
+     * @param height Height of the sign (world units)
+     * @param levelId Level ID to display highscores for
+     * @returns The created sign
+     */
+    public addSign(
+        position: THREE.Vector3,
+        rotation: THREE.Euler,
+        width: number = 2,
+        height: number = 2.5,
+        levelId: number
+    ): Sign {
+        // Create the sign
+        const sign = new Sign(
+            position,
+            rotation,
+            width,
+            height,
+            levelId,
+            this.levelRenderer!.scene
+        );
+        
+        // Add to collections
+        this.signs.push(sign);
+        this.entities.push(sign);
+        
+        return sign;
     }
 }
 

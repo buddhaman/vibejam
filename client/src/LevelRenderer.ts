@@ -21,6 +21,8 @@ export class LevelRenderer {
     // Add particle system
     public particleSystem: ParticleSystem | null = null;
 
+    private _frameCount: number = 0;
+
     constructor(level: Level, highPerformance: boolean) {
         // Create Camera with third-person mode by default
         this.camera = new Camera(CameraMode.THIRD_PERSON);
@@ -317,23 +319,38 @@ export class LevelRenderer {
             rope.render(this); // Default yellow rope like color
         });
 
+        // IMPORTANT: Render all signs - this is critical
+        if (this.level.signs && this.level.signs.length > 0) {
+            // Debug output only once every 100 frames to avoid console spam
+            if (this._frameCount % 100 === 0) {
+                console.log(`Level has ${this.level.signs.length} signs`);
+            }
+            
+            this.level.signs.forEach(sign => {
+                sign.render(this);
+            });
+        }
+
         // Render all updrafts
         this.level.updrafts.forEach(updraft => {
-            updraft.render(this); 
+            updraft.render(this);
         });
-
+        
         // Render particles
         // Update particles with fixed timestep (convert milliseconds to seconds)
         this.particleSystem?.update(0.016);
         this.particleSystem?.render(this.instancedRenderer);
-
+        
         // Render action areas
         this.level.actionAreas?.forEach(actionArea => {
             actionArea.render(this);
         });
-
+        
         // Update the instanced renderer after all rendering is done
         this.instancedRenderer.update();
+        
+        // Track frame count for debugging purposes
+        this._frameCount = (this._frameCount || 0) + 1;
     }
 
     // Add method to spawn particles when a saw collision occurs
@@ -407,6 +424,49 @@ export class LevelRenderer {
         
         // Reset lighting
         this.setupLighting();
+    }
+
+    /**
+     * Debug method to check if signs are correctly added to the scene
+     */
+    public debugCheckSigns(): void {
+        console.log("DEBUG: Checking signs in scene");
+        if (!this.level || !this.level.signs) {
+            console.log("DEBUG: No level or signs array found");
+            return;
+        }
+        
+        console.log(`DEBUG: Level has ${this.level.signs.length} signs`);
+        
+        // Check if each sign's mesh is in the scene
+        this.level.signs.forEach((sign, index) => {
+            const mesh = sign.getMesh();
+            if (!mesh) {
+                console.log(`DEBUG: Sign ${index} has no mesh`);
+                return;
+            }
+            
+            console.log(`DEBUG: Sign ${index} for level ${sign.getLevelId()}`);
+            console.log(`DEBUG: - Position: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)}`);
+            console.log(`DEBUG: - Rotation: ${mesh.rotation.x.toFixed(2)}, ${mesh.rotation.y.toFixed(2)}, ${mesh.rotation.z.toFixed(2)}`);
+            
+            // Check if the sign is visible
+            console.log(`DEBUG: - Visible: ${mesh.visible}`);
+            
+            // Check if the sign has materials
+            if (mesh.material) {
+                const material = mesh.material as THREE.Material;
+                console.log(`DEBUG: - Material: ${material.type}`);
+                
+                // If it's a MeshBasicMaterial, check if it has a texture map
+                if (material.type === 'MeshBasicMaterial') {
+                    const basicMat = material as THREE.MeshBasicMaterial;
+                    console.log(`DEBUG: - Has texture: ${basicMat.map ? 'Yes' : 'No'}`);
+                }
+            } else {
+                console.log(`DEBUG: - No material`);
+            }
+        });
     }
 }
 
