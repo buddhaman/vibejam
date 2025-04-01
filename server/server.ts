@@ -65,8 +65,8 @@ interface Highscores {
 class GameRoom extends Room<GameState> {
   // Store level completions
   private levelCompletions: LevelCompletion[] = [];
-  // Path to highscores file
-  private highscoresPath = path.join(__dirname, 'highscores.json');
+  // Path to highscores file - using an absolute path to ensure consistency
+  private highscoresPath = path.resolve(__dirname, '../data/highscores.json');
   // In-memory highscores cache
   private highscores: {[levelId: string]: Array<{username: string, timeMs: number, stars: number, timestamp: number}>} = {};
 
@@ -76,6 +76,9 @@ class GameRoom extends Room<GameState> {
     
     // Register with the GlobalDispatcher
     GlobalDispatcher.register(this);
+    
+    // Make sure the data directory exists
+    this.ensureDataDirectoryExists();
     
     // Load existing highscores
     this.loadHighscores();
@@ -235,29 +238,73 @@ class GameRoom extends Room<GameState> {
     console.log(`Game room disposed: ${this.roomId}`);
   }
   
-  // Load highscores from disk
+  // Ensure the data directory exists
+  private ensureDataDirectoryExists(): void {
+    const dataDir = path.dirname(this.highscoresPath);
+    console.log(`Ensuring data directory exists: ${dataDir}`);
+    
+    try {
+      if (!fs.existsSync(dataDir)) {
+        console.log(`Creating data directory: ${dataDir}`);
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+    } catch (error) {
+      console.error(`Failed to create data directory: ${dataDir}`, error);
+    }
+  }
+  
+  // Load highscores from disk with improved logging
   private loadHighscores(): void {
+    console.log(`Loading highscores from: ${this.highscoresPath}`);
+    
     try {
       if (fs.existsSync(this.highscoresPath)) {
         const data = fs.readFileSync(this.highscoresPath, 'utf8');
         this.highscores = JSON.parse(data);
-        console.log("Highscores loaded from disk");
+        
+        // Count total highscores
+        let totalEntries = 0;
+        let totalLevels = 0;
+        
+        Object.keys(this.highscores).forEach(levelId => {
+          if (this.highscores[levelId] && this.highscores[levelId].length > 0) {
+            totalLevels++;
+            totalEntries += this.highscores[levelId].length;
+          }
+        });
+        
+        console.log(`✅ Highscores loaded from disk: ${totalEntries} entries across ${totalLevels} levels`);
+        
+        // Log a summary of the highscores
+        Object.keys(this.highscores).sort((a, b) => parseInt(a) - parseInt(b)).forEach(levelId => {
+          const scores = this.highscores[levelId];
+          if (scores && scores.length > 0) {
+            console.log(`- Level ${levelId}: ${scores.length} entries, top score: ${scores[0].username} (${scores[0].timeMs}ms)`);
+          }
+        });
       } else {
         this.highscores = {};
-        console.log("No highscores file found, starting with empty highscores");
+        console.log(`⚠️ No highscores file found at ${this.highscoresPath}, starting with empty highscores`);
       }
     } catch (error) {
-      console.error("Error loading highscores:", error);
+      console.error(`❌ Error loading highscores from ${this.highscoresPath}:`, error);
       this.highscores = {};
     }
   }
   
-  // Save highscores to disk
+  // Save highscores to disk with improved error handling
   private saveHighscores(): void {
+    console.log(`Saving highscores to: ${this.highscoresPath}`);
+    
     try {
-      // Save to a temp file first to avoid nodemon restart
-      const tempFile = path.join(__dirname, '.tmp_highscores.json');
+      // Ensure directory exists
+      this.ensureDataDirectoryExists();
+      
+      // Create JSON string
       const data = JSON.stringify(this.highscores, null, 2);
+      
+      // Save to a temp file first to avoid nodemon restart
+      const tempFile = `${this.highscoresPath}.tmp`;
       
       // Write to temp file
       fs.writeFileSync(tempFile, data, 'utf8');
@@ -265,27 +312,58 @@ class GameRoom extends Room<GameState> {
       // Then rename (atomic operation) to avoid nodemon watching the write
       fs.renameSync(tempFile, this.highscoresPath);
       
-      console.log(`Highscores saved to ${this.highscoresPath}`);
+      // Count total highscores for logging
+      let totalEntries = 0;
+      Object.values(this.highscores).forEach(scores => {
+        totalEntries += scores.length;
+      });
+      
+      console.log(`✅ Highscores saved to ${this.highscoresPath} (${totalEntries} total entries)`);
+      
+      // Log file stats to confirm it was saved
+      const stats = fs.statSync(this.highscoresPath);
+      console.log(`File size: ${stats.size} bytes, Last modified: ${stats.mtime}`);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error(`Error saving highscores: ${error.message}`);
+        console.error(`❌ Error saving highscores: ${error.message}`);
+        console.error(`Stack trace: ${error.stack}`);
       } else {
-        console.error('Error saving highscores: Unknown error type');
+        console.error('❌ Error saving highscores: Unknown error type');
       }
     }
   }
   
-  // Update the addHighscore method to return both whether it's a top 10 score and its position
+  // Update the addHighscore method with detailed logging
   private addHighscore(levelId: number, entry: {username: string, timeMs: number, stars: number, timestamp: number}): {isTopTen: boolean, position: number} {
     const levelIdStr = levelId.toString();
+    
+    // Format time for better readability in logs
+    const formattedTime = this.formatTime(entry.timeMs);
+    
+    console.log(`\n==== HIGHSCORE CHECK ====`);
+    console.log(`Player: ${entry.username}`);
+    console.log(`Level: ${levelId}`);
+    console.log(`Time: ${formattedTime} (${entry.timeMs}ms)`);
+    console.log(`Stars: ${entry.stars}⭐`);
     
     // Initialize array for this level if it doesn't exist
     if (!this.highscores[levelIdStr]) {
       this.highscores[levelIdStr] = [];
+      console.log(`This is the first score ever for level ${levelId}!`);
     }
     
     // Get current highscores for this level
     const levelScores = [...this.highscores[levelIdStr]]; // Clone array
+    
+    // Log current top scores before adding new one
+    if (levelScores.length > 0) {
+      console.log(`\nCurrent top scores for Level ${levelId}:`);
+      levelScores.slice(0, Math.min(5, levelScores.length)).forEach((score, idx) => {
+        console.log(`  #${idx+1}: ${score.username} - ${this.formatTime(score.timeMs)} (${score.stars}⭐)`);
+      });
+    } else {
+      console.log(`No existing scores for Level ${levelId}`);
+    }
     
     // Add the new score
     levelScores.push(entry);
@@ -311,15 +389,43 @@ class GameRoom extends Room<GameState> {
       // Keep only top 10
       this.highscores[levelIdStr] = levelScores.slice(0, 10);
       
+      console.log(`\n🏆 HIGHSCORE ACHIEVED! 🏆`);
+      console.log(`Position: #${position} of ${levelScores.length} times`);
+      
+      // Log updated top 5
+      console.log(`\nUpdated top scores for Level ${levelId}:`);
+      this.highscores[levelIdStr].slice(0, Math.min(5, this.highscores[levelIdStr].length)).forEach((score, idx) => {
+        const highlight = (score.username === entry.username && 
+                          score.timeMs === entry.timeMs && 
+                          score.timestamp === entry.timestamp) 
+                          ? " <-- NEW!" : "";
+        console.log(`  #${idx+1}: ${score.username} - ${this.formatTime(score.timeMs)} (${score.stars}⭐)${highlight}`);
+      });
+      
       // Save to disk
       this.saveHighscores();
-      
-      console.log(`Added highscore for ${entry.username} at position #${position} (time: ${entry.timeMs}ms)`);
     } else {
-      console.log(`Score for ${entry.username} (${entry.timeMs}ms) not in top 10`);
+      console.log(`\n❌ NOT A TOP 10 SCORE`);
+      console.log(`Position: #${position} of ${levelScores.length} times`);
+      console.log(`Best time: ${this.formatTime(levelScores[0].timeMs)} by ${levelScores[0].username}`);
     }
     
+    console.log(`==== END HIGHSCORE CHECK ====\n`);
+    
     return { isTopTen, position };
+  }
+  
+  // Helper to format time nicely for logging
+  private formatTime(timeMs: number): string {
+    const minutes = Math.floor(timeMs / 1000 / 60);
+    const seconds = Math.floor((timeMs / 1000) % 60);
+    const milliseconds = Math.floor(timeMs % 1000);
+    
+    if (minutes > 0) {
+      return `${minutes}m ${seconds.toString().padStart(2, '0')}s ${milliseconds.toString().padStart(3, '0')}ms`;
+    } else {
+      return `${seconds}.${milliseconds.toString().padStart(3, '0')}s`;
+    }
   }
   
   // Get highscores for a level
