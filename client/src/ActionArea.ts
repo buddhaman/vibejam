@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { Entity } from './Entity';
 import { LevelRenderer } from './LevelRenderer';
+import { ConvexShape } from '../../shared/ConvexShape';
+import { Body } from 'shared/Body';
 
 export class ActionArea extends Entity {
-    private position: THREE.Vector3;
-    private size: THREE.Vector3;
-    private bounds: THREE.Box3;
     private callback: () => void;
     private isActive: boolean = true;
     private time: number = 0;
     private triggerOnce: boolean = true;
+    public shape: ConvexShape;
 
     constructor(
         position: THREE.Vector3,
@@ -18,31 +18,47 @@ export class ActionArea extends Entity {
         triggerOnce: boolean = false
     ) {
         super();
-        this.position = position.clone();
-        this.size = size.clone();
-        
-        // Create bounding box for collision detection
-        this.bounds = new THREE.Box3();
-        this.updateBounds();
+        // Create unit box and use scale to set size, just like Updraft
+        this.shape = ConvexShape.createBox(
+            new THREE.Vector3(-0.5, -0.5, -0.5), 
+            new THREE.Vector3(0.5, 0.5, 0.5)
+        );
+        this.shape.setScale(size);
+        this.shape.setPosition(position);
+        this.shape.updateTransform();
 
         this.callback = callback;
         this.triggerOnce = triggerOnce;
     }
 
-    private updateBounds(): void {
-        // Create bounds from position and size
-        this.bounds = new THREE.Box3().set(
-            new THREE.Vector3(
-                this.position.x - this.size.x/2,
-                this.position.y - this.size.y/2,
-                this.position.z - this.size.z/2
-            ),
-            new THREE.Vector3(
-                this.position.x + this.size.x/2,
-                this.position.y + this.size.y/2,
-                this.position.z + this.size.z/2
-            )
-        );
+    public checkCollision(point: THREE.Vector3): boolean {
+        if (!this.isActive) return false;
+        return this.shape.getBoundingBox().containsPoint(point);
+    }
+
+    public getBoundingBox(): THREE.Box3 {
+        return this.shape.getBoundingBox();
+    }
+
+    public getBody(): Body {
+        return this.shape;
+    }
+
+    public trigger(): void {
+        if (this.isActive) {
+            this.callback();
+            if (this.triggerOnce) {
+                this.isActive = false;
+            }
+        }
+    }
+
+    public setActive(active: boolean): void {
+        this.isActive = active;
+    }
+
+    public isActiveState(): boolean {
+        return this.isActive;
     }
 
     public render(levelRenderer: LevelRenderer): void {
@@ -56,42 +72,42 @@ export class ActionArea extends Entity {
         const beamsPerSide = 5;
         
         // Calculate spacing between beams
-        const spacingX = this.size.x / (beamsPerSide - 1);
-        const spacingZ = this.size.z / (beamsPerSide - 1);
+        const spacingX = this.shape.getBoundingBox().max.x - this.shape.getBoundingBox().min.x / (beamsPerSide - 1);
+        const spacingZ = this.shape.getBoundingBox().max.z - this.shape.getBoundingBox().min.z / (beamsPerSide - 1);
 
         // Draw beams along the perimeter
         for (let i = 0; i < beamsPerSide; i++) {
             const t = this.time * 2 + i * 0.2;
             const heightScale = 1.0 + Math.sin(t) * 0.4; // Increased height variation
             const widthScale = 0.6 + Math.sin(t * 2) * 0.3; // Increased width pulsing
-            const beamHeight = this.size.y * 3 * heightScale; // Made beams even taller
+            const beamHeight = this.shape.getBoundingBox().max.y * 3 * heightScale; // Made beams even taller
             const beamWidth = 0.15 * widthScale; // Increased base width
 
             // Calculate positions for beams on each side
             const positions = [
                 // Front edge
                 new THREE.Vector3(
-                    this.position.x - this.size.x/2 + i * spacingX,
-                    this.position.y - this.size.y/2,
-                    this.position.z - this.size.z/2
+                    this.shape.getBoundingBox().min.x + i * spacingX,
+                    this.shape.getBoundingBox().min.y,
+                    this.shape.getBoundingBox().min.z
                 ),
                 // Back edge
                 new THREE.Vector3(
-                    this.position.x - this.size.x/2 + i * spacingX,
-                    this.position.y - this.size.y/2,
-                    this.position.z + this.size.z/2
+                    this.shape.getBoundingBox().min.x + i * spacingX,
+                    this.shape.getBoundingBox().min.y,
+                    this.shape.getBoundingBox().max.z
                 ),
                 // Left edge
                 new THREE.Vector3(
-                    this.position.x - this.size.x/2,
-                    this.position.y - this.size.y/2,
-                    this.position.z - this.size.z/2 + i * spacingZ
+                    this.shape.getBoundingBox().min.x,
+                    this.shape.getBoundingBox().min.y,
+                    this.shape.getBoundingBox().min.z + i * spacingZ
                 ),
                 // Right edge
                 new THREE.Vector3(
-                    this.position.x + this.size.x/2,
-                    this.position.y - this.size.y/2,
-                    this.position.z - this.size.z/2 + i * spacingZ
+                    this.shape.getBoundingBox().max.x,
+                    this.shape.getBoundingBox().min.y,
+                    this.shape.getBoundingBox().min.z + i * spacingZ
                 )
             ];
 
@@ -161,43 +177,21 @@ export class ActionArea extends Entity {
         }
 
         // Larger central area effect
-        const centerPos = this.position.clone();
-        centerPos.y = this.position.y - this.size.y/2 + 0.1;
+        const bounds = this.shape.getBoundingBox();
+        const centerPos = new THREE.Vector3(
+            (bounds.min.x + bounds.max.x) / 2,
+            bounds.min.y + 0.1,
+            (bounds.min.z + bounds.max.z) / 2
+        );
         const centerScale = 1.2 + Math.sin(this.time * 1.5) * 0.3;
         instancedRenderer.renderLightBeam(
             centerPos,
             centerPos.clone().add(new THREE.Vector3(0, 0.3, 0)),
-            this.size.x * 0.6 * centerScale,
-            this.size.z * 0.6 * centerScale,
+            this.shape.getBoundingBox().max.x - this.shape.getBoundingBox().min.x * 0.6 * centerScale,
+            this.shape.getBoundingBox().max.z - this.shape.getBoundingBox().min.z * 0.6 * centerScale,
             undefined,
             glowColor,
             0.25
         );
-    }
-
-    public checkCollision(point: THREE.Vector3): boolean {
-        if (!this.isActive) return false;
-        return this.bounds.containsPoint(point);
-    }
-
-    public trigger(): void {
-        if (this.isActive) {
-            this.callback();
-            if (this.triggerOnce) {
-                this.isActive = false;
-            }
-        }
-    }
-
-    public getBoundingBox(): THREE.Box3 {
-        return this.bounds;
-    }
-
-    public setActive(active: boolean): void {
-        this.isActive = active;
-    }
-
-    public isActiveState(): boolean {
-        return this.isActive;
     }
 }
