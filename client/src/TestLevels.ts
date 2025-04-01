@@ -178,8 +178,7 @@ export class TestLevels {
             "#000000"
         );
         
-        // Position player in the center of the main platform
-        //level.localPlayer?.setPosition(new THREE.Vector3(0, 5, 0));
+        level.playerStartPosition = new THREE.Vector3(0, 5, 0);
         
         // Check for incoming portal traffic and position player appropriately
         this.handleIncomingPortalTraffic(level, game);
@@ -826,6 +825,8 @@ export class TestLevels {
      * @param level The Level instance to add level elements to
      */
     public static createSkydivingChallenge(level: Level, game: Game): void {
+
+        level.playerStartPosition = new THREE.Vector3(0, 105, 0);
         // Starting platform - high up
         LevelBuilder.createHorizontalPlatform(
             level,
